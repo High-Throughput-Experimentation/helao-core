@@ -1,18 +1,19 @@
+""" sample.py
+Liquid, Gas, Assembly, and Solid sample type models.
 
+"""
 __all__ = ["LiquidSample",
            "GasSample",
            "SolidSample",
            "AssemblySample",
            "SampleList"]
 
-from pydantic import BaseModel
-from pydantic import validator
-from typing import Union, List, Optional
-from socket import gethostname
 from datetime import datetime
-
+from socket import gethostname
+from typing import List, Optional, Union
 
 from helao.core.helper import print_message
+from pydantic import BaseModel, validator
 
 
 def _sample_model_list_validator(model_list, values, **kwargs):

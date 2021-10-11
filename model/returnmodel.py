@@ -1,4 +1,7 @@
+""" returnmodel.py
+Return models returned in API response. Will be deprecated.
 
+"""
 __all__ = ["ReturnProcessGroup",
            "ReturnProcessGroupList",
            "ReturnProcess",
@@ -7,10 +10,12 @@ __all__ = ["ReturnProcessGroup",
            "ReturnRunningProcess"]
 
 
+from typing import List, Optional, Union
+
 from pydantic import BaseModel
-from typing import Union, List, Optional
 
 
+# TODO: deprecate return* models in favor of original models.
 class ReturnProcessGroup(BaseModel):
     """Return class for queried cProcess_group objects."""
     index: int

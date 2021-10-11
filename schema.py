@@ -1,4 +1,4 @@
-""" schemas.py
+""" schema.py
 Standard classes for experiment queue objects.
 
 """
@@ -37,11 +37,12 @@ class cProcess_group(object):
         self.process_group_timestamp = imports.get("process_group_timestamp", None)
         self.process_group_label = imports.get("process_group_label", "noLabel")
         self.access = imports.get("access", "hte")
-        self.sequence = imports.get("sequence", None)
-        self.sequence_pars = imports.get("sequence_pars", {})
-        # this gets big really fast, bad for debugging
-        self.result_dict = {}#imports.get("result_dict", {})
-        self.global_params = {}
+        self.sequence = imports.get("sequence", None) # TODO: rename to "sequencer"
+        self.sequence_pars = imports.get("sequence_pars", {}) # TODO: rename to "sequencer_params"
+        
+        # TODO: make the following attributes private
+        self.result_dict = {}#imports.get("result_dict", {})# this gets big really fast, bad for debugging
+        self.global_params = {} # TODO: reserved for internal use, do not write to .prg
 
     def as_dict(self):
         d = vars(self)
@@ -103,28 +104,27 @@ class cProcess(cProcess_group):
         self.process_params = imports.get("process_params", {})
         self.process_enum = imports.get("process_enum", None)
         self.process_abbr = imports.get("process_abbr", None)
-        self.save_prc = imports.get("save_prc", True)
-        self.save_data = imports.get("save_data", True)
         self.start_condition = imports.get("start_condition", 3)
-        self.plate_id = imports.get("plate_id", None)
-        # holds sample list of dict for prc writing
-        self.prc_samples_in = []
-        self.prc_samples_out = []
 
         # holds samples basemodel for parsing between processes etc
         self.samples_in: hcms.SampleList = []
         self.samples_out: hcms.SampleList = []
 
-        # self.samples_in = imports.get("samples_in", [])
         # the following attributes are set during process dispatch but can be imported
-        # self.samples_out = imports.get("samples_out", [])
-        self.file_dict = defaultdict(lambda: defaultdict(dict))
+        self.file_dict = defaultdict(lambda: defaultdict(dict)) # TODO: replace with model
         self.file_dict.update(imports.get("file_dict", {}))
+        
+        # TODO: make the following attributes private
+        self.save_prc = imports.get("save_prc", True)
+        self.save_data = imports.get("save_data", True)
+        self.plate_id = imports.get("plate_id", None)
+        self.prc_samples_in = [] # holds sample list of dict for prc writing
+        self.prc_samples_out = []
         self.file_paths = imports.get("file_paths", [])
-        self.data = imports.get("data", [])
+        self.data = imports.get("data", []) # will be written to .hlo file
         self.output_dir = imports.get("output_dir", None)
-        self.column_names = imports.get("column_names", None)
-        self.header = imports.get("header", None)
+        self.column_names = imports.get("column_names", None) # deprecated in .hlo file format
+        self.header = imports.get("header", None) # deprecated in .hlo file format
         self.file_type = imports.get("file_type", None)
         self.filename = imports.get("filename", None)
         self.file_data_keys = imports.get("file_data_keys", None)

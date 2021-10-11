@@ -1,11 +1,15 @@
+""" file.y
+File models for writing/organizing .prc and .prg metadata contents.
 
+"""
 __all__ = ["PrcFile",
            "PrgFile"]
 
 from typing import Optional, Union
-from pydantic import BaseModel
 
 import helao.core.server.version as version
+from pydantic import BaseModel
+
 
 class PrcFile(BaseModel):
     hlo_version: str = version.hlo_version
