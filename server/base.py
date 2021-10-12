@@ -942,6 +942,10 @@ class Base(object):
                 await file_instance.write(header + output_str)
                 await file_instance.close()
                 self.process.file_dict.update({filename: file_info})
+                return output_path
+            else:
+                return None
+                
 
         def write_file_nowait(
             self,
@@ -977,6 +981,10 @@ class Base(object):
                 file_instance.write(header + output_str)
                 file_instance.close()
                 self.process.file_dict.update({filename: file_info})
+                return output_path
+            else:
+                return None
+
 
         async def write_to_prc(self, prc_dict: dict):
             "Create new prc if it doesn't exist, otherwise append prc_dict to file."
