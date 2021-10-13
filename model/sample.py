@@ -69,8 +69,8 @@ class _BaseSample(BaseModel):
     machine_name: Optional[str] = None
     sample_hash: Optional[str] = None
     last_update: Optional[int] = None # epoch in ns
-    _inheritance: Optional[str] = None # only for internal use
-    _status: Union[List[str],str] = None # only for internal use
+    inheritance: Optional[str] = None # only for internal use
+    status: Union[List[str],str] = None # only for internal use
     process_group_uuid: Optional[str] = None
     process_uuid: Optional[str] = None
     process_queue_time: Optional[str] = None # "%Y%m%d.%H%M%S%f"
@@ -81,6 +81,7 @@ class _BaseSample(BaseModel):
     lot_number: Optional[List[str]] = []
     source: Union[List[str],str] = None
     comment: Optional[str] = None
+
 
     @validator("process_queue_time")
     def validate_process_queue_time(cls, v):

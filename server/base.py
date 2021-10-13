@@ -1030,9 +1030,16 @@ class Base(object):
 
             for sample in samples:
                 if inheritance is None:
-                    inheritance = "allow_both"
+                    if sample.inheritance is None:
+                        inheritance = "allow_both"
+                    else:
+                        inheritance = sample.inheritance
+                        
                 if status is None:
-                    status = "preserved"
+                    if sample.status is None:
+                        status = "preserved"
+                    else:
+                        status = sample.status
 
                 append_dict = sample.prc_dict()
                 if append_dict is not None:
