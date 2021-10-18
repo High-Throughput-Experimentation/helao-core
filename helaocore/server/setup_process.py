@@ -3,9 +3,9 @@ __all__ = ["setup_process"]
 import json
 from socket import gethostname
 
-import helao.core.model.sample as hcms
+import helaocore.model.sample as hcms
 from fastapi import Request
-from helao.core.schema import cProcess
+from helaocore.schema import cProcess
 
 
 async def setup_process(request: Request):

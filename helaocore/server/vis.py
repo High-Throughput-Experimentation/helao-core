@@ -4,7 +4,7 @@ import sys
 from socket import gethostname
 
 import colorama
-from helao.core.helper import print_message
+from helaocore.helper import print_message
 
 from .api import HelaoBokehAPI
 

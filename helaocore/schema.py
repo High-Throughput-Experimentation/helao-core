@@ -13,8 +13,8 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Optional, Union
 
-import helao.core.model.sample as hcms
-from helao.core.helper import gen_uuid, print_message
+import helaocore.model.sample as hcms
+from helaocore.helper import gen_uuid, print_message
 
 
 class cProcess_group(object):

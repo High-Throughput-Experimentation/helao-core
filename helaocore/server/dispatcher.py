@@ -1,7 +1,7 @@
 __all__ = ["async_process_dispatcher", "async_private_dispatcher"]
 
 import aiohttp
-from helao.core.schema import cProcess
+from helaocore.schema import cProcess
 
 
 async def async_process_dispatcher(world_config_dict: dict, A: cProcess):

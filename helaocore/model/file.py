@@ -6,7 +6,7 @@ __all__ = ["PrcFile", "PrgFile"]
 
 from typing import Optional, Union
 
-import helao.core.server.version as version
+import helaocore.server.version as version
 from pydantic import BaseModel
 
 

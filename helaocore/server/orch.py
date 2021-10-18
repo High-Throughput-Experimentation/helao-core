@@ -16,22 +16,22 @@ import aiofiles
 import aiohttp
 import colorama
 
-# from helao.core.model import (
+# from helaocore.model import (
 #     return_process,
 #     ReturnProcessGroup,
 #     ReturnProcessGroupList,
 #     return_process_list,
 # )
-import helao.core.model.file as hcmf
-import helao.core.model.returnmodel as hcmr
-import helao.core.server.version as version
+import helaocore.model.file as hcmf
+import helaocore.model.returnmodel as hcmr
+import helaocore.server.version as version
 import ntplib
 import numpy as np
 import pyaml
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.openapi.utils import get_flat_params
-from helao.core.helper import MultisubscriberQueue, async_copy, cleanupdict, print_message
-from helao.core.schema import cProcess, cProcess_group
+from helaocore.helper import MultisubscriberQueue, async_copy, cleanupdict, print_message
+from helaocore.schema import cProcess, cProcess_group
 
 from .api import HelaoFastAPI
 from .base import Base

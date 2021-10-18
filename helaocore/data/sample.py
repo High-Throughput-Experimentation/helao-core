@@ -15,7 +15,7 @@ from socket import gethostname
 from typing import List, Optional
 
 import aiofiles
-import helao.core.model.sample as hcms
+import helaocore.model.sample as hcms
 import pandas as pd
 
 
