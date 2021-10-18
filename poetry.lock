@@ -1,4 +1,12 @@
 [[package]]
+name = "aiofiles"
+version = "0.7.0"
+description = "File support for asyncio."
+category = "main"
+optional = false
+python-versions = ">=3.6,<4.0"
+
+[[package]]
 name = "aiohttp"
 version = "3.7.4.post0"
 description = "Async http client/server framework (asyncio)"
@@ -64,6 +72,17 @@ dev = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", 
 docs = ["furo", "sphinx", "zope.interface", "sphinx-notfound-page"]
 tests = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "mypy", "pytest-mypy-plugins", "zope.interface"]
 tests_no_zope = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "mypy", "pytest-mypy-plugins"]
+
+[[package]]
+name = "autoflake"
+version = "1.4"
+description = "Removes unused imports and unused variables"
+category = "dev"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+pyflakes = ">=1.1.0"
 
 [[package]]
 name = "black"
@@ -567,9 +586,13 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1,<3.11"
-content-hash = "7edf3a969057728890fb92254c57cb416f5c9dcd3bb9e0f91ac695e4071d4125"
+content-hash = "c09c235152ff72cd37ac151d8a2ea6e0cc19dbb5eb606c5f95c115c81443af81"
 
 [metadata.files]
+aiofiles = [
+    {file = "aiofiles-0.7.0-py3-none-any.whl", hash = "sha256:c67a6823b5f23fcab0a2595a289cec7d8c863ffcb4322fb8cd6b90400aedfdbc"},
+    {file = "aiofiles-0.7.0.tar.gz", hash = "sha256:a1c4fc9b2ff81568c83e21392a82f344ea9d23da906e4f6a52662764545e19d4"},
+]
 aiohttp = [
     {file = "aiohttp-3.7.4.post0-cp36-cp36m-macosx_10_14_x86_64.whl", hash = "sha256:3cf75f7cdc2397ed4442594b935a11ed5569961333d49b7539ea741be2cc79d5"},
     {file = "aiohttp-3.7.4.post0-cp36-cp36m-manylinux1_i686.whl", hash = "sha256:4b302b45040890cea949ad092479e01ba25911a15e648429c7c5aae9650c67a8"},
@@ -624,6 +647,9 @@ atomicwrites = [
 attrs = [
     {file = "attrs-21.2.0-py2.py3-none-any.whl", hash = "sha256:149e90d6d8ac20db7a955ad60cf0e6881a3f20d37096140088356da6c716b0b1"},
     {file = "attrs-21.2.0.tar.gz", hash = "sha256:ef6aaac3ca6cd92904cdd0d83f629a15f18053ec84e6432106f7a4d04ae4f5fb"},
+]
+autoflake = [
+    {file = "autoflake-1.4.tar.gz", hash = "sha256:61a353012cff6ab94ca062823d1fb2f692c4acda51c76ff83a8d77915fba51ea"},
 ]
 black = [
     {file = "black-21.9b0-py3-none-any.whl", hash = "sha256:380f1b5da05e5a1429225676655dddb96f5ae8c75bdf91e53d798871b902a115"},

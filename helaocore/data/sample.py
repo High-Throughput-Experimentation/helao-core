@@ -12,7 +12,6 @@ import os
 import sqlite3
 from datetime import datetime
 from socket import gethostname
-from typing import List, Optional
 
 import aiofiles
 import helaocore.model.sample as hcms

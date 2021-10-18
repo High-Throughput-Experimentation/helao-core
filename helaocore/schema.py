@@ -7,11 +7,9 @@ __all__ = ["cProcess_group", "cProcess", "Sequencer"]
 
 
 import inspect
-import json
 import types
 from collections import defaultdict
 from datetime import datetime
-from typing import Optional, Union
 
 import helaocore.model.sample as hcms
 from helaocore.helper import gen_uuid, print_message

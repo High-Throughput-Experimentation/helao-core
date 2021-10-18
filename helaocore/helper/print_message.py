@@ -2,7 +2,7 @@ __all__ = ["print_message"]
 
 from time import strftime
 
-from colorama import Back, Fore, Style
+from colorama import Fore, Style
 
 
 def print_message(server_cfg, server_name, *args, **kwargs):
