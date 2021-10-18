@@ -1,5 +1,5 @@
 [tool.poetry]
-authors = ["Michael Statt <michael.statt@modelyst.io>"]
+authors = ["Matthias Richter <mrichter@caltech.edu>", "Dan Guevarra <guevarra@caltech.edu>", "Michael Statt <michael.statt@modelyst.io>"]
 description = "The core codebase for the HELAO High Throughoutput Experimentation code base."
 name = "helaocore"
 version = "0.1.0"
@@ -8,13 +8,13 @@ version = "0.1.0"
 aiohttp = "^3.7.4"
 colorama = "^0.4.4"
 fastapi = "^0.70.0"
+ntplib = "^0.4.0"
 numpy = "^1.21.2"
 pandas = "^1.3.4"
+pyaml = "^21.10.1"
 pydantic = "^1.8.2"
 python = ">=3.7.1,<3.11"
 shortuuid = "^1.0.1"
-ntplib = "^0.4.0"
-pyaml = "^21.10.1"
 
 [tool.poetry.dev-dependencies]
 black = "^21.9b0"
