@@ -1,4 +1,3 @@
-
 __all__ = ["Orch"]
 
 import asyncio
@@ -16,17 +15,7 @@ from typing import Optional, Union
 import aiofiles
 import aiohttp
 import colorama
-import ntplib
-import numpy as np
-import pyaml
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.openapi.utils import get_flat_params
-from helao.core.helper import (
-    MultisubscriberQueue,
-    async_copy,
-    cleanupdict,
-    print_message,
-)
+
 # from helao.core.model import (
 #     return_process,
 #     ReturnProcessGroup,
@@ -35,7 +24,13 @@ from helao.core.helper import (
 # )
 import helao.core.model.file as hcmf
 import helao.core.model.returnmodel as hcmr
-
+import helao.core.server.version as version
+import ntplib
+import numpy as np
+import pyaml
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.openapi.utils import get_flat_params
+from helao.core.helper import MultisubscriberQueue, async_copy, cleanupdict, print_message
 from helao.core.schema import cProcess, cProcess_group
 
 from .api import HelaoFastAPI
@@ -43,8 +38,6 @@ from .base import Base
 from .dispatcher import async_private_dispatcher, async_process_dispatcher
 from .import_sequences import import_sequences
 from .process_start_condition import process_start_condition
-import helao.core.server.version as version
-
 
 # ANSI color codes converted to the Windows versions
 colorama.init(strip=not sys.stdout.isatty())  # strip colors if stdout is redirected
@@ -146,9 +139,7 @@ class Orch(Base):
                 serv_addr = serv_dict["host"]
                 serv_port = serv_dict["port"]
                 if success:
-                    self.print_message(
-                        f"Subscribed to {serv_key} at {serv_addr}:{serv_port}"
-                    )
+                    self.print_message(f"Subscribed to {serv_key} at {serv_addr}:{serv_port}")
                 else:
                     fails.append(serv_key)
                     self.print_message(
@@ -174,17 +165,11 @@ class Orch(Base):
                 removed = set(last_dict[act_name]).difference(acts)
                 ongoing = set(acts).intersection(last_dict[act_name])
                 if removed:
-                    self.print_message(
-                        f" ... '{process_serv}:{act_name}' finished {','.join(removed)}"
-                    )
+                    self.print_message(f" ... '{process_serv}:{act_name}' finished {','.join(removed)}")
                 if started:
-                    self.print_message(
-                        f" ... '{process_serv}:{act_name}' started {','.join(started)}"
-                    )
+                    self.print_message(f" ... '{process_serv}:{act_name}' started {','.join(started)}")
                 if ongoing:
-                    self.print_message(
-                        f" ... '{process_serv}:{act_name}' ongoing {','.join(ongoing)}"
-                    )
+                    self.print_message(f" ... '{process_serv}:{act_name}' ongoing {','.join(ongoing)}")
         self.global_state_dict[process_serv].update(status_dict)
         await self.global_q.put(self.global_state_dict)
         return True
@@ -244,15 +229,9 @@ class Orch(Base):
         self.print_message(f" ... orch descisions: {self.process_group_dq}")
         try:
             self.loop_state = "started"
-            while self.loop_state == "started" and (
-                self.process_dq or self.process_group_dq
-            ):
-                self.print_message(
-                    f" ... current content of process_dq: {self.process_dq}"
-                )
-                self.print_message(
-                    f" ... current content of process_group_dq: {self.process_group_dq}"
-                )
+            while self.loop_state == "started" and (self.process_dq or self.process_group_dq):
+                self.print_message(f" ... current content of process_dq: {self.process_dq}")
+                self.print_message(f" ... current content of process_group_dq: {self.process_group_dq}")
                 await asyncio.sleep(
                     0.001
                 )  # allows status changes to affect between process_dq, also enforce unique timestamp
@@ -267,9 +246,7 @@ class Orch(Base):
                     self.active_process_group.gen_uuid_process_group(self.hostname)
                     sequence = self.active_process_group.sequence
                     # additional sequence params should be stored in process_group.sequence_pars
-                    unpacked_acts = self.process_lib[sequence](
-                        self.active_process_group
-                    )
+                    unpacked_acts = self.process_lib[sequence](self.active_process_group)
                     for i, act in enumerate(unpacked_acts):
                         act.process_enum = float(i)  # f"{i}"
                         # act.gen_uuid()
@@ -277,9 +254,7 @@ class Orch(Base):
                     self.process_dq = deque(unpacked_acts)
                     self.dispatched_processes = {}
                     self.print_message(f" ... got: {self.process_dq}")
-                    self.print_message(
-                        f" ... optional params: {self.active_process_group.sequence_pars}"
-                    )
+                    self.print_message(f" ... optional params: {self.active_process_group.sequence_pars}")
 
                     self.prg_file = hcmf.PrgFile(
                         hlo_version=f"{version.hlo_version}",
@@ -321,14 +296,9 @@ class Orch(Base):
                         # see async_process_dispatcher for unpacking
                         if isinstance(A.start_condition, int):
                             if A.start_condition == process_start_condition.no_wait:
-                                self.print_message(
-                                    " ... orch is dispatching an unconditional process"
-                                )
+                                self.print_message(" ... orch is dispatching an unconditional process")
                             else:
-                                if (
-                                    A.start_condition
-                                    == process_start_condition.wait_for_endpoint
-                                ):
+                                if A.start_condition == process_start_condition.wait_for_endpoint:
                                     self.print_message(
                                         " ... orch is waiting for endpoint to become available"
                                     )
@@ -336,22 +306,12 @@ class Orch(Base):
                                     while True:
                                         _ = await self.check_dispatch_queue()
                                         endpoint_free = (
-                                            len(
-                                                self.global_state_dict[
-                                                    A.process_server
-                                                ][A.process_name]
-                                            )
-                                            == 0
+                                            len(self.global_state_dict[A.process_server][A.process_name]) == 0
                                         )
                                         if endpoint_free:
                                             break
-                                elif (
-                                    A.start_condition
-                                    == process_start_condition.wait_for_server
-                                ):
-                                    self.print_message(
-                                        " ... orch is waiting for server to become available"
-                                    )
+                                elif A.start_condition == process_start_condition.wait_for_server:
+                                    self.print_message(" ... orch is waiting for server to become available")
                                     # async for _ in self.global_q.subscribe():
                                     while True:
                                         _ = await self.check_dispatch_queue()
@@ -366,22 +326,16 @@ class Orch(Base):
                                         if server_free:
                                             break
                                 else:  # start_condition is 3 or unsupported value
-                                    self.print_message(
-                                        " ... orch is waiting for all process_dq to finish"
-                                    )
+                                    self.print_message(" ... orch is waiting for all process_dq to finish")
                                     if not await self.check_wait_for_all_processes():
                                         while True:
                                             _ = await self.check_dispatch_queue()
-                                            if (
-                                                await self.check_wait_for_all_processes()
-                                            ):
+                                            if await self.check_wait_for_all_processes():
                                                 break
                                     else:
                                         self.print_message(" ... global_free is true")
                         elif isinstance(A.start_condition, dict):
-                            self.print_message(
-                                " ... waiting for multiple conditions on external servers"
-                            )
+                            self.print_message(" ... waiting for multiple conditions on external servers")
                             condition_dict = A.start_condition
                             # async for _ in self.global_q.subscribe():
                             while True:
@@ -397,9 +351,7 @@ class Orch(Base):
                                         len(uuid_list) == 0
                                         for k, v in condition_dict.items()
                                         if v == [] or v is None
-                                        for _, uuid_list in self.global_state_dict[
-                                            k
-                                        ].items()
+                                        for _, uuid_list in self.global_state_dict[k].items()
                                     ]
                                 )
                                 if conditions_free:
@@ -420,9 +372,7 @@ class Orch(Base):
                         for k, v in A.from_global_params.items():
                             self.print_message(f"{k}:{v}")
                             if k in self.active_process_group.global_params.keys():
-                                A.process_params.update(
-                                    {v: self.active_process_group.global_params[k]}
-                                )
+                                A.process_params.update({v: self.active_process_group.global_params[k]})
 
                         self.print_message(" ... dispatching process", A.as_dict())
                         self.print_message(
@@ -433,26 +383,21 @@ class Orch(Base):
                         result = await async_process_dispatcher(self.world_cfg, A)
                         self.active_process_group.result_dict[A.process_enum] = result
 
-                        self.print_message(
-                            " ... copying global vars back to process_group"
-                        )
+                        self.print_message(" ... copying global vars back to process_group")
                         # self.print_message(result)
                         if "to_global_params" in result:
                             for k in result["to_global_params"]:
                                 if k in result["process_params"].keys():
                                     if (
                                         result["process_params"][k] is None
-                                        and k
-                                        in self.active_process_group.global_params.keys()
+                                        and k in self.active_process_group.global_params.keys()
                                     ):
                                         self.active_process_group.global_params.pop(k)
                                     else:
                                         self.active_process_group.global_params.update(
                                             {k: result["process_params"][k]}
                                         )
-                        self.print_message(
-                            " ... done copying global vars back to process_group"
-                        )
+                        self.print_message(" ... done copying global vars back to process_group")
 
             self.print_message(" ... process_group queue is empty")
             self.print_message(" ... stopping operator orch")
@@ -471,9 +416,7 @@ class Orch(Base):
         if self.loop_state == "stopped":
             self.loop_task = asyncio.create_task(self.dispatch_loop_task())
         elif self.loop_state == "E-STOP":
-            self.print_message(
-                " ... E-STOP flag was raised, clear E-STOP before starting."
-            )
+            self.print_message(" ... E-STOP flag was raised, clear E-STOP before starting.")
         else:
             self.print_message(" ... loop already started.")
         return self.loop_state
@@ -500,9 +443,7 @@ class Orch(Base):
             serv_conf = self.world_cfg["servers"][serv]
             async with aiohttp.ClientSession() as session:
                 self.print_message(f" ... Sending force-stop request to {serv}")
-                async with session.post(
-                    f"http://{serv_conf['host']}:{serv_conf['port']}/force_stop"
-                ) as resp:
+                async with session.post(f"http://{serv_conf['host']}:{serv_conf['port']}/force_stop") as resp:
                     response = await resp.text()
                     self.print_message(response)
 
@@ -520,22 +461,16 @@ class Orch(Base):
 
     async def clear_estate(self, clear_estop=True, clear_error=True):
         if not clear_estop and not clear_error:
-            self.print_message(
-                " ... both clear_estop and clear_error parameters are False, nothing to clear"
-            )
+            self.print_message(" ... both clear_estop and clear_error parameters are False, nothing to clear")
         cleared_status = copy(self.global_state_dict)
         if clear_estop:
             for serv, process, myuuid in self.estop_uuids:
                 self.print_message(f" ... clearing E-STOP {process} on {serv}")
-                cleared_status[serv][process] = cleared_status[serv][process].remove(
-                    myuuid
-                )
+                cleared_status[serv][process] = cleared_status[serv][process].remove(myuuid)
         if clear_error:
             for serv, process, myuuid in self.error_uuids:
                 self.print_message(f" ... clearing error {process} on {serv}")
-                cleared_status[serv][process] = cleared_status[serv][process].remove(
-                    myuuid
-                )
+                cleared_status[serv][process] = cleared_status[serv][process].remove(myuuid)
         await self.global_q.put(cleared_status)
         self.print_message(" ... resetting dispatch loop state")
         self.loop_state = "stopped"
@@ -592,14 +527,10 @@ class Orch(Base):
             self.process_group_dq.insert(i=at_index, x=D)
         elif prepend:
             self.process_group_dq.appendleft(D)
-            self.print_message(
-                f" ... process_group {D.process_group_uuid} prepended to queue"
-            )
+            self.print_message(f" ... process_group {D.process_group_uuid} prepended to queue")
         else:
             self.process_group_dq.append(D)
-            self.print_message(
-                f" ... process_group {D.process_group_uuid} appended to queue"
-            )
+            self.print_message(f" ... process_group {D.process_group_uuid} appended to queue")
 
     def list_process_groups(self):
         """Return the current queue of process_group_dq."""
@@ -694,38 +625,24 @@ class Orch(Base):
             matching_error = [tup for tup in self.error_uuids if tup[2] == check_uuid]
             if matching_error:
                 _, _, error_uuid = matching_error[0]
-                EA = [
-                    A
-                    for _, A in self.dispatched_processes.items()
-                    if A.process_uuid == error_uuid
-                ][0]
+                EA = [A for _, A in self.dispatched_processes.items() if A.process_uuid == error_uuid][0]
                 # up to 99 supplements
                 new_enum = round(EA.process_enum + 0.01, 2)
                 new_process = sup_process
                 new_process.process_enum = new_enum
                 self.process_dq.appendleft(new_process)
             else:
-                self.print_message(
-                    f"uuid {check_uuid} not found in list of error statuses:"
-                )
+                self.print_message(f"uuid {check_uuid} not found in list of error statuses:")
                 self.print_message(", ".join(self.error_uuids))
 
-    def remove_process_group(
-        self, by_index: Optional[int] = None, by_uuid: Optional[str] = None
-    ):
+    def remove_process_group(self, by_index: Optional[int] = None, by_uuid: Optional[str] = None):
         """Remove process_group in list by enumeration index or uuid."""
         if by_index:
             i = by_index
         elif by_uuid:
-            i = [
-                i
-                for i, D in enumerate(list(self.process_group_dq))
-                if D.process_group_uuid == by_uuid
-            ][0]
+            i = [i for i, D in enumerate(list(self.process_group_dq)) if D.process_group_uuid == by_uuid][0]
         else:
-            self.print_message(
-                "No arguments given for locating existing process_group to remove."
-            )
+            self.print_message("No arguments given for locating existing process_group to remove.")
             return None
         del self.process_group_dq[i]
 
@@ -740,21 +657,11 @@ class Orch(Base):
         if by_index:
             i = by_index
         elif by_uuid:
-            i = [
-                i
-                for i, A in enumerate(list(self.process_dq))
-                if A.process_uuid == by_uuid
-            ][0]
+            i = [i for i, A in enumerate(list(self.process_dq)) if A.process_uuid == by_uuid][0]
         elif by_enum:
-            i = [
-                i
-                for i, A in enumerate(list(self.process_dq))
-                if A.process_enum == by_enum
-            ][0]
+            i = [i for i, A in enumerate(list(self.process_dq)) if A.process_enum == by_enum][0]
         else:
-            self.print_message(
-                "No arguments given for locating existing process to replace."
-            )
+            self.print_message("No arguments given for locating existing process to replace.")
             return None
         current_enum = self.process_dq[i].process_enum
         new_process = sup_process
@@ -775,9 +682,7 @@ class Orch(Base):
 
     async def write_active_process_group_prg(self):
         if self.prg_file is not None:
-            await self.write_to_prg(
-                cleanupdict(self.prg_file.dict()), self.active_process_group
-            )
+            await self.write_to_prg(cleanupdict(self.prg_file.dict()), self.active_process_group)
         self.prg_file = None
 
     async def shutdown(self):

@@ -1,6 +1,4 @@
-
 __all__ = ["Base"]
-
 import asyncio
 import json
 import os
@@ -13,26 +11,18 @@ from typing import Optional
 
 import aiofiles
 import colorama
+import helao.core.model.file as hcmf
+import helao.core.server.version as version
 import ntplib
 import numpy as np
 import pyaml
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.openapi.utils import get_flat_params
-from helao.core.helper import (
-    MultisubscriberQueue,
-    async_copy,
-    cleanupdict,
-    print_message,
-)
-
-
-import helao.core.model.file as hcmf
-
+from helao.core.helper import MultisubscriberQueue, async_copy, cleanupdict, print_message
 from helao.core.schema import cProcess
 
 from .api import HelaoFastAPI
 from .dispatcher import async_private_dispatcher
-import helao.core.server.version as version
 
 # ANSI color codes converted to the Windows versions
 colorama.init(strip=not sys.stdout.isatty())  # strip colors if stdout is redirected
@@ -68,11 +58,7 @@ class Base(object):
                     (aux_files)
     """
 
-    def __init__(
-        self,
-        fastapp: HelaoFastAPI,
-        calibration: dict = {}
-    ):
+    def __init__(self, fastapp: HelaoFastAPI, calibration: dict = {}):
         self.server_name = fastapp.helao_srv
         self.server_cfg = fastapp.helao_cfg["servers"][self.server_name]
         self.server_params = fastapp.helao_cfg["servers"][self.server_name].get("params", dict())
@@ -181,9 +167,7 @@ class Base(object):
         process: cProcess,
         file_type: str = "helao__file",
         file_data_keys: Optional[str] = None,  # this is also keyd by file_sample_keys
-        file_sample_label: Optional[
-            str
-        ] = None,  # this is also keyd by file_sample_keys
+        file_sample_label: Optional[str] = None,  # this is also keyd by file_sample_keys
         file_sample_keys: Optional[
             list
         ] = None,  # I need one key per datafile, but each datafile can still be based on multiple samples
@@ -206,9 +190,7 @@ class Base(object):
             process_dict = await self.actives[process_uuid].active.as_dict()
             return process_dict
         else:
-            self.print_message(
-                f" ... Specified process uuid {process_uuid} was not found.", error=True
-            )
+            self.print_message(f" ... Specified process uuid {process_uuid} was not found.", error=True)
             return None
 
     async def get_ntp_time(self):
@@ -223,16 +205,16 @@ class Base(object):
                 self.ntp_offset = response.offset
                 self.print_message(
                     f" ... retrieved time at {ctime(self.ntp_response.tx_timestamp)} from {self.ntp_server}",
-                    info = True
+                    info=True,
                 )
             except ntplib.NTPException:
                 self.print_message(f" ... {self.ntp_server} ntp timeout", error=True)
                 self.ntp_last_sync = time()
                 self.ntp_offset = 0.0
-                
+
             self.print_message(f" ... ntp_offset: {self.ntp_offset}")
             self.print_message(f" ... ntp_last_sync: {self.ntp_last_sync}")
-    
+
             time_inst = await aiofiles.open("ntpLastSync.txt", "w")
             await time_inst.write(f"{self.ntp_last_sync},{self.ntp_offset}")
             await time_inst.close()
@@ -290,9 +272,7 @@ class Base(object):
         "Remove client from receiving status updates via HTTP POST"
         if client_servkey in self.status_clients:
             self.status_clients.remove(client_servkey)
-            self.print_message(
-                f"Client {client_servkey} will no longer receive status updates."
-            )
+            self.print_message(f"Client {client_servkey} will no longer receive status updates.")
         else:
             self.print_message(f" ... Client {client_servkey} is not subscribed.")
 
@@ -345,15 +325,11 @@ class Base(object):
                             json_dict={},
                         )
                         if response == True:
-                            self.print_message(
-                                f" ... send status msg to {client_servkey}."
-                            )
+                            self.print_message(f" ... send status msg to {client_servkey}.")
                             success = True
                             break
                         else:
-                            self.print_message(
-                                f" ... Failed to send status msg {client_servkey}."
-                            )
+                            self.print_message(f" ... Failed to send status msg {client_servkey}.")
 
                     if success:
                         self.print_message(
@@ -373,14 +349,10 @@ class Base(object):
         await self.data_q.put(StopAsyncIteration)
         await asyncio.sleep(5)
 
-    async def set_realtime(
-        self, epoch_ns: Optional[float] = None, offset: Optional[float] = None
-    ):
+    async def set_realtime(self, epoch_ns: Optional[float] = None, offset: Optional[float] = None):
         return self.set_realtime_nowait(epoch_ns=epoch_ns, offset=offset)
 
-    def set_realtime_nowait(
-        self, epoch_ns: Optional[float] = None, offset: Optional[float] = None
-    ):
+    def set_realtime_nowait(self, epoch_ns: Optional[float] = None, offset: Optional[float] = None):
         if offset is None:
             if self.ntp_offset is not None:
                 offset_ns = int(np.floor(self.ntp_offset * 1e9))
@@ -412,7 +384,10 @@ class Base(object):
                         self.ntp_last_sync = float(parts[0])
                         self.ntp_offset = 0.0
                     if time() - self.ntp_last_sync > resync_time:
-                        self.print_message(f" ... last time check was more then { resync_time} ago, syncing time again.", error=True)
+                        self.print_message(
+                            f" ... last time check was more then { resync_time} ago, syncing time again.",
+                            error=True,
+                        )
                         await self.get_ntp_time()
                     else:
                         # wait_time = time() - self.ntp_last_sync
@@ -430,19 +405,15 @@ class Base(object):
     async def write_to_prg(self, prg_dict: dict, process_group):
         process_group_timestamp = process_group.process_group_timestamp
         process_group_dir = self.get_process_group_dir(process_group)
-        output_path = os.path.join(
-            self.save_root, process_group_dir
-        )
-        output_file = os.path.join(
-            output_path, f"{process_group_timestamp}.prg"
-        )
-        
+        output_path = os.path.join(self.save_root, process_group_dir)
+        output_file = os.path.join(output_path, f"{process_group_timestamp}.prg")
+
         self.print_message(f" ... writing to prg: {output_path}")
         output_str = pyaml.dump(prg_dict, sort_dicts=False)
 
         if not os.path.exists(output_path):
-                os.makedirs(output_path, exist_ok=True)
-        
+            os.makedirs(output_path, exist_ok=True)
+
         file_instance = await aiofiles.open(output_file, mode="a+")
 
         if not output_str.endswith("\n"):
@@ -487,12 +458,9 @@ class Base(object):
             self.manual = False
             self.process_group_dir = None
 
-
             if file_sample_keys is None:
                 self.process.file_sample_keys = ["None"]
-                self.process.file_sample_label = {
-                    "None": self.process.file_sample_label
-                }
+                self.process.file_sample_label = {"None": self.process.file_sample_label}
                 self.process.file_data_keys = {"None": self.process.file_data_keys}
                 self.process.header = {"None": self.process.header}
             else:
@@ -501,18 +469,15 @@ class Base(object):
                     self.process.file_sample_keys = [self.process.file_sample_keys]
                 if self.process.file_sample_label is None:
                     self.process.file_sample_label = {
-                        f"{file_sample_key}": None
-                        for file_sample_key in self.process.file_sample_keys
+                        f"{file_sample_key}": None for file_sample_key in self.process.file_sample_keys
                     }
                 if self.process.file_data_keys is None:
                     self.process.file_data_keys = {
-                        f"{file_sample_key}": None
-                        for file_sample_key in self.process.file_sample_keys
+                        f"{file_sample_key}": None for file_sample_key in self.process.file_sample_keys
                     }
                 if self.process.header is None:
                     self.process.header = {
-                        f"{file_sample_key}": None
-                        for file_sample_key in self.process.file_sample_keys
+                        f"{file_sample_key}": None for file_sample_key in self.process.file_sample_keys
                     }
 
             self.process.set_atime(offset=self.base.ntp_offset)
@@ -585,9 +550,7 @@ class Base(object):
                     os.path.join(self.base.save_root, self.process.output_dir),
                     exist_ok=True,
                 )
-                self.process.process_num = (
-                    f"{self.process.process_abbr}-{self.process.process_enum}"
-                )
+                self.process.process_num = f"{self.process.process_abbr}-{self.process.process_enum}"
                 self.update_prc_file()
 
                 if self.manual:
@@ -605,21 +568,15 @@ class Base(object):
                         sequence_params=None,
                         sequence_model=None,
                     )
-                    await self.base.write_to_prg(
-                        cleanupdict(self.manual_prg_file.dict()), self.process
-                    )
+                    await self.base.write_to_prg(cleanupdict(self.manual_prg_file.dict()), self.process)
 
                 if self.process.save_data:
                     for i, file_sample_key in enumerate(self.process.file_sample_keys):
                         filename, header, file_info = self.init_datafile(
                             header=self.process.header.get(file_sample_key, None),
                             file_type=self.process.file_type,
-                            file_data_keys=self.process.file_data_keys.get(
-                                file_sample_key, None
-                            ),
-                            file_sample_label=self.process.file_sample_label.get(
-                                file_sample_key, None
-                            ),
+                            file_data_keys=self.process.file_data_keys.get(file_sample_key, None),
+                            file_sample_label=self.process.file_sample_label.get(file_sample_key, None),
                             filename=None,  # always autogen a filename
                             file_group=self.process.file_group,
                             process_enum=self.process.process_enum,
@@ -675,7 +632,9 @@ class Base(object):
 
                     header_dict = {
                         "hlo_version": version.hlo_version,
-                        "process_name": self.process.process_abbr if self.process.process_abbr is not None else self.process.process_name,
+                        "process_name": self.process.process_abbr
+                        if self.process.process_abbr is not None
+                        else self.process.process_name,
                         "column_headings": file_data_keys,
                     }
 
@@ -687,9 +646,7 @@ class Base(object):
                     pass
 
                 if process_enum is not None:
-                    filename = (
-                        f"{process_abbr}-{process_enum:.1f}__{filenum}.{file_ext}"
-                    )
+                    filename = f"{process_abbr}-{process_enum:.1f}__{filenum}.{file_ext}"
                 else:
                     filename = f"{process_abbr}-0.0__{filenum}.{file_ext}"
 
@@ -718,9 +675,7 @@ class Base(object):
             self.enqueue_data_nowait(data_dict2, file_sample_keys=file_keys)
 
         async def add_status(self):
-            self.base.status[self.process.process_name].append(
-                self.process.process_uuid
-            )
+            self.base.status[self.process.process_name].append(self.process.process_uuid)
             self.base.print_message(
                 f" ... Added {self.process.process_uuid} to {self.process.process_name} status list."
             )
@@ -730,9 +685,7 @@ class Base(object):
 
         async def clear_status(self):
             if self.process.process_uuid in self.base.status[self.process.process_name]:
-                self.base.status[self.process.process_name].remove(
-                    self.process.process_uuid
-                )
+                self.base.status[self.process.process_name].remove(self.process.process_uuid)
                 self.base.print_message(
                     f" ... Removed {self.process.process_uuid} from {self.process.process_name} status list.",
                     info=True,
@@ -747,12 +700,8 @@ class Base(object):
             )
 
         async def set_estop(self):
-            self.base.status[self.process.process_name].remove(
-                self.process.process_uuid
-            )
-            self.base.status[self.process.process_name].append(
-                f"{self.process.process_uuid}__estop"
-            )
+            self.base.status[self.process.process_name].remove(self.process.process_uuid)
+            self.base.status[self.process.process_name].append(f"{self.process.process_uuid}__estop")
             self.base.print_message(
                 f" ... E-STOP {self.process.process_uuid} on {self.process.process_name} status.",
                 error=True,
@@ -762,12 +711,8 @@ class Base(object):
             )
 
         async def set_error(self, err_msg: Optional[str] = None):
-            self.base.status[self.process.process_name].remove(
-                self.process.process_uuid
-            )
-            self.base.status[self.process.process_name].append(
-                f"{self.process.process_uuid}__error"
-            )
+            self.base.status[self.process.process_name].remove(self.process.process_uuid)
+            self.base.status[self.process.process_name].append(f"{self.process.process_uuid}__error")
             self.base.print_message(
                 f" ... ERROR {self.process.process_uuid} on {self.process.process_name} status.",
                 error=True,
@@ -780,31 +725,19 @@ class Base(object):
                 {self.process.process_name: self.base.status[self.process.process_name]}
             )
 
-        async def set_realtime(
-            self, epoch_ns: Optional[float] = None, offset: Optional[float] = None
-        ):
+        async def set_realtime(self, epoch_ns: Optional[float] = None, offset: Optional[float] = None):
             # return self.set_realtime_nowait(epoch_ns=epoch_ns, offset=offset)
             return self.base.set_realtime_nowait(epoch_ns=epoch_ns, offset=offset)
 
-
-        def set_realtime_nowait(
-            self, epoch_ns: Optional[float] = None, offset: Optional[float] = None
-        ):
+        def set_realtime_nowait(self, epoch_ns: Optional[float] = None, offset: Optional[float] = None):
             return self.base.set_realtime_nowait(epoch_ns=epoch_ns, offset=offset)
 
-
-        async def set_output_file(
-            self, filename: str, file_sample_key: str, header: Optional[str] = None
-        ):
+        async def set_output_file(self, filename: str, file_sample_key: str, header: Optional[str] = None):
             "Set active save_path, write header if supplied."
-            output_path = os.path.join(
-                self.base.save_root, self.process.output_dir, filename
-            )
+            output_path = os.path.join(self.base.save_root, self.process.output_dir, filename)
             self.base.print_message(f" ... writing data to: {output_path}")
             # create output file and set connection
-            self.file_conn[file_sample_key] = await aiofiles.open(
-                output_path, mode="a+"
-            )
+            self.file_conn[file_sample_key] = await aiofiles.open(output_path, mode="a+")
             self.finished_hlo_header[file_sample_key] = False
             if header:
                 if not header.endswith("\n"):
@@ -819,27 +752,17 @@ class Base(object):
                         output_str += "\n"
                     await self.file_conn[file_conn_key].write(output_str)
 
-        async def enqueue_data(
-            self, data, errors: list = [], file_sample_keys: Optional[list] = None
-        ):
+        async def enqueue_data(self, data, errors: list = [], file_sample_keys: Optional[list] = None):
             await self.base.data_q.put(
-                self.assemble_data_msg(
-                    data=data, errors=errors, file_sample_keys=file_sample_keys
-                )
+                self.assemble_data_msg(data=data, errors=errors, file_sample_keys=file_sample_keys)
             )
 
-        def enqueue_data_nowait(
-            self, data, errors: list = [], file_sample_keys: Optional[list] = None
-        ):
+        def enqueue_data_nowait(self, data, errors: list = [], file_sample_keys: Optional[list] = None):
             self.base.data_q.put_nowait(
-                self.assemble_data_msg(
-                    data=data, errors=errors, file_sample_keys=file_sample_keys
-                )
+                self.assemble_data_msg(data=data, errors=errors, file_sample_keys=file_sample_keys)
             )
 
-        def assemble_data_msg(
-            self, data, errors: list = [], file_sample_keys: list = None
-        ):
+        def assemble_data_msg(self, data, errors: list = [], file_sample_keys: list = None):
             data_dict = dict()
             if file_sample_keys is None:
                 data_dict["None"] = data
@@ -864,9 +787,7 @@ class Base(object):
             # data_msg should be a dict {uuid: list of values or a list of list of values}
             try:
                 async for data_msg in self.base.data_q.subscribe():
-                    if (
-                        self.process.process_uuid in data_msg.keys()
-                    ):  # only write data for this process
+                    if self.process.process_uuid in data_msg.keys():  # only write data for this process
                         data_dict = data_msg[self.process.process_uuid]
                         data_val = data_dict["data"]
                         self.process.data.append(data_val)
@@ -904,9 +825,7 @@ class Base(object):
                                 )
 
             except asyncio.CancelledError:
-                self.base.print_message(
-                    " ... data logger task was cancelled", error=True
-                )
+                self.base.print_message(" ... data logger task was cancelled", error=True)
 
         async def write_file(
             self,
@@ -931,12 +850,8 @@ class Base(object):
                     process_enum=self.process.process_enum,
                     process_abbr=self.process.process_abbr,
                 )
-                output_path = os.path.join(
-                    self.base.save_root, self.process.output_dir, filename
-                )
-                self.base.print_message(
-                    f" ... writing non stream data to: {output_path}"
-                )
+                output_path = os.path.join(self.base.save_root, self.process.output_dir, filename)
+                self.base.print_message(f" ... writing non stream data to: {output_path}")
 
                 file_instance = await aiofiles.open(output_path, mode="w")
                 await file_instance.write(header + output_str)
@@ -945,7 +860,6 @@ class Base(object):
                 return output_path
             else:
                 return None
-                
 
         def write_file_nowait(
             self,
@@ -970,12 +884,8 @@ class Base(object):
                     process_enum=self.process.process_enum,
                     process_abbr=self.process.process_abbr,
                 )
-                output_path = os.path.join(
-                    self.base.save_root, self.process.output_dir, filename
-                )
-                self.base.print_message(
-                    f" ... writing non stream data to: {output_path}"
-                )
+                output_path = os.path.join(self.base.save_root, self.process.output_dir, filename)
+                self.base.print_message(f" ... writing non stream data to: {output_path}")
 
                 file_instance = open(output_path, mode="w")
                 file_instance.write(header + output_str)
@@ -984,7 +894,6 @@ class Base(object):
                 return output_path
             else:
                 return None
-
 
         async def write_to_prc(self, prc_dict: dict):
             "Create new prc if it doesn't exist, otherwise append prc_dict to file."
@@ -1004,9 +913,7 @@ class Base(object):
             await file_instance.write(output_str)
             await file_instance.close()
 
-        async def append_sample(
-            self, samples, IO: str, status: bool = None, inheritance: bool = None
-        ):
+        async def append_sample(self, samples, IO: str, status: bool = None, inheritance: bool = None):
             "Add sample to samples_out and samples_in dict"
 
             # - inheritance
@@ -1034,7 +941,7 @@ class Base(object):
                         inheritance = "allow_both"
                     else:
                         inheritance = sample.inheritance
-                        
+
                 if status is None:
                     if sample.status is None:
                         status = "preserved"
@@ -1088,9 +995,7 @@ class Base(object):
 
         async def track_file(self, file_type: str, file_path: str, sample_no: str):
             "Add auxiliary files to file dictionary."
-            if os.path.dirname(file_path) != os.path.join(
-                self.base.save_root, self.process.output_dir
-            ):
+            if os.path.dirname(file_path) != os.path.join(self.base.save_root, self.process.output_dir):
                 self.process.file_paths.append(file_path)
             file_info = f"{file_type};{sample_no}"
             filename = os.path.basename(file_path)
@@ -1102,7 +1007,5 @@ class Base(object):
         async def relocate_files(self):
             "Copy auxiliary files from folder path to prc directory."
             for x in self.process.file_paths:
-                new_path = os.path.join(
-                    self.base.save_root, self.process.output_dir, os.path.basename(x)
-                )
+                new_path = os.path.join(self.base.save_root, self.process.output_dir, os.path.basename(x))
                 await async_copy(x, new_path)

@@ -3,22 +3,18 @@ Standard classes for experiment queue objects.
 
 """
 
-__all__ = ["cProcess_group",
-           "cProcess",
-           "Sequencer"]
+__all__ = ["cProcess_group", "cProcess", "Sequencer"]
 
 
 import inspect
+import json
+import types
 from collections import defaultdict
 from datetime import datetime
 from typing import Optional, Union
-import types
-import json
 
-from helao.core.helper import gen_uuid
-from helao.core.helper import print_message
 import helao.core.model.sample as hcms
-from helao.core.helper import print_message
+from helao.core.helper import gen_uuid, print_message
 
 
 class cProcess_group(object):
@@ -37,49 +33,56 @@ class cProcess_group(object):
         self.process_group_timestamp = imports.get("process_group_timestamp", None)
         self.process_group_label = imports.get("process_group_label", "noLabel")
         self.access = imports.get("access", "hte")
-        self.sequence = imports.get("sequence", None) # TODO: rename to "sequencer"
-        self.sequence_pars = imports.get("sequence_pars", {}) # TODO: rename to "sequencer_params"
-        
+        self.sequence = imports.get("sequence", None)  # TODO: rename to "sequencer"
+        self.sequence_pars = imports.get("sequence_pars", {})  # TODO: rename to "sequencer_params"
+
         # TODO: make the following attributes private
-        self.result_dict = {}#imports.get("result_dict", {})# this gets big really fast, bad for debugging
-        self.global_params = {} # TODO: reserved for internal use, do not write to .prg
+        self.result_dict = {}  # imports.get("result_dict", {})# this gets big really fast, bad for debugging
+        self.global_params = {}  # TODO: reserved for internal use, do not write to .prg
 
     def as_dict(self):
         d = vars(self)
-        attr_only = {
-            k: v
-            for k, v in d.items()
-            if type(v) != types.FunctionType and not k.startswith("__")
-        }
+        attr_only = {k: v for k, v in d.items() if type(v) != types.FunctionType and not k.startswith("__")}
         return attr_only
-
 
     def fastdict(self):
         d = vars(self)
         params_dict = {
             k: int(v) if type(v) == bool else v
             for k, v in d.items()
-            if type(v) != types.FunctionType and 
-            not k.startswith("__") and 
-            (v is not None) and (type(v) != dict)  and (v != {})
+            if type(v) != types.FunctionType
+            and not k.startswith("__")
+            and (v is not None)
+            and (type(v) != dict)
+            and (v != {})
         }
         json_dict = {
             k: v
             for k, v in d.items()
-            if type(v) != types.FunctionType and 
-            not k.startswith("__") and 
-            (v is not None) and (type(v) == dict)
+            if type(v) != types.FunctionType
+            and not k.startswith("__")
+            and (v is not None)
+            and (type(v) == dict)
         }
         return params_dict, json_dict
-
 
     def gen_uuid_process_group(self, machine_name: str):
         "server_name can be any string used in generating random uuid"
         if self.process_group_uuid:
-            print_message({}, "process_group", f"process_group_uuid: {self.process_group_uuid} already exists", info = True)
+            print_message(
+                {},
+                "process_group",
+                f"process_group_uuid: {self.process_group_uuid} already exists",
+                info=True,
+            )
         else:
             self.process_group_uuid = gen_uuid(label=machine_name, timestamp=self.process_group_timestamp)
-            print_message({}, "process_group", f"process_group_uuid: {self.process_group_uuid} assigned", info = True)
+            print_message(
+                {},
+                "process_group",
+                f"process_group_uuid: {self.process_group_uuid} assigned",
+                info=True,
+            )
 
     def set_dtime(self, offset: float = 0):
         dtime = datetime.now()
@@ -111,20 +114,20 @@ class cProcess(cProcess_group):
         self.samples_out: hcms.SampleList = []
 
         # the following attributes are set during process dispatch but can be imported
-        self.file_dict = defaultdict(lambda: defaultdict(dict)) # TODO: replace with model
+        self.file_dict = defaultdict(lambda: defaultdict(dict))  # TODO: replace with model
         self.file_dict.update(imports.get("file_dict", {}))
-        
+
         # TODO: make the following attributes private
         self.save_prc = imports.get("save_prc", True)
         self.save_data = imports.get("save_data", True)
         self.plate_id = imports.get("plate_id", None)
-        self.prc_samples_in = [] # holds sample list of dict for prc writing
+        self.prc_samples_in = []  # holds sample list of dict for prc writing
         self.prc_samples_out = []
         self.file_paths = imports.get("file_paths", [])
-        self.data = imports.get("data", []) # will be written to .hlo file
+        self.data = imports.get("data", [])  # will be written to .hlo file
         self.output_dir = imports.get("output_dir", None)
-        self.column_names = imports.get("column_names", None) # deprecated in .hlo file format
-        self.header = imports.get("header", None) # deprecated in .hlo file format
+        self.column_names = imports.get("column_names", None)  # deprecated in .hlo file format
+        self.header = imports.get("header", None)  # deprecated in .hlo file format
         self.file_type = imports.get("file_type", None)
         self.filename = imports.get("filename", None)
         self.file_data_keys = imports.get("file_data_keys", None)
@@ -135,22 +138,30 @@ class cProcess(cProcess_group):
         self.from_global_params = imports.get("from_global_params", {})
         self.to_global_params = imports.get("to_global_params", [])
 
-
         check_args = {"server": self.process_server, "name": self.process_name}
         missing_args = [k for k, v in check_args.items() if v is None]
         if missing_args:
-            print_message({}, "process", 
+            print_message(
+                {},
+                "process",
                 f'process {" and ".join(missing_args)} not specified. Placeholder processes will only affect the process queue enumeration.',
-                info = True
+                info=True,
             )
-
 
     def gen_uuid_process(self, machine_name: str):
         if self.process_uuid:
-            print_message({}, "process", f"process_uuid: {self.process_uuid} already exists", error = True)
+            print_message(
+                {},
+                "process",
+                f"process_uuid: {self.process_uuid} already exists",
+                error=True,
+            )
         else:
-            self.process_uuid = gen_uuid(label=f"{machine_name}_{self.process_name}", timestamp=self.process_queue_time)
-            print_message({}, "process", f"process_uuid: {self.process_uuid} assigned", info = True)
+            self.process_uuid = gen_uuid(
+                label=f"{machine_name}_{self.process_name}",
+                timestamp=self.process_queue_time,
+            )
+            print_message({}, "process", f"process_uuid: {self.process_uuid} assigned", info=True)
 
     def set_atime(self, offset: float = 0.0):
         atime = datetime.now()
@@ -170,16 +181,22 @@ class Sequencer(object):
         self.process_list = []
         self.pars = self._C()
         for key, val in self._pg.sequence_pars.items():
-            setattr(self.pars, key, val) # we could also add it direcly to the class root by just using self
+            setattr(self.pars, key, val)  # we could also add it direcly to the class root by just using self
 
         for key, val in _locals.items():
             if key != "pg_Obj" and key not in self._pg.sequence_pars.keys():
-                print_message({}, "sequencer", f"local var '{key}' not found in pg_Obj, addding it to sq.pars", error = True)
-                setattr(self.pars, key, val) # we could also add it direcly to the class root by just using self
+                print_message(
+                    {},
+                    "sequencer",
+                    f"local var '{key}' not found in pg_Obj, addding it to sq.pars",
+                    error=True,
+                )
+                setattr(
+                    self.pars, key, val
+                )  # we could also add it direcly to the class root by just using self
 
-
-    class _C: pass
-
+    class _C:
+        pass
 
     def add_process(self, process_dict: dict):
         new_process_dict = self._pg.as_dict()

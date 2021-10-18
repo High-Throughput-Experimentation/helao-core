@@ -1,13 +1,11 @@
-
-
 __all__ = ["HTELegacyAPI"]
 
-import os
 import json
+import os
 import zipfile
 from re import compile as regexcompile
-import numpy
 
+import numpy
 
 
 class HTELegacyAPI:
@@ -27,7 +25,6 @@ class HTELegacyAPI:
             r"J:\hte_jcap_app_proto\plate",
         ]
 
-
     def get_rcp_plateid(self, plateid: int):
         self.base.print_message(f" ... get rcp for plateid: {plateid}")
         return None
@@ -44,7 +41,7 @@ class HTELegacyAPI:
 
             # 3. checks that a print and anneal record exist in the info file
             if not "prints" or not "anneals" in infod.keys():
-                self.base.print_message("Warning: no print or anneal record exists", warning = True)
+                self.base.print_message("Warning: no print or anneal record exists", warning=True)
 
             # 4. gets platemap and passes to alignment code
             # pmpath=getplatemappath_plateid(plateid, return_pmidstr=True)
@@ -85,7 +82,6 @@ class HTELegacyAPI:
         pmdlist = self.readsingleplatemaptxt(pmpath)
         return json.dumps(pmdlist)
 
-
     def get_elements_plateid(
         self,
         plateid,
@@ -116,8 +112,7 @@ class HTELegacyAPI:
             printdlist = [
                 printd
                 for printd in infofiled["prints"].values()
-                if "id" in printd.keys()
-                and printd["id"] == infofiled["screening_print_id"]
+                if "id" in printd.keys() and printd["id"] == infofiled["screening_print_id"]
             ]
             if len(printdlist) == 0:
                 return None
@@ -126,9 +121,7 @@ class HTELegacyAPI:
             printd = infofiled["prints"][print_key_or_keyword]
         if not "elements" in printd.keys():
             return None
-        els = [
-            x for x in printd["elements"].split(",") if x not in exclude_elements_list
-        ]
+        els = [x for x in printd["elements"].split(",") if x not in exclude_elements_list]
 
         if multielementink_concentrationinfo_bool:
             return (
@@ -149,8 +142,7 @@ class HTELegacyAPI:
         dlist = []
 
         def _tab_level(astr):
-            """Count number of leading tabs in a string
-            """
+            """Count number of leading tabs in a string"""
             return (len(astr) - len(astr.lstrip("    "))) / 4
 
         if rcppath.endswith(".zip"):
@@ -208,8 +200,7 @@ class HTELegacyAPI:
         fns = [
             fn
             for fn in os.listdir(pmfold)
-            if fn.startswith("0" * (4 - len(pmidstr)) + pmidstr + "-")
-            and fn.endswith("-mp.txt")
+            if fn.startswith("0" * (4 - len(pmidstr)) + pmidstr + "-") and fn.endswith("-mp.txt")
         ]
         if len(fns) != 1:
             if not erroruifcn is None:
@@ -288,9 +279,7 @@ class HTELegacyAPI:
         searchstr2 = "concentration_values"
         if not (searchstr1 in printd.keys() and searchstr2 in printd.keys()):
             if return_defaults_if_none:
-                nels_printchannels = [
-                    len(regexcompile("[A-Z][a-z]*").findall(el)) for el in els
-                ]
+                nels_printchannels = [len(regexcompile("[A-Z][a-z]*").findall(el)) for el in els]
                 if max(nels_printchannels) > 1:
                     return (
                         True,
@@ -300,9 +289,7 @@ class HTELegacyAPI:
                 if len(els_set) < len(
                     els
                 ):  # only known cases of this (same element used in multiple print channels and no concentration info provided) is when Co printed in library and as internal reference, in which case 2 channels never printed together but make code assume each ink with equal concentration regardless of duplicates
-                    conc_el_chan = numpy.zeros(
-                        (len(els_set), len(els)), dtype="float64"
-                    )
+                    conc_el_chan = numpy.zeros((len(els_set), len(els)), dtype="float64")
                     cels_set_ordered = []
                     for j, cel in enumerate(els):  # assume
                         if not cel in cels_set_ordered:
@@ -325,11 +312,7 @@ class HTELegacyAPI:
             conclist[0] != cv for cv in conclist
         ]:  # concentrations available where an element is used multiple times. or 1 of the concentrations is different from the rest
             els_printchannels = [regexcompile("[A-Z][a-z]*").findall(el) for el in els]
-            els_tuplist = [
-                (el, i, j)
-                for i, l in enumerate(els_printchannels)
-                for j, el in enumerate(l)
-            ]
+            els_tuplist = [(el, i, j) for i, l in enumerate(els_printchannels) for j, el in enumerate(l)]
             cels_tuplist = []
             for cel in cels:
                 while len(els_tuplist) > 0:
@@ -377,9 +360,7 @@ class HTELegacyAPI:
                 c = eval(temp)
         return c
 
-    def readsingleplatemaptxt(
-        self, p, returnfiducials=False, erroruifcn=None, lines=None
-    ):
+    def readsingleplatemaptxt(self, p, returnfiducials=False, erroruifcn=None, lines=None):
         if lines is None:
             try:
                 f = open(p, mode="r")
@@ -402,21 +383,54 @@ class HTELegacyAPI:
             ):  # needed because sometimes x,y in fiducials is comma delim and sometimes not
                 self.base.print_message(
                     "WARNING: commas inserted into fiducials line to adhere to format.",
-                    warning = True
+                    warning=True,
                 )
                 self.base.print_message(s)
                 s = (
-                    s.replace("(   ", "(  ",)
-                    .replace("(  ", "( ",)
-                    .replace("( ", "(",)
-                    .replace("   )", "  )",)
-                    .replace(",  ", ",",)
-                    .replace(", ", ",",)
-                    .replace("  )", " )",)
-                    .replace(" )", ")",)
-                    .replace("   ", ",",)
-                    .replace("  ", ",",)
-                    .replace(" ", ",",)
+                    s.replace(
+                        "(   ",
+                        "(  ",
+                    )
+                    .replace(
+                        "(  ",
+                        "( ",
+                    )
+                    .replace(
+                        "( ",
+                        "(",
+                    )
+                    .replace(
+                        "   )",
+                        "  )",
+                    )
+                    .replace(
+                        ",  ",
+                        ",",
+                    )
+                    .replace(
+                        ", ",
+                        ",",
+                    )
+                    .replace(
+                        "  )",
+                        " )",
+                    )
+                    .replace(
+                        " )",
+                        ")",
+                    )
+                    .replace(
+                        "   ",
+                        ",",
+                    )
+                    .replace(
+                        "  ",
+                        ",",
+                    )
+                    .replace(
+                        " ",
+                        ",",
+                    )
                 )
                 self.base.print_message(s)
             fid = eval("[%s]" % s)
@@ -437,4 +451,3 @@ class HTELegacyAPI:
         if returnfiducials:
             return dlist, fid
         return dlist
-

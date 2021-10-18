@@ -1,4 +1,3 @@
-
 __all__ = ["makeOrchServ"]
 
 import asyncio
@@ -11,12 +10,8 @@ from .api import HelaoFastAPI
 from .orch import Orch
 
 
-def makeOrchServ(
-    config, server_key, server_title, description, version, driver_class=None
-):
-    app = HelaoFastAPI(
-        config, server_key, title=server_title, description=description, version=version
-    )
+def makeOrchServ(config, server_key, server_title, description, version, driver_class=None):
+    app = HelaoFastAPI(config, server_key, title=server_title, description=description, version=version)
 
     @app.on_event("startup")
     async def startup_event():
@@ -32,9 +27,7 @@ def makeOrchServ(
 
     @app.post("/update_status")
     async def update_status(server: str, status: str):
-        return await app.orch.update_status(
-            process_serv=server, status_dict=json.loads(status)
-        )
+        return await app.orch.update_status(process_serv=server, status_dict=json.loads(status))
 
     @app.post("/attach_client")
     async def attach_client(client_servkey: str):
@@ -62,9 +55,7 @@ def makeOrchServ(
     async def start_process():
         """Begin processing process_group and process queues."""
         if app.orch.loop_state == "stopped":
-            if (
-                app.orch.process_dq or app.orch.process_group_dq
-            ):  # resume processes from a paused run
+            if app.orch.process_dq or app.orch.process_group_dq:  # resume processes from a paused run
                 await app.orch.start_loop()
             else:
                 app.orch.print_message("process_group list is empty")
@@ -89,9 +80,7 @@ def makeOrchServ(
         if app.orch.loop_state == "started":
             await app.orch.intend_stop()
         elif app.orch.loop_state == "E-STOP":
-            app.orch.print_message(
-                "orchestrator E-STOP flag was raised; nothing to stop"
-            )
+            app.orch.print_message("orchestrator E-STOP flag was raised; nothing to stop")
         else:
             app.orch.print_message("orchestrator is not running")
         return {}

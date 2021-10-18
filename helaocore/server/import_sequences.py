@@ -1,4 +1,3 @@
-
 __all__ = ["import_sequences"]
 
 import os
@@ -8,9 +7,7 @@ from importlib import import_module
 from helao.core.helper import print_message
 
 
-def import_sequences(
-    world_config_dict: dict, sequence_path: str = None, server_name: str = ""
-):
+def import_sequences(world_config_dict: dict, sequence_path: str = None, server_name: str = ""):
     """Import sequence functions into environment."""
     process_lib = {}
     if sequence_path is None:

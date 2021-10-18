@@ -2,8 +2,7 @@
 File models for writing/organizing .prc and .prg metadata contents.
 
 """
-__all__ = ["PrcFile",
-           "PrgFile"]
+__all__ = ["PrcFile", "PrgFile"]
 
 from typing import Optional, Union
 
@@ -31,7 +30,7 @@ class PrcFile(BaseModel):
     samples_out: Optional[Union[dict, None]] = None
     files: Optional[Union[dict, None]] = None
 
-    
+
 class PrgFile(BaseModel):
     hlo_version: str = version.hlo_version
     orchestrator: str

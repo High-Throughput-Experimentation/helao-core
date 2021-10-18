@@ -1,8 +1,8 @@
-
 __all__ = ["rcp_to_dict"]
 
 import os
 import zipfile
+
 
 def rcp_to_dict(rcppath: str):  # read common info/rcp/exp/ana structure into dict
     dlist = []
@@ -47,8 +47,6 @@ def rcp_to_dict(rcppath: str):  # read common info/rcp/exp/ana structure into di
         else:
             adict[key] = val
 
-
-
     if rcppath.endswith(".zip"):
         if "analysis" in os.path.dirname(rcppath):
             ext = ".ana"
@@ -69,7 +67,5 @@ def rcp_to_dict(rcppath: str):  # read common info/rcp/exp/ana structure into di
                 k, v = l.split(":", 1)
                 lvl = _tab_level(l)
                 dlist.append({"name": k.strip(), "value": v.strip(), "level": lvl})
-
-
 
     return _ttree_to_json(dlist)

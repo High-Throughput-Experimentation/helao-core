@@ -2,12 +2,14 @@
 Return models returned in API response. Will be deprecated.
 
 """
-__all__ = ["ReturnProcessGroup",
-           "ReturnProcessGroupList",
-           "ReturnProcess",
-           "ReturnProcessList",
-           "ReturnFinishedProcess",
-           "ReturnRunningProcess"]
+__all__ = [
+    "ReturnProcessGroup",
+    "ReturnProcessGroupList",
+    "ReturnProcess",
+    "ReturnProcessList",
+    "ReturnFinishedProcess",
+    "ReturnRunningProcess",
+]
 
 
 from typing import List, Optional, Union
@@ -18,6 +20,7 @@ from pydantic import BaseModel
 # TODO: deprecate return* models in favor of original models.
 class ReturnProcessGroup(BaseModel):
     """Return class for queried cProcess_group objects."""
+
     index: int
     uid: Union[str, None]
     label: str
@@ -28,11 +31,13 @@ class ReturnProcessGroup(BaseModel):
 
 class ReturnProcessGroupList(BaseModel):
     """Return class for queried cProcess_group list."""
+
     process_groups: List[ReturnProcessGroup]
 
 
 class ReturnProcess(BaseModel):
     """Return class for queried process objects."""
+
     index: int
     uid: Union[str, None]
     server: str
@@ -43,11 +48,13 @@ class ReturnProcess(BaseModel):
 
 class ReturnProcessList(BaseModel):
     """Return class for queried process list."""
+
     processes: List[ReturnProcess]
 
 
 class ReturnFinishedProcess(BaseModel):
     """Standard return class for processes that finish with response."""
+
     technique_name: str
     access: str
     orch_name: str
@@ -80,6 +87,7 @@ class ReturnFinishedProcess(BaseModel):
 
 class ReturnRunningProcess(BaseModel):
     """Standard return class for processes that finish after response."""
+
     technique_name: str
     access: str
     orch_name: str
@@ -103,6 +111,4 @@ class ReturnRunningProcess(BaseModel):
     save_data: bool
     samples_in: Optional[dict]
     samples_out: Optional[dict]
-    output_dir: Optional[str]    
-    
-    
+    output_dir: Optional[str]

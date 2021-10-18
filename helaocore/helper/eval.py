@@ -1,6 +1,5 @@
+__all__ = ["eval_array", "eval_val"]
 
-__all__ = ["eval_array",
-           "eval_val"]
 
 def eval_array(x):
     ret = []

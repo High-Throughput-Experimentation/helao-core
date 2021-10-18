@@ -1,11 +1,10 @@
-
 __all__ = ["setup_process"]
 
 import json
 from socket import gethostname
 
-from fastapi import Request
 import helao.core.model.sample as hcms
+from fastapi import Request
 from helao.core.schema import cProcess
 
 
@@ -48,7 +47,7 @@ async def setup_process(request: Request):
             A.samples_in = hcms.SampleList(samples=tmp_fast_samples_in)
 
     if A.process_abbr is None:
-       A.process_abbr = A.process_name
+        A.process_abbr = A.process_name
 
     # setting some default values if process was not submitted via orch
     if A.machine_name is None:

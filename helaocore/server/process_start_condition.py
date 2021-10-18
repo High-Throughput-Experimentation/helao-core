@@ -1,4 +1,3 @@
-
 __all__ = ["process_start_condition"]
 
 from enum import Enum

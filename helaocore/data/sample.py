@@ -1,31 +1,26 @@
+__all__ = [
+    "LiquidSampleAPI",
+    "GasSampleAPI",
+    "AssemblySampleAPI",
+    "UnifiedSampleDataAPI",
+    "OldLiquidSampleAPI",
+]
 
-__all__ = ["LiquidSampleAPI",
-           "GasSampleAPI",
-           "AssemblySampleAPI",
-           "UnifiedSampleDataAPI",
-           "OldLiquidSampleAPI"]
-
-import os
-import aiofiles
-import json
 import asyncio
-from datetime import datetime
-from typing import Optional, List
-from socket import gethostname
-
+import json
+import os
 import sqlite3
-import pandas as pd
+from datetime import datetime
+from socket import gethostname
+from typing import List, Optional
 
+import aiofiles
 import helao.core.model.sample as hcms
+import pandas as pd
 
 
 class _BaseSampleAPI(object):
-    def __init__(
-            self, 
-            sampleclass,
-            Serv_class, 
-            dbpath: str, 
-            extra_columns: str):
+    def __init__(self, sampleclass, Serv_class, dbpath: str, extra_columns: str):
 
         self.extra_columns = extra_columns
         self.columns = f"""global_label TEXT NOT NULL,
@@ -50,15 +45,14 @@ class _BaseSampleAPI(object):
               comment TEXT,
               {self.extra_columns}"""
 
-
-        self.column_names = self.columns.replace("\n","").strip().split(",")
+        self.column_names = self.columns.replace("\n", "").strip().split(",")
         for i, name in enumerate(self.column_names):
             self.column_names[i] = name.strip().split(" ")[0]
         self.column_count = len(self.column_names)
-        
+
         self._sampleclass = sampleclass
         self._sample_type = f"{sampleclass.sample_type}_sample"
-        self._dbfilename = gethostname()+f"__{self._sample_type}.db"
+        self._dbfilename = gethostname() + f"__{self._sample_type}.db"
         self._dbfilepath = dbpath
         self._base = Serv_class
         self._db = os.path.join(self._dbfilepath, self._dbfilename)
@@ -67,11 +61,9 @@ class _BaseSampleAPI(object):
         # convert these to json when saving them to the db
         self._jsonkeys = ["chemical", "mass", "supplier", "lot_number", "source"]
 
-
     def _open_db(self):
         self._con = sqlite3.connect(self._db)
         self._cur = self._con.cursor()
-
 
     def _close_db(self):
         if self._con is not None:
@@ -81,19 +73,20 @@ class _BaseSampleAPI(object):
             self._con = None
             self._cur = None
 
-
     def _df_to_sample(self, df):
         """converts db dataframe back to a sample basemodel
-           and performs a simply data integrity check"""
+        and performs a simply data integrity check"""
         if df.size == 0:
             return None
         sampledict = dict(df.iloc[-1, :])
 
         for key in self._jsonkeys:
-            sampledict.update({key:json.loads(sampledict[key])})
+            sampledict.update({key: json.loads(sampledict[key])})
 
-        if sampledict["idx"] != sampledict["sample_no"]: # integrity check
-            raise ValueError(f"sampledict['idx'] != sampledict['sample_no']: {sampledict['idx']} != {sampledict['sample_no']}")
+        if sampledict["idx"] != sampledict["sample_no"]:  # integrity check
+            raise ValueError(
+                f"sampledict['idx'] != sampledict['sample_no']: {sampledict['idx']} != {sampledict['sample_no']}"
+            )
 
         retsample = hcms.SampleList(samples=[sampledict])
         if len(retsample.samples):
@@ -101,27 +94,26 @@ class _BaseSampleAPI(object):
         else:
             return None
 
-
     def _create_init_db(self):
         self._cur.execute(
-              f"""CREATE TABLE {self._sample_type}(
+            f"""CREATE TABLE {self._sample_type}(
               idx INTEGER PRIMARY KEY AUTOINCREMENT,
               {self.columns}
-              );""")
-        
-        self._base.print_message(f"{self._sample_type} table created", info = True)
+              );"""
+        )
+
+        self._base.print_message(f"{self._sample_type} table created", info=True)
         # commit changes
         self._con.commit()
 
-
-    async def _append_sample(self,sample):
+    async def _append_sample(self, sample):
         await asyncio.sleep(0.001)
         lock = asyncio.Lock()
         async with lock:
             self._open_db()
             self._cur.execute(f"select count(idx) from {self._sample_type};")
             counts = self._cur.fetchone()[0]
-            sample.sample_no = counts+1
+            sample.sample_no = counts + 1
             if sample.machine_name is None:
                 sample.machine_name = self._base.hostname
             if sample.server_name is None:
@@ -135,39 +127,42 @@ class _BaseSampleAPI(object):
                 sample.last_update = self._base.set_realtime_nowait()
             sample.global_label = sample.get_global_label()
 
-            
             dfdict = sample.dict()
             for key in self._jsonkeys:
-                dfdict.update({key:[json.dumps(dfdict[key])]})
+                dfdict.update({key: [json.dumps(dfdict[key])]})
 
             keys_to_deletes = []
             for key in dfdict.keys():
                 if key not in self.column_names:
-                    self._base.print_message(f"Invalid {self._sample_type} data key '{key}', skipping it.", error = True)
+                    self._base.print_message(
+                        f"Invalid {self._sample_type} data key '{key}', skipping it.",
+                        error=True,
+                    )
                     keys_to_deletes.append(key)
-                    
+
             for key in keys_to_deletes:
                 del dfdict[key]
-            
+
             df = pd.DataFrame(data=dfdict)
-            df.to_sql(name=self._sample_type, con=self._con, if_exists='append', index=False)
-            
+            df.to_sql(name=self._sample_type, con=self._con, if_exists="append", index=False)
+
             # now read back the sample and compare and return it
-            retdf = pd.read_sql_query(f"""select * from {self._sample_type} ORDER BY idx DESC LIMIT 1;""", con=self._con)
+            retdf = pd.read_sql_query(
+                f"""select * from {self._sample_type} ORDER BY idx DESC LIMIT 1;""",
+                con=self._con,
+            )
             self._close_db()
             retsample = self._df_to_sample(retdf)
             return retsample
 
-
     async def _key_checks(self, sample):
         return sample
-
 
     async def new_sample(self, samples: hcms.SampleList = hcms.SampleList()):
         await asyncio.sleep(0.001)
         ret_samples = hcms.SampleList()
         if not isinstance(samples, hcms.SampleList):
-            self._base.print_message("new sample: not a valid sample list", info = True)
+            self._base.print_message("new sample: not a valid sample list", info=True)
             return ret_samples
 
         for i, sample in enumerate(samples.samples):
@@ -177,11 +172,13 @@ class _BaseSampleAPI(object):
                 added_sample = await self._append_sample(sample=sample)
                 ret_samples.samples.append(added_sample)
             else:
-                self._base.print_message(f"wrong sample type {type(sample)}!={self._sample_type}, skipping it", info = True)
+                self._base.print_message(
+                    f"wrong sample type {type(sample)}!={self._sample_type}, skipping it",
+                    info=True,
+                )
                 ret_samples.samples.append(None)
 
         return ret_samples
-
 
     async def init_db(self):
         lock = asyncio.Lock()
@@ -189,18 +186,21 @@ class _BaseSampleAPI(object):
             self._open_db()
             # check if table exists
             listOfTables = self._cur.execute(
-              f"""SELECT name FROM sqlite_master WHERE type='table'
-              AND name='{self._sample_type}';""").fetchall()
-             
+                f"""SELECT name FROM sqlite_master WHERE type='table'
+              AND name='{self._sample_type}';"""
+            ).fetchall()
+
             if listOfTables == []:
-                self._base.print_message(f" ... {self._sample_type} table not found, creating it.", error = True)
+                self._base.print_message(
+                    f" ... {self._sample_type} table not found, creating it.",
+                    error=True,
+                )
                 self._create_init_db()
             else:
                 self._base.print_message(f" ... {self._sample_type} table found!")
-    
-            self._close_db()
-        await self.count_samples() # has also a separate lock
 
+            self._close_db()
+        await self.count_samples()  # has also a separate lock
 
     async def count_samples(self):
         await asyncio.sleep(0.001)
@@ -209,11 +209,10 @@ class _BaseSampleAPI(object):
             self._open_db()
             self._cur.execute(f"select count(idx) from {self._sample_type};")
             counts = self._cur.fetchone()[0]
-            self._base.print_message(f"sqlite db {self._sample_type} count: {counts}", info = True)
+            self._base.print_message(f"sqlite db {self._sample_type} count: {counts}", info=True)
             self._close_db()
             return counts
 
-    
     async def get_sample(self, samples: hcms.SampleList = hcms.SampleList()):
         """this will only use the sample_no for local sample, or global_label for external samples
         and fills in the rest from the db and returns the list again.
@@ -222,18 +221,20 @@ class _BaseSampleAPI(object):
         await asyncio.sleep(0.001)
         ret_samples = hcms.SampleList()
         if not isinstance(samples, hcms.SampleList):
-            self._base.print_message("get sample: not a valid sample list", info = True)
+            self._base.print_message("get sample: not a valid sample list", info=True)
             return ret_samples
 
-        
         lock = asyncio.Lock()
         async with lock:
             self._open_db()
 
             for i, sample in enumerate(samples.samples):
-                self._base.print_message(f"getting sample {self._sample_type} {sample.sample_no}", info = True)
+                self._base.print_message(f"getting sample {self._sample_type} {sample.sample_no}", info=True)
                 await asyncio.sleep(0.001)
-                retdf = pd.read_sql_query(f"""select * from {self._sample_type} where idx={sample.sample_no};""", con=self._con)
+                retdf = pd.read_sql_query(
+                    f"""select * from {self._sample_type} where idx={sample.sample_no};""",
+                    con=self._con,
+                )
                 retsample = self._df_to_sample(retdf)
                 ret_samples.samples.append(retsample)
             self._close_db()
@@ -243,38 +244,34 @@ class _BaseSampleAPI(object):
 class LiquidSampleAPI(_BaseSampleAPI):
     def __init__(self, Serv_class, dbpath: str):
         super().__init__(
-            sampleclass = hcms.LiquidSample(),
-            Serv_class=Serv_class, 
-            dbpath=dbpath, 
-            extra_columns="volume_ml REAL NOT NULL, ph REAL"
-            )
-
+            sampleclass=hcms.LiquidSample(),
+            Serv_class=Serv_class,
+            dbpath=dbpath,
+            extra_columns="volume_ml REAL NOT NULL, ph REAL",
+        )
 
     async def _key_checks(self, sample):
         if sample.volume_ml is None:
             sample.volume_ml = 0.0
         return sample
 
-
     async def old_jsondb_to_sqlitedb(self):
         old_liquid_sample_db = OldLiquidSampleAPI(self._base, self._dbfilepath)
         counts = await old_liquid_sample_db.count_samples()
-        self._base.print_message(f"old db sample count: {counts}", info = True)
+        self._base.print_message(f"old db sample count: {counts}", info=True)
         for i in range(counts):
-            liquid_sample_jsondict = await old_liquid_sample_db.get_sample(i+1)
+            liquid_sample_jsondict = await old_liquid_sample_db.get_sample(i + 1)
             self.new_sample_nowait(hcms.LiquidSample(**liquid_sample_jsondict), use_supplied_no=True)
-
 
 
 class GasSampleAPI(_BaseSampleAPI):
     def __init__(self, Serv_class, dbpath: str):
         super().__init__(
-            sampleclass = hcms.GasSample(),
-            Serv_class=Serv_class, 
-            dbpath=dbpath, 
-            extra_columns="volume_ml REAL NOT NULL"
-            )
-
+            sampleclass=hcms.GasSample(),
+            Serv_class=Serv_class,
+            dbpath=dbpath,
+            extra_columns="volume_ml REAL NOT NULL",
+        )
 
     async def _key_checks(self, sample):
         if sample.volume_ml is None:
@@ -285,55 +282,56 @@ class GasSampleAPI(_BaseSampleAPI):
 class AssemblySampleAPI(_BaseSampleAPI):
     def __init__(self, Serv_class, dbpath: str):
         super().__init__(
-            sampleclass = hcms.AssemblySample(),
-            Serv_class=Serv_class, 
-            dbpath=dbpath, 
-            extra_columns="parts TEXT"
-            )
+            sampleclass=hcms.AssemblySample(),
+            Serv_class=Serv_class,
+            dbpath=dbpath,
+            extra_columns="parts TEXT",
+        )
         self._jsonkeys.append("parts")
-
 
 
 class SolidSampleAPI(_BaseSampleAPI):
     def __init__(self, Serv_class, dbpath: str):
         super().__init__(
-            sampleclass = hcms.SolidSample(),
-            Serv_class=Serv_class, 
-            dbpath=dbpath, 
-            extra_columns="plate_id INTEGER NOT NULL"
-            )
+            sampleclass=hcms.SolidSample(),
+            Serv_class=Serv_class,
+            dbpath=dbpath,
+            extra_columns="plate_id INTEGER NOT NULL",
+        )
 
-    
     async def new_sample(self, samples: hcms.SampleList = hcms.SampleList()):
-        self._base.print_message("not supported yet", error = True)
+        self._base.print_message("not supported yet", error=True)
         await asyncio.sleep(0.001)
         ret_samples = hcms.SampleList()
         if not isinstance(samples, hcms.SampleList):
-            self._base.print_message("new sample: not a valid sample list", info = True)
+            self._base.print_message("new sample: not a valid sample list", info=True)
             return ret_samples
 
         for i, sample in enumerate(samples.samples):
-                ret_samples.samples.append(None)
+            ret_samples.samples.append(None)
         return ret_samples
-
 
     async def get_sample(self, samples: hcms.SampleList = hcms.SampleList()):
 
         await asyncio.sleep(0.001)
         ret_samples = hcms.SampleList()
         if not isinstance(samples, hcms.SampleList):
-            self._base.print_message("get sample: not a valid sample list", info = True)
+            self._base.print_message("get sample: not a valid sample list", info=True)
             return ret_samples
 
         for i, sample in enumerate(samples.samples):
-            self._base.print_message(f"getting sample {self._sample_type} {sample.sample_no}", info = True)
+            self._base.print_message(f"getting sample {self._sample_type} {sample.sample_no}", info=True)
             await asyncio.sleep(0.001)
             if sample.machine_name != "legacy":
                 ret_samples.samples.append(None)
             else:
-                ret_samples.samples.append(hcms.SolidSample(plate_id = sample.plate_id, 
-                                                            sample_no = sample.sample_no,
-                                                            machine_name = "legacy"))
+                ret_samples.samples.append(
+                    hcms.SolidSample(
+                        plate_id=sample.plate_id,
+                        sample_no=sample.sample_no,
+                        machine_name="legacy",
+                    )
+                )
 
         return ret_samples
 
@@ -341,7 +339,7 @@ class SolidSampleAPI(_BaseSampleAPI):
 class OldLiquidSampleAPI:
     def __init__(self, Serv_class, dbpath):
         self._base = Serv_class
-        
+
         self._dbfile = "liquid_ID_database.csv"
         self._dbfilepath = dbpath
         # self._dbfilepath, self._dbfile = os.path.split(db)
@@ -360,20 +358,15 @@ class OldLiquidSampleAPI:
             f" ... liquid sample no database is: {os.path.join(self._dbfilepath, self._dbfile)}"
         )
 
-
     async def _open_db(self, mode):
         if os.path.exists(self._dbfilepath):
-            self.fdb = await aiofiles.open(
-                os.path.join(self._dbfilepath, self._dbfile), mode
-            )
+            self.fdb = await aiofiles.open(os.path.join(self._dbfilepath, self._dbfile), mode)
             return True
         else:
             return False
 
-
     async def _close_db(self):
         await self.fdb.close()
-
 
     async def count_samples(self):
         # TODO: faster way?
@@ -384,7 +377,6 @@ class OldLiquidSampleAPI:
             counter += 1
         await self._close_db()
         return counter - self.headerlines
-
 
     async def new_sample(self, new_sample: hcms.LiquidSample):
         async def write_sample_no_jsonfile(filename, datadict):
@@ -397,27 +389,28 @@ class OldLiquidSampleAPI:
             if not line.endswith("\n"):
                 line += "\n"
             await self.fdb.write(line)
-                
+
         self._base.print_message(f" ... new entry dict: {new_sample.dict()}")
         new_sample.sample_no = await self.count_samples() + 1
         self._base.print_message(f" ... new liquid sample no: {new_sample.sample_no}")
         # dump dict to separate json file
-        await write_sample_no_jsonfile(f"{new_sample.sample_no:08d}__{new_sample.process_group_uuid}__{new_sample.process_uuid}.json",new_sample.dict())
+        await write_sample_no_jsonfile(
+            f"{new_sample.sample_no:08d}__{new_sample.process_group_uuid}__{new_sample.process_uuid}.json",
+            new_sample.dict(),
+        )
         # add newid to db csv
         await self._open_db("a+")
         await add_line(f"{new_sample.sample_no},{new_sample.process_group_uuid},{new_sample.process_uuid}")
         await self._close_db()
         return new_sample
 
-
     async def get_sample(self, sample: hcms.LiquidSample):
         """accepts a liquid sample model with minimum information to find it in the db
         and returns its full information
         """
+
         async def load_json_file(filename, linenr=1):
-            self.fjsonread = await aiofiles.open(
-                os.path.join(self._dbfilepath, filename), "r+"
-            )
+            self.fjsonread = await aiofiles.open(os.path.join(self._dbfilepath, filename), "r+")
             counter = 0
             retval = ""
             await self.fjsonread.seek(0)
@@ -444,13 +437,13 @@ class OldLiquidSampleAPI:
             await self._close_db()
             return retval
 
-
         # for now it only checks against local samples
         if sample.machine_name != gethostname():
-            self._base.print_message(f" ... can only load from local db, got {sample.machine_name}", error = True)
-            return None # return default empty one
-
-        
+            self._base.print_message(
+                f" ... can only load from local db, got {sample.machine_name}",
+                error=True,
+            )
+            return None  # return default empty one
 
         data = await get_sample_details(sample.sample_no)
         if data != "":
@@ -460,11 +453,10 @@ class OldLiquidSampleAPI:
             process_uuid = data[2]
             filename = f"{fileID:08d}__{process_group_uuid}__{process_uuid}.json"
             self._base.print_message(f" ... data json file: {filename}")
-            
-            
+
             liquid_sample_jsondict = await load_json_file(filename, 1)
             # fix for old db version
-            if "id" in liquid_sample_jsondict: # old v1
+            if "id" in liquid_sample_jsondict:  # old v1
                 # liquid_sample_jsondict["plate_sample_no"] = liquid_sample_jsondict["sample_no"]
                 liquid_sample_jsondict["sample_no"] = liquid_sample_jsondict["id"]
                 del liquid_sample_jsondict["id"]
@@ -474,26 +466,24 @@ class OldLiquidSampleAPI:
             if "sample_id" in liquid_sample_jsondict:
                 liquid_sample_jsondict["sample_no"] = liquid_sample_jsondict["sample_id"]
                 del liquid_sample_jsondict["sample_id"]
-                
+
             if "AUID" in liquid_sample_jsondict:
                 liquid_sample_jsondict["process_uuid"] = liquid_sample_jsondict["AUID"]
                 del liquid_sample_jsondict["AUID"]
-                
+
             if "DUID" in liquid_sample_jsondict:
                 liquid_sample_jsondict["process_group_uuid"] = liquid_sample_jsondict["DUID"]
                 del liquid_sample_jsondict["DUID"]
-                
-
 
             ret_liquid_sample = hcms.LiquidSample(**liquid_sample_jsondict)
             self._base.print_message(f" ... data json content: {ret_liquid_sample.dict()}")
-            
+
             return ret_liquid_sample
         else:
-            return None # will be default empty one
+            return None  # will be default empty one
 
 
-class UnifiedSampleDataAPI():
+class UnifiedSampleDataAPI:
     def __init__(self, Serv_class, dbpath):
         self._base = Serv_class
         self._dbfilepath = dbpath
@@ -509,32 +499,30 @@ class UnifiedSampleDataAPI():
         await self.gasAPI.init_db()
         await self.assemblyAPI.init_db()
 
-        
     async def new_sample(self, samples: hcms.SampleList = hcms.SampleList()):
         retval = hcms.SampleList()
         if not isinstance(samples, hcms.SampleList):
-            self._base.print_message("not a valid sample list", info = True)
+            self._base.print_message("not a valid sample list", info=True)
             return retval
-        
+
         for sample in samples.samples:
             if isinstance(sample, hcms.LiquidSample):
-                tmp = await self.liquidAPI.new_sample(hcms.SampleList(samples = [sample]))
+                tmp = await self.liquidAPI.new_sample(hcms.SampleList(samples=[sample]))
                 retval.samples.append(tmp.samples[0])
             elif isinstance(sample, hcms.SolidSample):
-                tmp = await self.solidAPI.new_sample(hcms.SampleList(samples = [sample]))
+                tmp = await self.solidAPI.new_sample(hcms.SampleList(samples=[sample]))
                 retval.samples.append(tmp.samples[0])
             elif isinstance(sample, hcms.GasSample):
-                tmp = await self.gasAPI.new_sample(hcms.SampleList(samples = [sample]))
+                tmp = await self.gasAPI.new_sample(hcms.SampleList(samples=[sample]))
                 retval.samples.append(tmp.samples[0])
             elif isinstance(sample, hcms.AssemblySample):
-                tmp = await self.assembkyAPI.new_sample(hcms.SampleList(samples = [sample]))
+                tmp = await self.assembkyAPI.new_sample(hcms.SampleList(samples=[sample]))
                 retval.samples.append(tmp.samples[0])
             else:
                 retval.samples.append(None)
-        
+
         return retval
 
-        
     async def get_sample(self, samples: hcms.SampleList = hcms.SampleList()):
         """this will only use the sample_no for local sample, or global_label for external samples
         and fills in the rest from the db and returns the list again.
@@ -542,26 +530,27 @@ class UnifiedSampleDataAPI():
         """
         retval = hcms.SampleList()
         if not isinstance(samples, hcms.SampleList):
-            self._base.print_message("not a valid sample list", info = True)
+            self._base.print_message("not a valid sample list", info=True)
             return retval
-        
+
         for sample in samples.samples:
             if isinstance(sample, hcms.LiquidSample):
-                tmp = await self.liquidAPI.get_sample(hcms.SampleList(samples = [sample]))
+                tmp = await self.liquidAPI.get_sample(hcms.SampleList(samples=[sample]))
                 retval.samples.append(tmp.samples[0])
             elif isinstance(sample, hcms.SolidSample):
-                tmp = await self.solidAPI.get_sample(hcms.SampleList(samples = [sample]))
+                tmp = await self.solidAPI.get_sample(hcms.SampleList(samples=[sample]))
                 retval.samples.append(tmp.samples[0])
             elif isinstance(sample, hcms.GasSample):
-                tmp = await self.gasAPI.get_sample(hcms.SampleList(samples = [sample]))
+                tmp = await self.gasAPI.get_sample(hcms.SampleList(samples=[sample]))
                 retval.samples.append(tmp.samples[0])
             elif isinstance(sample, hcms.AssemblySample):
-                tmp = await self.assemblyAPI.get_sample(hcms.SampleList(samples = [sample]))
+                tmp = await self.assemblyAPI.get_sample(hcms.SampleList(samples=[sample]))
                 retval.samples.append(tmp.samples[0])
             else:
-                self._base.print_message(f"validation error, type '{type(sample)}' is not a valid sample model", error = True)
+                self._base.print_message(
+                    f"validation error, type '{type(sample)}' is not a valid sample model",
+                    error=True,
+                )
                 retval.samples.append(None)
-        
 
         return retval
-        
