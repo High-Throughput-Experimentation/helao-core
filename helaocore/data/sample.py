@@ -515,7 +515,7 @@ class UnifiedSampleDataAPI:
                 tmp = await self.gasAPI.new_sample(hcms.SampleList(samples=[sample]))
                 retval.samples.append(tmp.samples[0])
             elif isinstance(sample, hcms.AssemblySample):
-                tmp = await self.assembkyAPI.new_sample(hcms.SampleList(samples=[sample]))
+                tmp = await self.assemblyAPI.new_sample(hcms.SampleList(samples=[sample]))
                 retval.samples.append(tmp.samples[0])
             else:
                 retval.samples.append(None)
