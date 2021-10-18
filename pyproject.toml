@@ -1,0 +1,21 @@
+[tool.poetry]
+authors = ["Michael Statt <michael.statt@modelyst.io>"]
+description = "The core codebase for the HELAO High Throughoutput Experimentation code base."
+name = "helaocore"
+version = "0.1.0"
+
+[tool.poetry.dependencies]
+python = ">=3.7,<4.0"
+pydantic = "^1.8.2"
+
+[tool.poetry.dev-dependencies]
+pytest-sugar = "^0.9.4"
+pytest = "^6.2.5"
+mypy = "^0.910"
+flake8 = "^4.0.1"
+black = "^21.9b0"
+isort = "^5.9.3"
+
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0"]
