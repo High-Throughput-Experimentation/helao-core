@@ -9,5 +9,12 @@ def cleanupdict(d):
             if len(nested.keys()) > 0:
                 clean[k] = nested
         elif v is not None:
-            clean[k] = v
+            if isinstance(v, list):
+                if len(v) !=0:
+                    clean[k] = v    
+            elif isinstance(v, str):
+                if len(v) !=0:
+                    clean[k] = v
+            else:
+                clean[k] = v
     return clean

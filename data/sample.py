@@ -200,6 +200,7 @@ class _BaseSampleAPI(object):
     
             self._close_db()
         await self.count_samples() # has also a separate lock
+        self._base.print_message(f" '{self._sample_type}' db initialized")
 
 
     async def count_samples(self):
@@ -231,11 +232,28 @@ class _BaseSampleAPI(object):
             self._open_db()
 
             for i, sample in enumerate(samples.samples):
-                self._base.print_message(f"getting sample {self._sample_type} {sample.sample_no}", info = True)
-                await asyncio.sleep(0.001)
-                retdf = pd.read_sql_query(f"""select * from {self._sample_type} where idx={sample.sample_no};""", con=self._con)
-                retsample = self._df_to_sample(retdf)
-                ret_samples.samples.append(retsample)
+                if sample.sample_no < 0: # get sample from back
+                    pass
+                    self._cur.execute(f"select count(idx) from {self._sample_type};")
+                    counts = self._cur.fetchone()[0]
+                    if counts > abs(sample.sample_no):
+                        self._base.print_message(f"getting sample {self._sample_type} {counts+sample.sample_no+1}", info = True)
+                        await asyncio.sleep(0.001)
+                        retdf = pd.read_sql_query(f"""select * from {self._sample_type} where idx={counts+sample.sample_no+1};""", con=self._con)
+                        retsample = self._df_to_sample(retdf)
+                        ret_samples.samples.append(retsample)
+                    else:
+                        self._base.print_message("sample '{sample.sample_no}' does not exist yet", info = True)
+                        ret_samples.samples.append(None)
+                elif sample.sample_no > 0: # get sample from front
+                    self._base.print_message(f"getting sample {self._sample_type} {sample.sample_no}", info = True)
+                    await asyncio.sleep(0.001)
+                    retdf = pd.read_sql_query(f"""select * from {self._sample_type} where idx={sample.sample_no};""", con=self._con)
+                    retsample = self._df_to_sample(retdf)
+                    ret_samples.samples.append(retsample)
+                else:
+                    self._base.print_message("zero is not supported", info = True)
+                    ret_samples.samples.append(None)
             self._close_db()
         return ret_samples
 
@@ -508,6 +526,7 @@ class UnifiedSampleDataAPI():
         await self.liquidAPI.init_db()
         await self.gasAPI.init_db()
         await self.assemblyAPI.init_db()
+        self._base.print_message("unified db initialized")
 
         
     async def new_sample(self, samples: hcms.SampleList = hcms.SampleList()):
@@ -527,7 +546,7 @@ class UnifiedSampleDataAPI():
                 tmp = await self.gasAPI.new_sample(hcms.SampleList(samples = [sample]))
                 retval.samples.append(tmp.samples[0])
             elif isinstance(sample, hcms.AssemblySample):
-                tmp = await self.assembkyAPI.new_sample(hcms.SampleList(samples = [sample]))
+                tmp = await self.assemblyAPI.new_sample(hcms.SampleList(samples = [sample]))
                 retval.samples.append(tmp.samples[0])
             else:
                 retval.samples.append(None)
@@ -564,4 +583,3 @@ class UnifiedSampleDataAPI():
         
 
         return retval
-        

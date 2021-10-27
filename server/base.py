@@ -1029,6 +1029,8 @@ class Base(object):
                 samples = [samples]
 
             for sample in samples:
+                if sample is None:
+                    continue
                 if inheritance is None:
                     if sample.inheritance is None:
                         inheritance = "allow_both"
