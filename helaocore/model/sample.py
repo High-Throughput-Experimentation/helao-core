@@ -90,12 +90,15 @@ class _BaseSample(BaseModel):
     @validator("process_queue_time")
     def validate_process_queue_time(cls, v):
         if v is not None:
-            try:
-                atime = datetime.strptime(v, "%Y%m%d.%H%M%S%f")
-            except ValueError:
-                print_message({}, "model", f"invalid 'process_queue_time': {v}", error=True)
-                raise ValueError("invalid 'process_queue_time'")
-            return atime.strftime("%Y%m%d.%H%M%S%f")
+            if v != "00000000.000000000000":
+                try:
+                    atime = datetime.strptime(v, "%Y%m%d.%H%M%S%f")
+                except ValueError:
+                    print_message({}, "model", f"invalid 'process_queue_time': {v}", error=True)
+                    raise ValueError("invalid 'process_queue_time'")
+                return atime.strftime("%Y%m%d.%H%M%S%f")
+            else:
+                return v
         else:
             return None
 

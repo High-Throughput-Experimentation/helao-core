@@ -263,18 +263,27 @@ class LiquidSampleAPI(_BaseSampleAPI):
             extra_columns="volume_ml REAL NOT NULL, ph REAL",
         )
 
+
     async def _key_checks(self, sample):
         if sample.volume_ml is None:
             sample.volume_ml = 0.0
         return sample
+
 
     async def old_jsondb_to_sqlitedb(self):
         old_liquid_sample_db = OldLiquidSampleAPI(self._base, self._dbfilepath)
         counts = await old_liquid_sample_db.count_samples()
         self._base.print_message(f"old db sample count: {counts}", info=True)
         for i in range(counts):
-            liquid_sample_jsondict = await old_liquid_sample_db.get_sample(i + 1)
-            self.new_sample_nowait(hcms.LiquidSample(**liquid_sample_jsondict), use_supplied_no=True)
+            sample = hcms.LiquidSample(**{"sample_no":i + 1,"machine_name":gethostname()})
+            sample = await old_liquid_sample_db.get_sample(sample)
+            sample.server_name = "PAL"
+            sample.machine_name = gethostname()
+            sample.global_label = sample.get_global_label()
+            sample.sample_creation_timecode = 0
+            sample.process_queue_time = "00000000.000000000000"
+            # sample.process_queue_time = "12345678.123456789012"
+            await self.new_sample(hcms.SampleList(samples = [sample]))
 
 
 class GasSampleAPI(_BaseSampleAPI):
@@ -469,6 +478,25 @@ class OldLiquidSampleAPI:
 
             liquid_sample_jsondict = await load_json_file(filename, 1)
             # fix for old db version
+            
+            comment = "old_comment:"+liquid_sample_jsondict.get("comment","")
+            comment += "; plate_id:"+str(liquid_sample_jsondict.get("plate_id",""))
+            comment += "; sample_no:"+str(liquid_sample_jsondict.get("sample_no",""))
+            liquid_sample_jsondict.update({"comment":comment})
+            
+            # the action time was something different and doesn't map
+            # to any new fields
+            del liquid_sample_jsondict["action_time"]
+
+            volume_mL = liquid_sample_jsondict.get("volume_mL",0.0)
+            liquid_sample_jsondict.update({"volume_ml":volume_mL})
+            source = liquid_sample_jsondict.get("source","")
+            source = source[0]
+            if source != "":
+                source = f"{gethostname()}__liquid__{source}"
+                
+            liquid_sample_jsondict.update({"source":source})
+
             if "id" in liquid_sample_jsondict:  # old v1
                 # liquid_sample_jsondict["plate_sample_no"] = liquid_sample_jsondict["sample_no"]
                 liquid_sample_jsondict["sample_no"] = liquid_sample_jsondict["id"]
