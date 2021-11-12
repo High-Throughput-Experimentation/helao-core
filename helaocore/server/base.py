@@ -810,13 +810,22 @@ class Base(object):
                                         )
 
                                     if type(sample_data) is dict:
+                                        try:
+                                            output_str = json.dumps(sample_data)
+                                        except TypeError:
+                                            self.base.print_message(
+                                            " ... Data is not json serializable.",
+                                            error=True,
+                                            )
+                                            output_str = "Error: data was not serializable."
                                         await self.write_live_data(
-                                            output_str=json.dumps(sample_data),
+                                            output_str=output_str,
                                             file_conn_key=sample,
                                         )
                                     else:
                                         await self.write_live_data(
-                                            output_str=sample_data, file_conn_key=sample
+                                            output_str=sample_data, 
+                                            file_conn_key=sample
                                         )
                             else:
                                 self.base.print_message(
