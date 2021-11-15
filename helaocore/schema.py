@@ -41,7 +41,7 @@ class cProcess_group(object):
 
 
 
-        self.process_group_timestamp = imports.get("process_group_timestamp", None)
+        self.sequence_timestamp = imports.get("sequence_timestamp", None)
         self.process_group_label = imports.get("process_group_label", "noLabel")
         self.access = imports.get("access", "hte")
         self.sequence_name = imports.get("sequence_name", None)
@@ -89,7 +89,7 @@ class cProcess_group(object):
                 info=True,
             )
         else:
-            self.sequence_uuid = gen_uuid(label=machine_name, timestamp=self.process_group_timestamp)
+            self.sequence_uuid = gen_uuid(label=machine_name, timestamp=self.sequence_timestamp)
             print_message(
                 {},
                 "process_group",
@@ -100,7 +100,7 @@ class cProcess_group(object):
     def set_dtime(self, offset: float = 0):
         dtime = datetime.now()
         dtime = datetime.fromtimestamp(dtime.timestamp() + offset)
-        self.process_group_timestamp = dtime.strftime("%Y%m%d.%H%M%S%f")
+        self.sequence_timestamp = dtime.strftime("%Y%m%d.%H%M%S%f")
 
 
 class cProcess(cProcess_group):

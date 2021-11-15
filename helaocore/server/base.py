@@ -49,9 +49,9 @@ class Base(object):
 
     The data writing method will update a class attribute with the currently open file.
     For a given root directory, files and folders will be written as follows:
-    {%y.%j}/  # process_group_date year.weeknum
-        {%Y%m%d}/  # process_group_date
-            {%H%M%S}__{process_group_label}/  # process_group_time
+    {%y.%j}/  # sequence_date year.weeknum
+        {%Y%m%d}/  # sequence_date
+            {%H%M%S}__{sequence_label}/  # sequence_time
                 {%Y%m%d.%H%M%S}__{process_server_name}__{process_name}__{process_uuid}/
                     {filename}.{ext}
                     {%Y%m%d.%H%M%S%f}.prc  # process_datetime
@@ -402,11 +402,11 @@ class Base(object):
         self.status_logger.cancel()
         self.ntp_syncer.cancel()
 
-    async def write_to_prg(self, prg_dict: dict, process_group):
-        process_group_timestamp = process_group.process_group_timestamp
-        process_group_dir = self.get_process_group_dir(process_group)
-        output_path = os.path.join(self.save_root, process_group_dir)
-        output_file = os.path.join(output_path, f"{process_group_timestamp}.prg")
+    async def write_to_prg(self, prg_dict: dict, sequence):
+        sequence_timestamp = sequence.sequence_timestamp
+        sequence_dir = self.get_sequence_dir(sequence)
+        output_path = os.path.join(self.save_root, sequence_dir)
+        output_file = os.path.join(output_path, f"{sequence_timestamp}.prg")
 
         self.print_message(f" ... writing to prg: {output_path}")
         output_str = pyaml.dump(prg_dict, sort_dicts=False)
@@ -422,15 +422,15 @@ class Base(object):
         await file_instance.write(output_str)
         await file_instance.close()
 
-    def get_process_group_dir(self, process_group):
-        """accepts process or process_group object"""
-        process_group_date = process_group.process_group_timestamp.split(".")[0]
-        process_group_time = process_group.process_group_timestamp.split(".")[-1]
-        year_week = strftime("%y.%U", strptime(process_group_date, "%Y%m%d"))
+    def get_sequence_dir(self, sequence):
+        """accepts process or sequence object"""
+        sequence_date = sequence.sequence_timestamp.split(".")[0]
+        sequence_time = sequence.sequence_timestamp.split(".")[-1]
+        year_week = strftime("%y.%U", strptime(sequence_date, "%Y%m%d"))
         return os.path.join(
             year_week,
-            process_group_date,
-            f"{process_group_time}_{process_group.process_group_label}",
+            sequence_date,
+            f"{sequence_time}_{sequence.sequence_label}",
         )
 
     class Active(object):
@@ -456,7 +456,7 @@ class Base(object):
             self.prc_file = None
             self.manual_prg_file = None
             self.manual = False
-            self.process_group_dir = None
+            self.sequence_dir = None
 
             if file_sample_keys is None:
                 self.process.file_sample_keys = ["None"]
@@ -487,12 +487,11 @@ class Base(object):
             # any data is pushed to avoid a forced header end write
             self.finished_hlo_header = dict()
             self.file_conn = dict()
-            # if cProcess is not created from process_group+sequence, cProcess is independent
-            if self.process.process_group_timestamp is None:
+            if self.process.sequence_timestamp is None:
                 self.manual = True
                 self.base.print_message(" ... Manual Process.", info=True)
                 self.process.set_dtime(offset=self.base.ntp_offset)
-                self.process.gen_uuid_process_group(self.base.hostname)
+                self.process.gen_uuid_sequence(self.base.hostname)
 
             if not self.base.save_root:
                 self.base.print_message(
@@ -510,9 +509,9 @@ class Base(object):
                 if self.process.save_data is True:
                     self.process.save_prc = True
 
-                self.process_group_dir = self.base.get_process_group_dir(self.process)
+                self.sequence_dir = self.base.get_sequence_dir(self.process)
                 self.process.output_dir = os.path.join(
-                    self.process_group_dir,
+                    self.sequence_dir,
                     f"{self.process.process_queue_time}__{self.process.process_server}__{self.process.process_name}__{self.process.process_uuid}",
                 )
 
@@ -535,7 +534,7 @@ class Base(object):
                 access=self.process.access,
                 output_dir=Path(self.process.output_dir).as_posix(),
                 sequence_uuid=self.process.sequence_uuid,
-                process_group_timestamp=self.process.process_group_timestamp,
+                sequence_timestamp=self.process.sequence_timestamp,
                 process_uuid=self.process.process_uuid,
                 process_queue_time=self.process.process_queue_time,
                 process_enum=self.process.process_enum,
@@ -561,8 +560,8 @@ class Base(object):
                         machine_name=gethostname(),
                         access=self.process.access,
                         sequence_uuid=self.process.sequence_uuid,
-                        process_group_timestamp=self.process.process_group_timestamp,
-                        process_group_label=self.process.process_group_label,
+                        sequence_timestamp=self.process.sequence_timestamp,
+                        sequence_label=self.process.sequence_label,
                         technique_name=self.process.technique_name,
                         sequence_name="MANUAL",
                         sequence_params=None,
