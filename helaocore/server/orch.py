@@ -246,7 +246,7 @@ class Orch(Base):
                         orchestrator=self.active_process_group.orch_name,
                         machine_name=gethostname(),
                         access="hte",
-                        process_group_uuid=self.active_process_group.process_group_uuid,
+                        sequence_uuid=self.active_process_group.sequence_uuid,
                         process_group_timestamp=self.active_process_group.process_group_timestamp,
                         process_group_label=self.active_process_group.process_group_label,
                         technique_name=self.active_process_group.technique_name,
@@ -512,10 +512,10 @@ class Orch(Base):
             self.process_group_dq.insert(i=at_index, x=D)
         elif prepend:
             self.process_group_dq.appendleft(D)
-            self.print_message(f" ... process_group {D.process_group_uuid} prepended to queue")
+            self.print_message(f" ... process_group {D.sequence_uuid} prepended to queue")
         else:
             self.process_group_dq.append(D)
-            self.print_message(f" ... process_group {D.process_group_uuid} appended to queue")
+            self.print_message(f" ... process_group {D.sequence_uuid} appended to queue")
 
     def list_process_groups(self):
         """Return the current queue of process_group_dq."""
@@ -523,7 +523,7 @@ class Orch(Base):
         process_group_list = [
             hcmr.ReturnProcessGroup(
                 index=i,
-                uid=process_group.process_group_uuid,
+                uid=process_group.sequence_uuid,
                 label=process_group.process_group_label,
                 sequence=process_group.sequence,
                 pars=process_group.sequence_pars,
@@ -544,7 +544,7 @@ class Orch(Base):
             process_group_list = [
                 hcmr.ReturnProcessGroup(
                     index=-1,
-                    uid=process_group.process_group_uuid,
+                    uid=process_group.sequence_uuid,
                     label=process_group.process_group_label,
                     sequence=process_group.sequence,
                     pars=process_group.sequence_pars,
@@ -625,7 +625,7 @@ class Orch(Base):
         if by_index:
             i = by_index
         elif by_uuid:
-            i = [i for i, D in enumerate(list(self.process_group_dq)) if D.process_group_uuid == by_uuid][0]
+            i = [i for i, D in enumerate(list(self.process_group_dq)) if D.sequence_uuid == by_uuid][0]
         else:
             self.print_message("No arguments given for locating existing process_group to remove.")
             return None

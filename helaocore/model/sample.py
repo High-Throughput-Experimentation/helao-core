@@ -12,6 +12,7 @@ from helaocore.helper import print_message
 from pydantic import BaseModel, validator
 
 
+
 def _sample_model_list_validator(model_list, values, **kwargs):
     """validates samples models in a list"""
 
@@ -66,17 +67,27 @@ def _sample_model_list_validator(model_list, values, **kwargs):
 
 
 class _BaseSample(BaseModel):
-    global_label: Optional[str] = None
-    sample_type: Optional[str] = None
+
+    # Main base parameter which are fixed.
+    # A Sample ref would have no global label 
+    # only a sample_type.
+    # 
+    global_label: Optional[str] = None  #### 
+    sample_type: Optional[str] = None #######
+
+
+
+
+    # additional parameters
     sample_no: Optional[int] = None
+    machine_name: Optional[str] = None
     sample_creation_timecode: Optional[int] = None  # epoch in ns
     sample_position: Optional[str] = None
-    machine_name: Optional[str] = None
     sample_hash: Optional[str] = None
     last_update: Optional[int] = None  # epoch in ns
     inheritance: Optional[str] = None  # only for internal use
     status: Union[List[str], str] = None  # only for internal use
-    process_group_uuid: Optional[str] = None
+    sequence_uuid: Optional[str] = None
     process_uuid: Optional[str] = None
     process_queue_time: Optional[str] = None  # "%Y%m%d.%H%M%S%f"
     server_name: Optional[str] = None
@@ -86,6 +97,7 @@ class _BaseSample(BaseModel):
     lot_number: Optional[List[str]] = []
     source: Union[List[str], str] = None
     comment: Optional[str] = None
+
 
     @validator("process_queue_time")
     def validate_process_queue_time(cls, v):
@@ -110,6 +122,10 @@ class _BaseSample(BaseModel):
             "machine_name": self.machine_name if self.machine_name is not None else gethostname(),
             "sample_creation_timecode": self.sample_creation_timecode,
         }
+
+
+    def get_global_label(self):
+         pass
 
 
 class LiquidSample(_BaseSample):

@@ -15,6 +15,7 @@ import helaocore.model.sample as hcms
 from helaocore.helper import gen_uuid, print_message
 
 
+# rename later to Sequence
 class cProcess_group(object):
     "Sample-process grouping class."
 
@@ -27,7 +28,15 @@ class cProcess_group(object):
         self.orch_name = imports.get("orch_name", "orchestrator")
         self.technique_name = imports.get("technique_name", None)
         self.machine_name = imports.get("machine_name", None)
-        self.process_group_uuid = imports.get("process_group_uuid", None)
+        
+        
+        
+        # self.process_group_uuid = imports.get("process_group_uuid", None) ### never change
+        # change too 
+        self.sequence_uuid = imports.get("sequence_uuid", None) ### never change
+        
+        
+        
         self.process_group_timestamp = imports.get("process_group_timestamp", None)
         self.process_group_label = imports.get("process_group_label", "noLabel")
         self.access = imports.get("access", "hte")
@@ -66,19 +75,19 @@ class cProcess_group(object):
 
     def gen_uuid_process_group(self, machine_name: str):
         "server_name can be any string used in generating random uuid"
-        if self.process_group_uuid:
+        if self.sequence_uuid:
             print_message(
                 {},
                 "process_group",
-                f"process_group_uuid: {self.process_group_uuid} already exists",
+                f"sequence_uuid: {self.sequence_uuid} already exists",
                 info=True,
             )
         else:
-            self.process_group_uuid = gen_uuid(label=machine_name, timestamp=self.process_group_timestamp)
+            self.sequence_uuid = gen_uuid(label=machine_name, timestamp=self.process_group_timestamp)
             print_message(
                 {},
                 "process_group",
-                f"process_group_uuid: {self.process_group_uuid} assigned",
+                f"sequence_uuid: {self.sequence_uuid} assigned",
                 info=True,
             )
 
@@ -98,7 +107,17 @@ class cProcess(cProcess_group):
         super().__init__(inputdict)  # grab process_group keys
         imports = {}
         imports.update(inputdict)
+        
+        # machine_name
+        
+        # timestamp # execution time, not the queue time
+        # ordering # enum
+        #
+        
         self.process_uuid = imports.get("process_uuid", None)
+
+
+
         self.process_queue_time = imports.get("process_queue_time", None)
         self.process_server = imports.get("process_server", None)
         self.process_name = imports.get("process_name", None)
