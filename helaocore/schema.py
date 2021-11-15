@@ -42,7 +42,7 @@ class cProcess_group(object):
 
 
         self.sequence_timestamp = imports.get("sequence_timestamp", None)
-        self.process_group_label = imports.get("process_group_label", "noLabel")
+        self.sequence_label = imports.get("sequence_label", "noLabel")
         self.access = imports.get("access", "hte")
         self.sequence_name = imports.get("sequence_name", None)
         self.sequence_params = imports.get("sequence_params", {})
