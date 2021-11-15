@@ -19,7 +19,7 @@ from pydantic import BaseModel
 
 # TODO: deprecate return* models in favor of original models.
 class ReturnProcessGroup(BaseModel):
-    """Return class for queried cProcess_group objects."""
+    """Return class for queried Sequence objects."""
 
     index: int
     uid: Union[str, None]
@@ -30,7 +30,7 @@ class ReturnProcessGroup(BaseModel):
 
 
 class ReturnProcessGroupList(BaseModel):
-    """Return class for queried cProcess_group list."""
+    """Return class for queried Sequence list."""
 
     process_groups: List[ReturnProcessGroup]
 

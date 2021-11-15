@@ -16,7 +16,7 @@ import helaocore.model.returnmodel as hcmr
 import helaocore.server.version as version
 
 from helaocore.helper import MultisubscriberQueue, cleanupdict
-from helaocore.schema import cProcess, cProcess_group
+from helaocore.schema import cProcess, Sequence
 
 from .api import HelaoFastAPI
 from .base import Base
@@ -475,7 +475,7 @@ class Orch(Base):
         at_index: Optional[int] = None,
     ):
 
-        D = cProcess_group(
+        D = Sequence(
             {
                 "orch_name": orch_name,
                 "process_group_label": process_group_label,
