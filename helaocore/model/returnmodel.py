@@ -24,8 +24,8 @@ class ReturnProcessGroup(BaseModel):
     index: int
     uid: Union[str, None]
     label: str
-    sequence: str
-    pars: dict
+    sequence_name: str
+    sequence_params: dict
     access: str
 
 
@@ -42,7 +42,7 @@ class ReturnProcess(BaseModel):
     uid: Union[str, None]
     server: str
     process: str
-    pars: dict
+    sequene_params: dict
     preempt: int
 
 
@@ -61,7 +61,7 @@ class ReturnFinishedProcess(BaseModel):
     process_group_timestamp: str
     sequence_uuid: str
     process_group_label: str
-    sequence: str
+    sequence_name: str
     sequence_params: dict
     result_dict: dict
     process_server: str
@@ -94,7 +94,7 @@ class ReturnRunningProcess(BaseModel):
     process_group_timestamp: str
     sequence_uuid: str
     process_group_label: str
-    sequence: str
+    sequence_name: str
     sequence_params: dict
     result_dict: dict
     process_server: str

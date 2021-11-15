@@ -132,7 +132,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
     async def append_process_group(
         orch_name: str = None,
         process_group_label: str = None,
-        sequence: str = None,
+        sequence_name: str = None,
         sequence_params: dict = {},
         result_dict: dict = {},
         access: str = "hte",
@@ -144,7 +144,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         orch_name: Orchestrator server key (optional), as str.
         plate_id: The sample's plate id (no checksum), as int.
         sample_no: A sample number, as int.
-        sequence: The name of the sequence for building the process list, as str.
+        sequence_name: The name of the sequence for building the process list, as str.
         sequence_params: sequence parameters, as dict.
         result_dict: process responses dict keyed by process_enum.
         access: Access control group, as str.
@@ -155,7 +155,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         await app.orch.add_process_group(
             orch_name,
             process_group_label,
-            sequence,
+            sequence_name,
             sequence_params,
             result_dict,
             access,
@@ -167,7 +167,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
     async def prepend_process_group(
         orch_name: str = None,
         process_group_label: str = None,
-        sequence: str = None,
+        sequence_name: str = None,
         sequence_params: dict = {},
         result_dict: dict = {},
         access: str = "hte",
@@ -179,7 +179,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         orch_name: Orchestrator server key (optional), as str.
         plate_id: The sample's plate id (no checksum), as int.
         sample_no: A sample number, as int.
-        sequence: The name of the sequence for building the process list, as str.
+        sequence_name: The name of the sequence for building the process list, as str.
         sequence_params: sequence parameters, as dict.
         result_dict: process responses dict keyed by process_enum.
         access: Access control group, as str.
@@ -190,7 +190,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         await app.orch.add_process_group(
             orch_name,
             process_group_label,
-            sequence,
+            sequence_name,
             sequence_params,
             result_dict,
             access,
@@ -204,7 +204,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         process_group_dict: dict = None,
         orch_name: str = None,
         process_group_label: str = None,
-        sequence: str = None,
+        sequence_name: str = None,
         sequence_params: dict = {},
         result_dict: dict = {},
         access: str = "hte",
@@ -217,7 +217,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         orch_name: Orchestrator server key (optional), as str.
         plate_id: The sample's plate id (no checksum), as int.
         sample_no: A sample number, as int.
-        sequence: The name of the sequence for building the process list, as str.
+        sequence_name: The name of the sequence for building the process list, as str.
         sequence_params: sequence parameters, as dict.
         result_dict: process responses dict keyed by process_enum.
         access: Access control group, as str.
@@ -229,7 +229,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
             process_group_dict,
             orch_name,
             process_group_label,
-            sequence,
+            sequence_name,
             sequence_params,
             result_dict,
             access,

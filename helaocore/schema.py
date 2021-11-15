@@ -37,15 +37,17 @@ class cProcess_group(object):
 
         # others parameter
         self.orch_name = imports.get("orch_name", "orchestrator")
-        self.technique_name = imports.get("technique_name", None)
+
 
 
 
         self.process_group_timestamp = imports.get("process_group_timestamp", None)
         self.process_group_label = imports.get("process_group_label", "noLabel")
         self.access = imports.get("access", "hte")
-        self.sequencer = imports.get("sequencer", None)  # TODO: rename to "sequencer"
-        self.sequence_params = imports.get("sequence_params", {})  # TODO: rename to "sequencer_params"
+        self.sequence_name = imports.get("sequence_name", None)
+        self.sequence_params = imports.get("sequence_params", {})
+        # name of "instrument": sdc, anec, adss etc. defined in world config
+        self.technique_name = imports.get("technique_name", None)
 
         # TODO: make the following attributes private
         self.result_dict = {}  # imports.get("result_dict", {})# this gets big really fast, bad for debugging
