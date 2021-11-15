@@ -25,18 +25,15 @@ class cProcess_group(object):
     ):
         imports = {}
         imports.update(inputdict)
+
+
+        # main sequence parameters
+        self.sequence_uuid = imports.get("sequence_uuid", None) #
+
+        # others parameter
         self.orch_name = imports.get("orch_name", "orchestrator")
         self.technique_name = imports.get("technique_name", None)
         self.machine_name = imports.get("machine_name", None)
-        
-        
-        
-        # self.process_group_uuid = imports.get("process_group_uuid", None) ### never change
-        # change too 
-        self.sequence_uuid = imports.get("sequence_uuid", None) ### never change
-        
-        
-        
         self.process_group_timestamp = imports.get("process_group_timestamp", None)
         self.process_group_label = imports.get("process_group_label", "noLabel")
         self.access = imports.get("access", "hte")

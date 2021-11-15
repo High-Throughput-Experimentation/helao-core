@@ -18,7 +18,7 @@ class PrcFile(BaseModel):
     machine_name: str
     access: str
     output_dir: str
-    process_group_uuid: str
+    sequence_uuid: str
     process_group_timestamp: str
     process_uuid: str
     process_queue_time: str
@@ -36,7 +36,7 @@ class PrgFile(BaseModel):
     orchestrator: str
     machine_name: str
     access: str
-    process_group_uuid: str
+    sequence_uuid: str
     process_group_timestamp: str
     process_group_label: str
     technique_name: str

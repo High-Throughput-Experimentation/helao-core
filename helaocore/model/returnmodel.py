@@ -59,7 +59,7 @@ class ReturnFinishedProcess(BaseModel):
     access: str
     orch_name: str
     process_group_timestamp: str
-    process_group_uuid: str
+    sequence_uuid: str
     process_group_label: str
     sequence: str
     sequence_pars: dict
@@ -92,7 +92,7 @@ class ReturnRunningProcess(BaseModel):
     access: str
     orch_name: str
     process_group_timestamp: str
-    process_group_uuid: str
+    sequence_uuid: str
     process_group_label: str
     sequence: str
     sequence_pars: dict
