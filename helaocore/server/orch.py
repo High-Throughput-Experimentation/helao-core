@@ -575,10 +575,10 @@ class Orch(Base):
                     process_list.append(
                         hcmr.ReturnProcess(
                             index=index,
-                            uid=process_uuid,
+                            process_uuid=process_uuid,
                             server=process_serv,
-                            process=process_name,
-                            pars=dict(),
+                            process_name=process_name,
+                            process_params=dict(),
                             preempt=-1,
                         )
                     )
@@ -591,10 +591,10 @@ class Orch(Base):
         process_list = [
             hcmr.ReturnProcess(
                 index=i,
-                uid=process.process_uuid,
+                process_uuid=process.process_uuid,
                 server=process.process_server,
-                process=process.process_name,
-                pars=process.process_params,
+                process_name=process.process_name,
+                process_params=process.process_params,
                 preempt=process.start_condition,
             )
             for i, process in enumerate(self.process_dq)

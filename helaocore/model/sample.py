@@ -72,8 +72,8 @@ class _BaseSample(BaseModel):
     # A Sample ref would have no global label 
     # only a sample_type.
     # 
-    global_label: Optional[str] = None  #### 
-    sample_type: Optional[str] = None #######
+    global_label: Optional[str] = None
+    sample_type: Optional[str] = None
 
 
 
@@ -89,7 +89,7 @@ class _BaseSample(BaseModel):
     status: Union[List[str], str] = None  # only for internal use
     sequence_uuid: Optional[str] = None
     process_uuid: Optional[str] = None
-    process_queue_time: Optional[str] = None  # "%Y%m%d.%H%M%S%f"
+    process_timestamp: Optional[str] = None  # "%Y%m%d.%H%M%S%f"
     server_name: Optional[str] = None
     chemical: Optional[List[str]] = []
     mass: Optional[List[str]] = []
@@ -99,15 +99,15 @@ class _BaseSample(BaseModel):
     comment: Optional[str] = None
 
 
-    @validator("process_queue_time")
-    def validate_process_queue_time(cls, v):
+    @validator("process_timestamp")
+    def validate_process_timestamp(cls, v):
         if v is not None:
             if v != "00000000.000000000000":
                 try:
                     atime = datetime.strptime(v, "%Y%m%d.%H%M%S%f")
                 except ValueError:
-                    print_message({}, "model", f"invalid 'process_queue_time': {v}", error=True)
-                    raise ValueError("invalid 'process_queue_time'")
+                    print_message({}, "model", f"invalid 'process_timestamp': {v}", error=True)
+                    raise ValueError("invalid 'process_timestamp'")
                 return atime.strftime("%Y%m%d.%H%M%S%f")
             else:
                 return v

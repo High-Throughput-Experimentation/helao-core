@@ -34,7 +34,7 @@ class _BaseSampleAPI(object):
               status TEXT,
               sequence_uuid VARCHAR(255),
               process_uuid VARCHAR(255),
-              process_queue_time VARCHAR(255),
+              process_timestamp VARCHAR(255),
               server_name VARCHAR(255),
               chemical TEXT,
               mass TEXT,
@@ -117,9 +117,9 @@ class _BaseSampleAPI(object):
                 sample.machine_name = self._base.hostname
             if sample.server_name is None:
                 sample.server_name = self._base.server_name
-            if sample.process_queue_time is None:
+            if sample.process_timestamp is None:
                 atime = datetime.fromtimestamp(datetime.now().timestamp() + self._base.ntp_offset)
-                sample.process_queue_time = atime.strftime("%Y%m%d.%H%M%S%f")
+                sample.process_timestamp = atime.strftime("%Y%m%d.%H%M%S%f")
             if sample.sample_creation_timecode is None:
                 sample.sample_creation_timecode = self._base.set_realtime_nowait()
             if sample.last_update is None:
@@ -281,8 +281,8 @@ class LiquidSampleAPI(_BaseSampleAPI):
             sample.machine_name = gethostname()
             sample.global_label = sample.get_global_label()
             sample.sample_creation_timecode = 0
-            sample.process_queue_time = "00000000.000000000000"
-            # sample.process_queue_time = "12345678.123456789012"
+            # sample.process_timestamp = "00000000.000000000000"
+            # sample.process_timestamp = "12345678.123456789012"
             await self.new_sample(hcms.SampleList(samples = [sample]))
 
 
@@ -486,7 +486,11 @@ class OldLiquidSampleAPI:
             
             # the action time was something different and doesn't map
             # to any new fields
-            del liquid_sample_jsondict["action_time"]
+            # del liquid_sample_jsondict["action_time"]
+            liquid_sample_jsondict.update({"process_timestamp":liquid_sample_jsondict.get("action_time","00000000.000000000000")})
+            
+            
+            
 
             volume_mL = liquid_sample_jsondict.get("volume_mL",0.0)
             liquid_sample_jsondict.update({"volume_ml":volume_mL})

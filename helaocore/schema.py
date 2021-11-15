@@ -121,12 +121,15 @@ class Process(Sequence):
         # timestamp # execution time, not the queue time
         # ordering # enum
         #
-        
+
+
+
+        # fixed base process parameters
         self.process_uuid = imports.get("process_uuid", None)
+        self.process_timestamp = None
 
 
-
-        self.process_queue_time = imports.get("process_queue_time", None)
+        # other parameters
         self.process_server = imports.get("process_server", None)
         self.process_name = imports.get("process_name", None)
         self.process_params = imports.get("process_params", {})
@@ -184,7 +187,7 @@ class Process(Sequence):
         else:
             self.process_uuid = gen_uuid(
                 label=f"{machine_name}_{self.process_name}",
-                timestamp=self.process_queue_time,
+                timestamp=self.process_timestamp,
             )
             print_message({}, "process", f"process_uuid: {self.process_uuid} assigned", info=True)
 
@@ -192,7 +195,7 @@ class Process(Sequence):
         atime = datetime.now()
         if offset is not None:
             atime = datetime.fromtimestamp(atime.timestamp() + offset)
-        self.process_queue_time = atime.strftime("%Y%m%d.%H%M%S%f")
+        self.process_timestamp = atime.strftime("%Y%m%d.%H%M%S%f")
 
 
 class Sequencer(object):

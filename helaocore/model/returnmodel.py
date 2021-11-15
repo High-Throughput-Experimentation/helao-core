@@ -39,10 +39,10 @@ class ReturnProcess(BaseModel):
     """Return class for queried process objects."""
 
     index: int
-    uid: Union[str, None]
+    process_uuid: Union[str, None]
     server: str
-    process: str
-    sequene_params: dict
+    process_name: str
+    process_params: dict
     preempt: int
 
 
@@ -65,7 +65,7 @@ class ReturnFinishedProcess(BaseModel):
     sequence_params: dict
     result_dict: dict
     process_server: str
-    process_queue_time: str
+    process_timestamp: str
     process_real_time: Optional[str]
     process_name: str
     process_params: dict
@@ -98,7 +98,7 @@ class ReturnRunningProcess(BaseModel):
     sequence_params: dict
     result_dict: dict
     process_server: str
-    process_queue_time: str
+    process_timestamp: str
     process_real_time: Optional[str]
     process_name: str
     process_params: dict

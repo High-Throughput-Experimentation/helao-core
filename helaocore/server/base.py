@@ -512,7 +512,7 @@ class Base(object):
                 self.sequence_dir = self.base.get_sequence_dir(self.process)
                 self.process.output_dir = os.path.join(
                     self.sequence_dir,
-                    f"{self.process.process_queue_time}__{self.process.process_server}__{self.process.process_name}__{self.process.process_uuid}",
+                    f"{self.process.process_timestamp}__{self.process.process_server}__{self.process.process_name}__{self.process.process_uuid}",
                 )
 
             self.data_logger = self.base.aloop.create_task(self.log_data_task())
@@ -536,7 +536,7 @@ class Base(object):
                 sequence_uuid=self.process.sequence_uuid,
                 sequence_timestamp=self.process.sequence_timestamp,
                 process_uuid=self.process.process_uuid,
-                process_queue_time=self.process.process_queue_time,
+                process_timestamp=self.process.process_timestamp,
                 process_enum=self.process.process_enum,
                 process_name=self.process.process_name,
                 process_abbr=self.process.process_abbr,
@@ -908,7 +908,7 @@ class Base(object):
             output_path = os.path.join(
                 self.base.save_root,
                 self.process.output_dir,
-                f"{self.process.process_queue_time}.prc",
+                f"{self.process.process_timestamp}.prc",
             )
             self.base.print_message(f" ... writing to prc: {output_path}")
             # self.base.print_message(" ... writing:",prc_dict)

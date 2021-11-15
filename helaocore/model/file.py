@@ -21,7 +21,7 @@ class PrcFile(BaseModel):
     sequence_uuid: str
     sequence_timestamp: str
     process_uuid: str
-    process_queue_time: str
+    process_timestamp: str
     process_enum: Optional[float] = 0.0
     process_name: str
     process_abbr: Optional[str] = None
