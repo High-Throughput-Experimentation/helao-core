@@ -3,8 +3,8 @@ Return models returned in API response. Will be deprecated.
 
 """
 __all__ = [
-    "ReturnProcessGroup",
-    "ReturnProcessGroupList",
+    "ReturnSequence",
+    "ReturnSequenceList",
     "ReturnProcess",
     "ReturnProcessList",
     "ReturnFinishedProcess",
@@ -18,21 +18,21 @@ from pydantic import BaseModel
 
 
 # TODO: deprecate return* models in favor of original models.
-class ReturnProcessGroup(BaseModel):
+class ReturnSequence(BaseModel):
     """Return class for queried Sequence objects."""
 
     index: int
-    uid: Union[str, None]
-    label: str
+    sequence_uuid: Union[str, None]
+    sequence_label: str
     sequence_name: str
     sequence_params: dict
     access: str
 
 
-class ReturnProcessGroupList(BaseModel):
+class ReturnSequenceList(BaseModel):
     """Return class for queried Sequence list."""
 
-    process_groups: List[ReturnProcessGroup]
+    sequences: List[ReturnSequence]
 
 
 class ReturnProcess(BaseModel):
@@ -58,9 +58,9 @@ class ReturnFinishedProcess(BaseModel):
     technique_name: str
     access: str
     orch_name: str
-    process_group_timestamp: str
+    sequence_timestamp: str
     sequence_uuid: str
-    process_group_label: str
+    sequence_label: str
     sequence_name: str
     sequence_params: dict
     result_dict: dict
@@ -91,9 +91,9 @@ class ReturnRunningProcess(BaseModel):
     technique_name: str
     access: str
     orch_name: str
-    process_group_timestamp: str
+    sequence_timestamp: str
     sequence_uuid: str
-    process_group_label: str
+    sequence_label: str
     sequence_name: str
     sequence_params: dict
     result_dict: dict

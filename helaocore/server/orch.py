@@ -55,12 +55,12 @@ class Orch(Base):
             sequence_path=None,
             server_name=self.server_name,
         )
-        # instantiate process_group/experiment queue, process queue
-        self.process_group_dq = deque([])
+        # instantiate sequence/experiment queue, process queue
+        self.sequence_dq = deque([])
         self.process_dq = deque([])
         self.dispatched_processes = {}
-        self.active_process_group = None
-        self.last_process_group = None
+        self.active_sequence = None
+        self.last_sequence = None
         self.prg_file = None
 
         # compilation of process server status dicts
@@ -135,7 +135,7 @@ class Orch(Base):
             self.init_success = True
         else:
             self.print_message(
-                " ... Orchestrator cannot process process_group_dq unless all FastAPI servers in config file are accessible."
+                " ... Orchestrator cannot process sequence_dq unless all FastAPI servers in config file are accessible."
             )
 
     async def update_status(self, process_serv: str, status_dict: dict):
@@ -207,31 +207,31 @@ class Orch(Base):
         return running_states, idle_states
 
     async def dispatch_loop_task(self):
-        """Parse process_group and process queues, and dispatch process_dq while tracking run state flags."""
+        """Parse sequence and process queues, and dispatch process_dq while tracking run state flags."""
         self.print_message(" ... running operator orch")
         self.print_message(f" ... orch status: {self.global_state_str}")
         # clause for resuming paused process list
-        self.print_message(f" ... orch descisions: {self.process_group_dq}")
+        self.print_message(f" ... orch descisions: {self.sequence_dq}")
         try:
             self.loop_state = "started"
-            while self.loop_state == "started" and (self.process_dq or self.process_group_dq):
+            while self.loop_state == "started" and (self.process_dq or self.sequence_dq):
                 self.print_message(f" ... current content of process_dq: {self.process_dq}")
-                self.print_message(f" ... current content of process_group_dq: {self.process_group_dq}")
+                self.print_message(f" ... current content of sequence_dq: {self.sequence_dq}")
                 await asyncio.sleep(
                     0.001
                 )  # allows status changes to affect between process_dq, also enforce unique timestamp
                 if not self.process_dq:
-                    self.print_message(" ... getting process_dq from new process_group")
+                    self.print_message(" ... getting process_dq from new sequence")
                     # generate uids when populating, generate timestamp when acquring
-                    self.last_process_group = copy(self.active_process_group)
-                    self.active_process_group = self.process_group_dq.popleft()
-                    self.active_process_group.technique_name = self.technique_name
-                    self.active_process_group.machine_name = self.hostname
-                    self.active_process_group.set_dtime(offset=self.ntp_offset)
-                    self.active_process_group.gen_uuid_process_group(self.hostname)
-                    sequence_name = self.active_process_group.sequence_name
-                    # additional sequence params should be stored in process_group.sequence_params
-                    unpacked_acts = self.process_lib[sequence_name](self.active_process_group)
+                    self.last_sequence = copy(self.active_sequence)
+                    self.active_sequence = self.sequence_dq.popleft()
+                    self.active_sequence.technique_name = self.technique_name
+                    self.active_sequence.machine_name = self.hostname
+                    self.active_sequence.set_dtime(offset=self.ntp_offset)
+                    self.active_sequence.gen_uuid_sequence(self.hostname)
+                    sequence_name = self.active_sequence.sequence_name
+                    # additional sequence params should be stored in sequence.sequence_params
+                    unpacked_acts = self.process_lib[sequence_name](self.active_sequence)
                     for i, act in enumerate(unpacked_acts):
                         act.process_enum = float(i)  # f"{i}"
                         # act.gen_uuid()
@@ -239,22 +239,22 @@ class Orch(Base):
                     self.process_dq = deque(unpacked_acts)
                     self.dispatched_processes = {}
                     self.print_message(f" ... got: {self.process_dq}")
-                    self.print_message(f" ... optional params: {self.active_process_group.sequence_params}")
+                    self.print_message(f" ... optional params: {self.active_sequence.sequence_params}")
 
                     self.prg_file = hcmf.PrgFile(
                         hlo_version=f"{version.hlo_version}",
-                        orchestrator=self.active_process_group.orch_name,
+                        orchestrator=self.active_sequence.orch_name,
                         machine_name=gethostname(),
                         access="hte",
-                        sequence_uuid=self.active_process_group.sequence_uuid,
-                        process_group_timestamp=self.active_process_group.process_group_timestamp,
-                        process_group_label=self.active_process_group.process_group_label,
-                        technique_name=self.active_process_group.technique_name,
-                        sequence_name=self.active_process_group.sequence_name,
-                        sequence_params=self.active_process_group.sequence_params,
+                        sequence_uuid=self.active_sequence.sequence_uuid,
+                        sequence_timestamp=self.active_sequence.sequence_timestamp,
+                        sequence_label=self.active_sequence.sequence_label,
+                        technique_name=self.active_sequence.technique_name,
+                        sequence_name=self.active_sequence.sequence_name,
+                        sequence_params=self.active_sequence.sequence_params,
                         sequence_model=None,
                     )
-                    await self.write_active_process_group_prg()
+                    await self.write_active_sequence_prg()
 
                 else:
                     if self.loop_intent == "stop":
@@ -268,15 +268,15 @@ class Orch(Base):
                                 await self.intend_none()
                                 break
                     elif self.loop_intent == "skip":
-                        # clear process queue, forcing next process_group
+                        # clear process queue, forcing next sequence
                         self.process_dq.clear()
                         await self.intend_none()
-                        self.print_message(" ... skipping to next process_group")
+                        self.print_message(" ... skipping to next sequence")
                     else:
                         # all process blocking is handled like preempt, check cProcess requirements
                         A = self.process_dq.popleft()
                         # append previous results to current process
-                        A.result_dict = self.active_process_group.result_dict
+                        A.result_dict = self.active_sequence.result_dict
 
                         # see async_process_dispatcher for unpacking
                         if isinstance(A.start_condition, int):
@@ -356,8 +356,8 @@ class Orch(Base):
                         # copy requested global param to process params
                         for k, v in A.from_global_params.items():
                             self.print_message(f"{k}:{v}")
-                            if k in self.active_process_group.global_params.keys():
-                                A.process_params.update({v: self.active_process_group.global_params[k]})
+                            if k in self.active_sequence.global_params.keys():
+                                A.process_params.update({v: self.active_sequence.global_params[k]})
 
                         self.print_message(" ... dispatching process", A.as_dict())
                         self.print_message(
@@ -366,25 +366,25 @@ class Orch(Base):
                         # keep running list of dispatched processes
                         self.dispatched_processes[A.process_enum] = copy(A)
                         result = await async_process_dispatcher(self.world_cfg, A)
-                        self.active_process_group.result_dict[A.process_enum] = result
+                        self.active_sequence.result_dict[A.process_enum] = result
 
-                        self.print_message(" ... copying global vars back to process_group")
+                        self.print_message(" ... copying global vars back to sequence")
                         # self.print_message(result)
                         if "to_global_params" in result:
                             for k in result["to_global_params"]:
                                 if k in result["process_params"].keys():
                                     if (
                                         result["process_params"][k] is None
-                                        and k in self.active_process_group.global_params.keys()
+                                        and k in self.active_sequence.global_params.keys()
                                     ):
-                                        self.active_process_group.global_params.pop(k)
+                                        self.active_sequence.global_params.pop(k)
                                     else:
-                                        self.active_process_group.global_params.update(
+                                        self.active_sequence.global_params.update(
                                             {k: result["process_params"][k]}
                                         )
-                        self.print_message(" ... done copying global vars back to process_group")
+                        self.print_message(" ... done copying global vars back to sequence")
 
-            self.print_message(" ... process_group queue is empty")
+            self.print_message(" ... sequence queue is empty")
             self.print_message(" ... stopping operator orch")
             self.loop_state = "stopped"
             await self.intend_none()
@@ -463,10 +463,10 @@ class Orch(Base):
             f" ... {len(self.running_uuids)} running process_dq did not fully stop after E-STOP/error was raised"
         )
 
-    async def add_process_group(
+    async def add_sequence(
         self,
         orch_name: str = None,
-        process_group_label: str = None,
+        sequence_label: str = None,
         sequence_name: str = None,
         sequence_params: dict = {},
         result_dict: dict = {},
@@ -478,7 +478,7 @@ class Orch(Base):
         D = Sequence(
             {
                 "orch_name": orch_name,
-                "process_group_label": process_group_label,
+                "sequence_label": sequence_label,
                 "sequence_name": sequence_name,
                 "sequence_params": sequence_params,
                 "result_dict": result_dict,
@@ -486,83 +486,83 @@ class Orch(Base):
             }
         )
 
-        # reminder: process_group_dict values take precedence over keyword args but we grab
-        # active or last process_group label if process_group_label is not specified
+        # reminder: sequence_dict values take precedence over keyword args but we grab
+        # active or last sequence label if sequence_label is not specified
         if D.orch_name is None:
             D.orch_name = self.server_name
-        if process_group_label is None:
-            if self.active_process_group is not None:
-                active_label = self.active_process_group.process_group_label
+        if sequence_label is None:
+            if self.active_sequence is not None:
+                active_label = self.active_sequence.sequence_label
                 self.print_message(
-                    f" ... process_group_label not specified, inheriting {active_label} from active process_group"
+                    f" ... sequence_label not specified, inheriting {active_label} from active sequence"
                 )
-                D.process_group_label = active_label
-            elif self.last_process_group is not None:
-                last_label = self.last_process_group.process_group_label
+                D.sequence_label = active_label
+            elif self.last_sequence is not None:
+                last_label = self.last_sequence.sequence_label
                 self.print_message(
-                    f" ... process_group_label not specified, inheriting {last_label} from previous process_group"
+                    f" ... sequence_label not specified, inheriting {last_label} from previous sequence"
                 )
-                D.process_group_label = last_label
+                D.sequence_label = last_label
             else:
                 self.print_message(
-                    " ... process_group_label not specified, no past process_group_dq to inherit so using default 'nolabel"
+                    " ... sequence_label not specified, no past sequence_dq to inherit so using default 'nolabel"
                 )
         await asyncio.sleep(0.001)
         if at_index:
-            self.process_group_dq.insert(i=at_index, x=D)
+            self.sequence_dq.insert(i=at_index, x=D)
         elif prepend:
-            self.process_group_dq.appendleft(D)
-            self.print_message(f" ... process_group {D.sequence_uuid} prepended to queue")
+            self.sequence_dq.appendleft(D)
+            self.print_message(f" ... sequence {D.sequence_uuid} prepended to queue")
         else:
-            self.process_group_dq.append(D)
-            self.print_message(f" ... process_group {D.sequence_uuid} appended to queue")
+            self.sequence_dq.append(D)
+            self.print_message(f" ... sequence {D.sequence_uuid} appended to queue")
 
-    def list_process_groups(self):
-        """Return the current queue of process_group_dq."""
+    def list_sequences(self):
+        """Return the current queue of sequence_dq."""
 
-        process_group_list = [
-            hcmr.ReturnProcessGroup(
+        sequence_list = [
+            hcmr.ReturnSequence(
                 index=i,
-                uid=process_group.sequence_uuid,
-                label=process_group.process_group_label,
-                sequence_name=process_group.sequence_name,
-                pars=process_group.sequence_params,
-                access=process_group.access,
+                sequence_uuid=sequence.sequence_uuid,
+                sequence_label=sequence.sequence_label,
+                sequence_name=sequence.sequence_name,
+                sequence_params=sequence.sequence_params,
+                access=sequence.access,
             )
-            for i, process_group in enumerate(self.process_group_dq)
+            for i, sequence in enumerate(self.sequence_dq)
         ]
-        retval = hcmr.ReturnProcessGroupList(process_groups=process_group_list)
+        retval = hcmr.ReturnSequenceList(sequences=sequence_list)
         return retval
 
-    def get_process_group(self, last=False):
-        """Return the active or last process_group."""
+    def get_sequence(self, last=False):
+        """Return the active or last sequence."""
         if last:
-            process_group = self.last_process_group
+            sequence = self.last_sequence
         else:
-            process_group = self.active_process_group
-        if process_group is not None:
-            process_group_list = [
-                hcmr.ReturnProcessGroup(
+            sequence = self.active_sequence
+        if sequence is not None:
+            sequence_list = [
+                hcmr.ReturnSequence(
                     index=-1,
-                    uid=process_group.sequence_uuid,
-                    label=process_group.process_group_label,
-                    sequence_name=process_group.sequence_name,
-                    pars=process_group.sequence_params,
-                    access=process_group.access,
+                    sequence_uuid=sequence.sequence_uuid,
+                    sequence_label=sequence.sequence_label,
+                    sequence_name=sequence.sequence_name,
+                    sequence_params=sequence.sequence_params,
+                    access=sequence.access,
                 )
             ]
         else:
-            process_group_list = [
-                hcmr.ReturnProcessGroup(
+            sequence_list = [
+                hcmr.ReturnSequence(
                     index=-1,
-                    uid=None,
-                    label=None,
+                    sequence_uuid=None,
+                    sequence_label=None,
                     sequence_name=None,
-                    pars=None,
+                    sequence_paras=None,
                     access=None,
                 )
             ]
-        retval = hcmr.ReturnProcessGroupList(process_groups=process_group_list)
+        retval = hcmr.ReturnSequenceList(sequences=sequence_list)
         return retval
 
     def list_active_processes(self):
@@ -620,16 +620,16 @@ class Orch(Base):
                 self.print_message(f"uuid {check_uuid} not found in list of error statuses:")
                 self.print_message(", ".join(self.error_uuids))
 
-    def remove_process_group(self, by_index: Optional[int] = None, by_uuid: Optional[str] = None):
-        """Remove process_group in list by enumeration index or uuid."""
+    def remove_sequence(self, by_index: Optional[int] = None, by_uuid: Optional[str] = None):
+        """Remove sequence in list by enumeration index or uuid."""
         if by_index:
             i = by_index
         elif by_uuid:
-            i = [i for i, D in enumerate(list(self.process_group_dq)) if D.sequence_uuid == by_uuid][0]
+            i = [i for i, D in enumerate(list(self.sequence_dq)) if D.sequence_uuid == by_uuid][0]
         else:
-            self.print_message("No arguments given for locating existing process_group to remove.")
+            self.print_message("No arguments given for locating existing sequence to remove.")
             return None
-        del self.process_group_dq[i]
+        del self.sequence_dq[i]
 
     def replace_process(
         self,
@@ -665,9 +665,9 @@ class Orch(Base):
         new_process.process_enum = new_enum
         self.process_dq.append(new_process)
 
-    async def write_active_process_group_prg(self):
+    async def write_active_sequence_prg(self):
         if self.prg_file is not None:
-            await self.write_to_prg(cleanupdict(self.prg_file.dict()), self.active_process_group)
+            await self.write_to_prg(cleanupdict(self.prg_file.dict()), self.active_sequence)
         self.prg_file = None
 
     async def shutdown(self):

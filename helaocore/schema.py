@@ -3,7 +3,7 @@ Standard classes for experiment queue objects.
 
 """
 
-__all__ = ["cProcess_group", "cProcess", "Sequencer"]
+__all__ = ["Sequence", "cProcess", "Sequencer"]
 
 
 import inspect
@@ -16,7 +16,7 @@ from helaocore.helper import gen_uuid, print_message
 
 
 # rename later to Sequence
-class cProcess_group(object):
+class Sequence(object):
     "Sample-process grouping class."
 
     def __init__(
@@ -79,12 +79,12 @@ class cProcess_group(object):
         }
         return params_dict, json_dict
 
-    def gen_uuid_process_group(self, machine_name: str):
+    def gen_uuid_sequence(self, machine_name: str):
         "server_name can be any string used in generating random uuid"
         if self.sequence_uuid:
             print_message(
                 {},
-                "process_group",
+                "sequence",
                 f"sequence_uuid: {self.sequence_uuid} already exists",
                 info=True,
             )
@@ -92,7 +92,7 @@ class cProcess_group(object):
             self.sequence_uuid = gen_uuid(label=machine_name, timestamp=self.sequence_timestamp)
             print_message(
                 {},
-                "process_group",
+                "sequence",
                 f"sequence_uuid: {self.sequence_uuid} assigned",
                 info=True,
             )
@@ -103,14 +103,14 @@ class cProcess_group(object):
         self.sequence_timestamp = dtime.strftime("%Y%m%d.%H%M%S%f")
 
 
-class cProcess(cProcess_group):
+class cProcess(Sequence):
     "Sample-process identifier class."
 
     def __init__(
         self,
         inputdict: dict = {},
     ):
-        super().__init__(inputdict)  # grab process_group keys
+        super().__init__(inputdict)  # grab sequence keys
         imports = {}
         imports.update(inputdict)
         
@@ -198,7 +198,7 @@ class cProcess(cProcess_group):
 class Sequencer(object):
     def __init__(
         self,
-        pg: cProcess_group,
+        pg: Sequence,
     ):
         frame = inspect.currentframe().f_back
         _args, _varargs, _keywords, _locals = inspect.getargvalues(frame)
