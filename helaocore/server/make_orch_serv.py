@@ -133,7 +133,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         orch_name: str = None,
         process_group_label: str = None,
         sequence: str = None,
-        sequence_pars: dict = {},
+        sequence_params: dict = {},
         result_dict: dict = {},
         access: str = "hte",
     ):
@@ -145,7 +145,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         plate_id: The sample's plate id (no checksum), as int.
         sample_no: A sample number, as int.
         sequence: The name of the sequence for building the process list, as str.
-        sequence_pars: sequence parameters, as dict.
+        sequence_params: sequence parameters, as dict.
         result_dict: process responses dict keyed by process_enum.
         access: Access control group, as str.
 
@@ -156,7 +156,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
             orch_name,
             process_group_label,
             sequence,
-            sequence_pars,
+            sequence_params,
             result_dict,
             access,
             prepend=False,
@@ -168,7 +168,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         orch_name: str = None,
         process_group_label: str = None,
         sequence: str = None,
-        sequence_pars: dict = {},
+        sequence_params: dict = {},
         result_dict: dict = {},
         access: str = "hte",
     ):
@@ -180,7 +180,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         plate_id: The sample's plate id (no checksum), as int.
         sample_no: A sample number, as int.
         sequence: The name of the sequence for building the process list, as str.
-        sequence_pars: sequence parameters, as dict.
+        sequence_params: sequence parameters, as dict.
         result_dict: process responses dict keyed by process_enum.
         access: Access control group, as str.
 
@@ -191,7 +191,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
             orch_name,
             process_group_label,
             sequence,
-            sequence_pars,
+            sequence_params,
             result_dict,
             access,
             prepend=True,
@@ -205,7 +205,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         orch_name: str = None,
         process_group_label: str = None,
         sequence: str = None,
-        sequence_pars: dict = {},
+        sequence_params: dict = {},
         result_dict: dict = {},
         access: str = "hte",
     ):
@@ -218,7 +218,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         plate_id: The sample's plate id (no checksum), as int.
         sample_no: A sample number, as int.
         sequence: The name of the sequence for building the process list, as str.
-        sequence_pars: sequence parameters, as dict.
+        sequence_params: sequence parameters, as dict.
         result_dict: process responses dict keyed by process_enum.
         access: Access control group, as str.
 
@@ -230,7 +230,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
             orch_name,
             process_group_label,
             sequence,
-            sequence_pars,
+            sequence_params,
             result_dict,
             access,
             at_index=idx,

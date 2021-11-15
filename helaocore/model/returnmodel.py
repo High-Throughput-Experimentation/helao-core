@@ -62,7 +62,7 @@ class ReturnFinishedProcess(BaseModel):
     sequence_uuid: str
     process_group_label: str
     sequence: str
-    sequence_pars: dict
+    sequence_params: dict
     result_dict: dict
     process_server: str
     process_queue_time: str
@@ -95,7 +95,7 @@ class ReturnRunningProcess(BaseModel):
     sequence_uuid: str
     process_group_label: str
     sequence: str
-    sequence_pars: dict
+    sequence_params: dict
     result_dict: dict
     process_server: str
     process_queue_time: str

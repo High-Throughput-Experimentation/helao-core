@@ -30,15 +30,22 @@ class cProcess_group(object):
         # main sequence parameters
         self.sequence_uuid = imports.get("sequence_uuid", None) #
 
+        # main parametes for Process, need to put it into 
+        # the new Basemodel in the future
+        self.machine_name = imports.get("machine_name", None)
+        
+
         # others parameter
         self.orch_name = imports.get("orch_name", "orchestrator")
         self.technique_name = imports.get("technique_name", None)
-        self.machine_name = imports.get("machine_name", None)
+
+
+
         self.process_group_timestamp = imports.get("process_group_timestamp", None)
         self.process_group_label = imports.get("process_group_label", "noLabel")
         self.access = imports.get("access", "hte")
-        self.sequence = imports.get("sequence", None)  # TODO: rename to "sequencer"
-        self.sequence_pars = imports.get("sequence_pars", {})  # TODO: rename to "sequencer_params"
+        self.sequencer = imports.get("sequencer", None)  # TODO: rename to "sequencer"
+        self.sequence_params = imports.get("sequence_params", {})  # TODO: rename to "sequencer_params"
 
         # TODO: make the following attributes private
         self.result_dict = {}  # imports.get("result_dict", {})# this gets big really fast, bad for debugging
@@ -105,6 +112,8 @@ class cProcess(cProcess_group):
         imports = {}
         imports.update(inputdict)
         
+
+
         # machine_name
         
         # timestamp # execution time, not the queue time
@@ -194,11 +203,11 @@ class Sequencer(object):
         self._pg = pg
         self.process_list = []
         self.pars = self._C()
-        for key, val in self._pg.sequence_pars.items():
+        for key, val in self._pg.sequence_params.items():
             setattr(self.pars, key, val)  # we could also add it direcly to the class root by just using self
 
         for key, val in _locals.items():
-            if key != "pg_Obj" and key not in self._pg.sequence_pars.keys():
+            if key != "pg_Obj" and key not in self._pg.sequence_params.keys():
                 print_message(
                     {},
                     "sequencer",

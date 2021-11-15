@@ -230,7 +230,7 @@ class Orch(Base):
                     self.active_process_group.set_dtime(offset=self.ntp_offset)
                     self.active_process_group.gen_uuid_process_group(self.hostname)
                     sequence = self.active_process_group.sequence
-                    # additional sequence params should be stored in process_group.sequence_pars
+                    # additional sequence params should be stored in process_group.sequence_params
                     unpacked_acts = self.process_lib[sequence](self.active_process_group)
                     for i, act in enumerate(unpacked_acts):
                         act.process_enum = float(i)  # f"{i}"
@@ -239,7 +239,7 @@ class Orch(Base):
                     self.process_dq = deque(unpacked_acts)
                     self.dispatched_processes = {}
                     self.print_message(f" ... got: {self.process_dq}")
-                    self.print_message(f" ... optional params: {self.active_process_group.sequence_pars}")
+                    self.print_message(f" ... optional params: {self.active_process_group.sequence_params}")
 
                     self.prg_file = hcmf.PrgFile(
                         hlo_version=f"{version.hlo_version}",
@@ -251,7 +251,7 @@ class Orch(Base):
                         process_group_label=self.active_process_group.process_group_label,
                         technique_name=self.active_process_group.technique_name,
                         sequence_name=self.active_process_group.sequence,
-                        sequence_params=self.active_process_group.sequence_pars,
+                        sequence_params=self.active_process_group.sequence_params,
                         sequence_model=None,
                     )
                     await self.write_active_process_group_prg()
@@ -468,7 +468,7 @@ class Orch(Base):
         orch_name: str = None,
         process_group_label: str = None,
         sequence: str = None,
-        sequence_pars: dict = {},
+        sequence_params: dict = {},
         result_dict: dict = {},
         access: str = "hte",
         prepend: Optional[bool] = False,
@@ -480,7 +480,7 @@ class Orch(Base):
                 "orch_name": orch_name,
                 "process_group_label": process_group_label,
                 "sequence": sequence,
-                "sequence_pars": sequence_pars,
+                "sequence_params": sequence_params,
                 "result_dict": result_dict,
                 "access": access,
             }
@@ -526,7 +526,7 @@ class Orch(Base):
                 uid=process_group.sequence_uuid,
                 label=process_group.process_group_label,
                 sequence=process_group.sequence,
-                pars=process_group.sequence_pars,
+                pars=process_group.sequence_params,
                 access=process_group.access,
             )
             for i, process_group in enumerate(self.process_group_dq)
@@ -547,7 +547,7 @@ class Orch(Base):
                     uid=process_group.sequence_uuid,
                     label=process_group.process_group_label,
                     sequence=process_group.sequence,
-                    pars=process_group.sequence_pars,
+                    pars=process_group.sequence_params,
                     access=process_group.access,
                 )
             ]
