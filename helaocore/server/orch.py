@@ -16,7 +16,7 @@ import helaocore.model.returnmodel as hcmr
 import helaocore.server.version as version
 
 from helaocore.helper import MultisubscriberQueue, cleanupdict
-from helaocore.schema import cProcess, Sequence
+from helaocore.schema import Process, Sequence
 
 from .api import HelaoFastAPI
 from .base import Base
@@ -273,7 +273,7 @@ class Orch(Base):
                         await self.intend_none()
                         self.print_message(" ... skipping to next sequence")
                     else:
-                        # all process blocking is handled like preempt, check cProcess requirements
+                        # all process blocking is handled like preempt, check Process requirements
                         A = self.process_dq.popleft()
                         # append previous results to current process
                         A.result_dict = self.active_sequence.result_dict
@@ -602,7 +602,7 @@ class Orch(Base):
         retval = hcmr.ReturnProcessList(processes=process_list)
         return retval
 
-    def supplement_error_process(self, check_uuid: str, sup_process: cProcess):
+    def supplement_error_process(self, check_uuid: str, sup_process: Process):
         """Insert process at front of process queue with subversion of errored process, inherit parameters if desired."""
         if self.error_uuids == []:
             self.print_message("There are no error statuses to replace")
@@ -633,7 +633,7 @@ class Orch(Base):
 
     def replace_process(
         self,
-        sup_process: cProcess,
+        sup_process: Process,
         by_index: Optional[int] = None,
         by_uuid: Optional[str] = None,
         by_enum: Optional[Union[int, float]] = None,
@@ -654,7 +654,7 @@ class Orch(Base):
         self.process_dq.insert(i, new_process)
         del self.process_dq[i + 1]
 
-    def append_process(self, sup_process: cProcess):
+    def append_process(self, sup_process: Process):
         """Add process to end of current process queue."""
         if len(self.process_dq) == 0:
             last_enum = floor(max(list(self.dispatched_processes.keys())))

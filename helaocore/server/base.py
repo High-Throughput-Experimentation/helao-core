@@ -19,7 +19,7 @@ import pyaml
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.openapi.utils import get_flat_params
 from helaocore.helper import MultisubscriberQueue, async_copy, cleanupdict, print_message
-from helaocore.schema import cProcess
+from helaocore.schema import Process
 
 from .api import HelaoFastAPI
 from .dispatcher import async_private_dispatcher
@@ -164,7 +164,7 @@ class Base(object):
 
     async def contain_process(
         self,
-        process: cProcess,
+        process: Process,
         file_type: str = "helao__file",
         file_data_keys: Optional[str] = None,  # this is also keyd by file_sample_keys
         file_sample_label: Optional[str] = None,  # this is also keyd by file_sample_keys
@@ -439,7 +439,7 @@ class Base(object):
         def __init__(
             self,
             base,  # outer instance
-            process: cProcess,
+            process: Process,
             file_type: str = "helao__file",
             file_data_keys: Optional[str] = None,
             file_sample_label: Optional[str] = None,

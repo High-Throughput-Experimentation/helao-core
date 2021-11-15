@@ -3,7 +3,7 @@ Standard classes for experiment queue objects.
 
 """
 
-__all__ = ["Sequence", "cProcess", "Sequencer"]
+__all__ = ["Sequence", "Process", "Sequencer"]
 
 
 import inspect
@@ -103,7 +103,7 @@ class Sequence(object):
         self.sequence_timestamp = dtime.strftime("%Y%m%d.%H%M%S%f")
 
 
-class cProcess(Sequence):
+class Process(Sequence):
     "Sample-process identifier class."
 
     def __init__(
@@ -226,4 +226,4 @@ class Sequencer(object):
     def add_process(self, process_dict: dict):
         new_process_dict = self._pg.as_dict()
         new_process_dict.update(process_dict)
-        self.process_list.append(cProcess(inputdict=new_process_dict))
+        self.process_list.append(Process(inputdict=new_process_dict))

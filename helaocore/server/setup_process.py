@@ -5,7 +5,7 @@ from socket import gethostname
 
 import helaocore.model.sample as hcms
 from fastapi import Request
-from helaocore.schema import cProcess
+from helaocore.schema import Process
 
 
 async def setup_process(request: Request):
@@ -36,7 +36,7 @@ async def setup_process(request: Request):
 
     process_dict["process_server"] = servKey
     process_dict["process_name"] = process_name
-    A = cProcess(process_dict)
+    A = Process(process_dict)
 
     if "fast_samples_in" in A.process_params:
         tmp_fast_samples_in = A.process_params.get("fast_samples_in", [])
