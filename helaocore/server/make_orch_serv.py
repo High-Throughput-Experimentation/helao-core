@@ -146,7 +146,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         sample_no: A sample number, as int.
         sequence_name: The name of the sequence for building the process list, as str.
         sequence_params: sequence parameters, as dict.
-        result_dict: process responses dict keyed by process_enum.
+        result_dict: process responses dict keyed by process_ordering.
         access: Access control group, as str.
 
         Returns:
@@ -181,7 +181,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         sample_no: A sample number, as int.
         sequence_name: The name of the sequence for building the process list, as str.
         sequence_params: sequence parameters, as dict.
-        result_dict: process responses dict keyed by process_enum.
+        result_dict: process responses dict keyed by process_ordering.
         access: Access control group, as str.
 
         Returns:
@@ -219,7 +219,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         sample_no: A sample number, as int.
         sequence_name: The name of the sequence for building the process list, as str.
         sequence_params: sequence parameters, as dict.
-        result_dict: process responses dict keyed by process_enum.
+        result_dict: process responses dict keyed by process_ordering.
         access: Access control group, as str.
 
         Returns:

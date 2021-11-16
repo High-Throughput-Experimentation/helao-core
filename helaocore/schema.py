@@ -37,10 +37,6 @@ class Sequence(object):
 
         # others parameter
         self.orch_name = imports.get("orch_name", "orchestrator")
-
-
-
-
         self.sequence_timestamp = imports.get("sequence_timestamp", None)
         self.sequence_label = imports.get("sequence_label", "noLabel")
         self.access = imports.get("access", "hte")
@@ -114,9 +110,13 @@ class Process(Sequence):
         imports = {}
         imports.update(inputdict)
         
+        # main parametes for Process
+        self.process_uuid = imports.get("process_uuid", None)
+        self.process_timestamp = None
+        # machine_name # get it from sequence later
+        self.process_ordering = imports.get("process_ordering", None)
 
 
-        # machine_name
         
         # timestamp # execution time, not the queue time
         # ordering # enum
@@ -125,15 +125,12 @@ class Process(Sequence):
 
 
         # fixed base process parameters
-        self.process_uuid = imports.get("process_uuid", None)
-        self.process_timestamp = None
 
 
         # other parameters
         self.process_server = imports.get("process_server", None)
         self.process_name = imports.get("process_name", None)
         self.process_params = imports.get("process_params", {})
-        self.process_enum = imports.get("process_enum", None)
         self.process_abbr = imports.get("process_abbr", None)
         self.start_condition = imports.get("start_condition", 3)
 

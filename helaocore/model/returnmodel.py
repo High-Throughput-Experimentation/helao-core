@@ -70,7 +70,7 @@ class ReturnFinishedProcess(BaseModel):
     process_name: str
     process_params: dict
     process_uuid: str
-    process_enum: str
+    process_ordering: str
     process_abbr: str
     process_num: str
     start_condition: Union[int, dict]
@@ -103,7 +103,7 @@ class ReturnRunningProcess(BaseModel):
     process_name: str
     process_params: dict
     process_uuid: str
-    process_enum: str
+    process_ordering: str
     process_abbr: str
     process_num: str
     start_condition: Union[int, dict]

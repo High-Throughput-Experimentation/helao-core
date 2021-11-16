@@ -233,7 +233,7 @@ class Orch(Base):
                     # additional sequence params should be stored in sequence.sequence_params
                     unpacked_acts = self.process_lib[sequence_name](self.active_sequence)
                     for i, act in enumerate(unpacked_acts):
-                        act.process_enum = float(i)  # f"{i}"
+                        act.process_ordering = float(i)  # f"{i}"
                         # act.gen_uuid()
                     # TODO:update sequence code
                     self.process_dq = deque(unpacked_acts)
@@ -364,9 +364,9 @@ class Orch(Base):
                             f" ... dispatching process {A.process_name} on server {A.process_server}"
                         )
                         # keep running list of dispatched processes
-                        self.dispatched_processes[A.process_enum] = copy(A)
+                        self.dispatched_processes[A.process_ordering] = copy(A)
                         result = await async_process_dispatcher(self.world_cfg, A)
-                        self.active_sequence.result_dict[A.process_enum] = result
+                        self.active_sequence.result_dict[A.process_ordering] = result
 
                         self.print_message(" ... copying global vars back to sequence")
                         # self.print_message(result)
@@ -612,9 +612,9 @@ class Orch(Base):
                 _, _, error_uuid = matching_error[0]
                 EA = [A for _, A in self.dispatched_processes.items() if A.process_uuid == error_uuid][0]
                 # up to 99 supplements
-                new_enum = round(EA.process_enum + 0.01, 2)
+                new_ordering = round(EA.process_ordering + 0.01, 2)
                 new_process = sup_process
-                new_process.process_enum = new_enum
+                new_process.process_ordering = new_ordering
                 self.process_dq.appendleft(new_process)
             else:
                 self.print_message(f"uuid {check_uuid} not found in list of error statuses:")
@@ -636,33 +636,33 @@ class Orch(Base):
         sup_process: Process,
         by_index: Optional[int] = None,
         by_uuid: Optional[str] = None,
-        by_enum: Optional[Union[int, float]] = None,
+        by_ordering: Optional[Union[int, float]] = None,
     ):
         """Substitute a queued process."""
         if by_index:
             i = by_index
         elif by_uuid:
             i = [i for i, A in enumerate(list(self.process_dq)) if A.process_uuid == by_uuid][0]
-        elif by_enum:
-            i = [i for i, A in enumerate(list(self.process_dq)) if A.process_enum == by_enum][0]
+        elif by_ordering:
+            i = [i for i, A in enumerate(list(self.process_dq)) if A.process_ordering == by_ordering][0]
         else:
             self.print_message("No arguments given for locating existing process to replace.")
             return None
-        current_enum = self.process_dq[i].process_enum
+        current_ordering = self.process_dq[i].process_ordering
         new_process = sup_process
-        new_process.process_enum = current_enum
+        new_process.process_ordering = current_ordering
         self.process_dq.insert(i, new_process)
         del self.process_dq[i + 1]
 
     def append_process(self, sup_process: Process):
         """Add process to end of current process queue."""
         if len(self.process_dq) == 0:
-            last_enum = floor(max(list(self.dispatched_processes.keys())))
+            last_ordering = floor(max(list(self.dispatched_processes.keys())))
         else:
-            last_enum = floor(self.process_dq[-1].process_enum)
-        new_enum = int(last_enum + 1)
+            last_ordering = floor(self.process_dq[-1].process_ordering)
+        new_ordering = int(last_ordering + 1)
         new_process = sup_process
-        new_process.process_enum = new_enum
+        new_process.process_ordering = new_ordering
         self.process_dq.append(new_process)
 
     async def write_active_sequence_prg(self):

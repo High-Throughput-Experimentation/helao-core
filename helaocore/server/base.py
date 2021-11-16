@@ -522,8 +522,8 @@ class Base(object):
             if "scratch" in self.process.process_params:
                 del self.process.process_params["scratch"]
 
-            if self.process.process_enum is None:
-                self.process.process_enum = 0.0
+            if self.process.process_ordering is None:
+                self.process.process_ordering = 0.0
 
             self.prc_file = hcmf.PrcFile(
                 hlo_version=f"{version.hlo_version}",
@@ -537,7 +537,7 @@ class Base(object):
                 sequence_timestamp=self.process.sequence_timestamp,
                 process_uuid=self.process.process_uuid,
                 process_timestamp=self.process.process_timestamp,
-                process_enum=self.process.process_enum,
+                process_ordering=self.process.process_ordering,
                 process_name=self.process.process_name,
                 process_abbr=self.process.process_abbr,
                 process_params=self.process.process_params,
@@ -549,7 +549,7 @@ class Base(object):
                     os.path.join(self.base.save_root, self.process.output_dir),
                     exist_ok=True,
                 )
-                self.process.process_num = f"{self.process.process_abbr}-{self.process.process_enum}"
+                self.process.process_num = f"{self.process.process_abbr}-{self.process.process_ordering}"
                 self.update_prc_file()
 
                 if self.manual:
@@ -578,7 +578,7 @@ class Base(object):
                             file_sample_label=self.process.file_sample_label.get(file_sample_key, None),
                             filename=None,  # always autogen a filename
                             file_group=self.process.file_group,
-                            process_enum=self.process.process_enum,
+                            process_ordering=self.process.process_ordering,
                             process_abbr=self.process.process_abbr,
                             filenum=i,
                         )
@@ -600,7 +600,7 @@ class Base(object):
             file_sample_label,
             filename,
             file_group,
-            process_enum,
+            process_ordering,
             process_abbr,
             filenum: Optional[int] = 0,
         ):
@@ -644,8 +644,8 @@ class Base(object):
                 else:  # aux_files
                     pass
 
-                if process_enum is not None:
-                    filename = f"{process_abbr}-{process_enum:.1f}__{filenum}.{file_ext}"
+                if process_ordering is not None:
+                    filename = f"{process_abbr}-{process_ordering:.1f}__{filenum}.{file_ext}"
                 else:
                     filename = f"{process_abbr}-0.0__{filenum}.{file_ext}"
 
@@ -855,7 +855,7 @@ class Base(object):
                     file_sample_label=file_sample_label,
                     filename=filename,
                     file_group=file_group,
-                    process_enum=self.process.process_enum,
+                    process_ordering=self.process.process_ordering,
                     process_abbr=self.process.process_abbr,
                 )
                 output_path = os.path.join(self.base.save_root, self.process.output_dir, filename)
@@ -889,7 +889,7 @@ class Base(object):
                     file_sample_label=file_sample_label,
                     filename=filename,
                     file_group=file_group,
-                    process_enum=self.process.process_enum,
+                    process_ordering=self.process.process_ordering,
                     process_abbr=self.process.process_abbr,
                 )
                 output_path = os.path.join(self.base.save_root, self.process.output_dir, filename)
