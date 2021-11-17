@@ -110,21 +110,11 @@ class Process(Sequence):
         imports = {}
         imports.update(inputdict)
         
-        # main parametes for Process
+        # main fixed parameters for Process
         self.process_uuid = imports.get("process_uuid", None)
         self.process_timestamp = None
         # machine_name # get it from sequence later
         self.process_ordering = imports.get("process_ordering", None)
-
-
-        
-        # timestamp # execution time, not the queue time
-        # ordering # enum
-        #
-
-
-
-        # fixed base process parameters
 
 
         # other parameters

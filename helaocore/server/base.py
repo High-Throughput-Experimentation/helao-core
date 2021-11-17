@@ -921,7 +921,7 @@ class Base(object):
             await file_instance.write(output_str)
             await file_instance.close()
 
-        async def append_sample(self, samples, IO: str, status: bool = None, inheritance: bool = None):
+        async def append_sample(self, samples, IO: str):
             "Add sample to samples_out and samples_in dict"
 
             # - inheritance
@@ -946,27 +946,17 @@ class Base(object):
             for sample in samples:
                 if sample is None:
                     continue
-                if inheritance is None:
-                    if sample.inheritance is None:
-                        inheritance = "allow_both"
-                    else:
-                        inheritance = sample.inheritance
+                
+                if sample.inheritance is None:
+                    self.base.print_message("sample.inheritance is None. Using 'allow_both'.")
+                    sample.inheritance = "allow_both"
 
-                if status is None:
-                    if sample.status is None:
-                        status = "preserved"
-                    else:
-                        status = sample.status
+                if sample.status is None:
+                    self.base.print_message("sample.status is None. Using 'preserved'.")
+                    sample.status = ["preserved"]
 
                 append_dict = sample.prc_dict()
                 if append_dict is not None:
-                    if inheritance is not None:
-                        append_dict.update({"inheritance": inheritance})
-                    if status is not None:
-                        if type(status) is not list:
-                            status = [status]
-                        append_dict.update({"status": status})
-
                     # check if list for safety reasons
                     if type(self.process.prc_samples_in) is not list:
                         self.process.prc_samples_in = []

@@ -45,8 +45,12 @@ class _BaseSampleAPI(object):
               {self.extra_columns}"""
 
         self.column_names = self.columns.replace("\n", "").strip().split(",")
+        self.column_types = dict()
+        self.column_notNULL = dict()
         for i, name in enumerate(self.column_names):
             self.column_names[i] = name.strip().split(" ")[0]
+            self.column_types.update({self.column_names[i]:name.strip().split(" ")[1].lower()})
+            self.column_notNULL.update({self.column_names[i]:(len(name.strip().split(" "))>2)})
         self.column_count = len(self.column_names)
 
         self._sampleclass = sampleclass
@@ -179,6 +183,7 @@ class _BaseSampleAPI(object):
 
         return ret_samples
 
+
     async def init_db(self):
         lock = asyncio.Lock()
         async with lock:
@@ -229,7 +234,6 @@ class _BaseSampleAPI(object):
 
             for i, sample in enumerate(samples.samples):
                 if sample.sample_no < 0: # get sample from back
-                    pass
                     self._cur.execute(f"select count(idx) from {self._sample_type};")
                     counts = self._cur.fetchone()[0]
                     if counts > abs(sample.sample_no):
@@ -252,6 +256,99 @@ class _BaseSampleAPI(object):
                     ret_samples.samples.append(None)
             self._close_db()
         return ret_samples
+    
+    
+    def _update(self, sample_dfdict):
+        idx = sample_dfdict["idx"]
+        for key, val in sample_dfdict.items():
+            if key in self.column_types and key != "idx":
+                col_type = self.column_types[key]
+                # print(key, val, self.column_notNULL[key])
+                if not (self.column_notNULL[key] and val is None):
+                    if col_type in ['integer', 'real']:
+                        if val is None:
+                            cmd = f'''UPDATE {self._sample_type} SET {key} = NULL WHERE idx = {idx};'''
+                        else:
+                            cmd = f'''UPDATE {self._sample_type} SET {key} = {val} WHERE idx = {idx};'''
+                        self._cur.execute(cmd)
+                    else:
+                        if val is not None:
+                            val = val.replace('"','""')
+                            val = val.replace("'","''")
+                            cmd = f'''UPDATE {self._sample_type} SET {key} = "{val}" WHERE idx = {idx};'''
+                        else:
+                            cmd = f'''UPDATE {self._sample_type} SET {key} = NULL WHERE idx = {idx};'''
+                        self._cur.execute(cmd)
+
+            else:
+                if key != "idx":
+                    self._base.print_message(f"unknown key '{key}' for updating sample", error=True)
+
+
+    async def update_sample(self, samples: hcms.SampleList = hcms.SampleList()):
+        await asyncio.sleep(0.001)
+        ret_samples = hcms.SampleList()
+        if not isinstance(samples, hcms.SampleList):
+            self._base.print_message("get sample: not a valid sample list", info=True)
+            return ret_samples
+
+        lock = asyncio.Lock()
+        async with lock:
+            self._open_db()
+
+            for sample in samples.samples:
+                self._base.print_message(f"updating sample {self._sample_type} {sample.sample_no}", info = True)
+                if sample.global_label is None:
+                    self._base.print_message("No global_label. Skipping sample.", info = True)
+                    continue
+
+                if sample.sample_no < 1:
+                    self._base.print_message("Cannot update sample '{sample.sample_no}'", info = True)
+                    continue
+
+                sample = await self._key_checks(sample)
+
+                # get the current info from db so we can perform some checks
+                self._base.print_message(f"getting sample {self._sample_type} {sample.sample_no}", info=True)
+                await asyncio.sleep(0.001)
+                retdf = pd.read_sql_query(f"""select * from {self._sample_type} where idx={sample.sample_no};""", con=self._con)
+                prev_sample = self._df_to_sample(retdf)
+                
+                # some safety checks
+                if sample.global_label != prev_sample.global_label:
+                    self._base.print_message("Cannot update sample '{sample.sample_no}', not the same 'global_label'", error = True)
+                    continue
+
+                if sample.sample_type != prev_sample.sample_type:
+                    self._base.print_message("Cannot update sample '{sample.sample_no}', not the same 'sample_type'", error = True)
+                    continue
+
+                # update the last_update timecode
+                sample.last_update = self._base.set_realtime_nowait()
+
+                # update the old sample now
+                dfdict = sample.dict()
+                for key in self._jsonkeys:
+                    # dfdict.update({key: [json.dumps(dfdict[key])]})
+                    dfdict.update({key: json.dumps(dfdict[key])})
+    
+                keys_to_deletes = []
+                for key in dfdict.keys():
+                    if key not in self.column_names:
+                        self._base.print_message(
+                            f"Invalid {self._sample_type} data key '{key}', skipping it.",
+                            error=True,
+                        )
+                        keys_to_deletes.append(key)
+    
+                for key in keys_to_deletes:
+                    del dfdict[key]
+                    
+                dfdict.update({"idx": sample.sample_no})
+                self._update(dfdict)
+                # df = pd.DataFrame(data=dfdict)
+                # df.to_sql(name=self._sample_type, con=self._con, if_exists="append", index=False, index_label="idx")
+            self._close_db()
 
 
 class LiquidSampleAPI(_BaseSampleAPI):
@@ -260,13 +357,15 @@ class LiquidSampleAPI(_BaseSampleAPI):
             sampleclass=hcms.LiquidSample(),
             Serv_class=Serv_class,
             dbpath=dbpath,
-            extra_columns="volume_ml REAL NOT NULL, ph REAL",
+            extra_columns="volume_ml REAL NOT NULL, ph REAL, dilution_factor REAL NOT NULL",
         )
 
 
     async def _key_checks(self, sample):
         if sample.volume_ml is None:
             sample.volume_ml = 0.0
+        if sample.dilution_factor is None:
+            sample.dilution_factor = 1.0
         return sample
 
 
@@ -292,12 +391,15 @@ class GasSampleAPI(_BaseSampleAPI):
             sampleclass=hcms.GasSample(),
             Serv_class=Serv_class,
             dbpath=dbpath,
-            extra_columns="volume_ml REAL NOT NULL",
+            extra_columns="volume_ml REAL NOT NULL, dilution_factor REAL NOT NULL",
         )
+
 
     async def _key_checks(self, sample):
         if sample.volume_ml is None:
             sample.volume_ml = 0.0
+        if sample.dilution_factor is None:
+            sample.dilution_factor = 1.0
         return sample
 
 
@@ -321,8 +423,9 @@ class SolidSampleAPI(_BaseSampleAPI):
             extra_columns="plate_id INTEGER NOT NULL",
         )
 
+
     async def new_sample(self, samples: hcms.SampleList = hcms.SampleList()):
-        self._base.print_message("not supported yet", error=True)
+        self._base.print_message("new_sample is not supported yet for solid sample", error=True)
         await asyncio.sleep(0.001)
         ret_samples = hcms.SampleList()
         if not isinstance(samples, hcms.SampleList):
@@ -332,6 +435,7 @@ class SolidSampleAPI(_BaseSampleAPI):
         for i, sample in enumerate(samples.samples):
             ret_samples.samples.append(None)
         return ret_samples
+
 
     async def get_sample(self, samples: hcms.SampleList = hcms.SampleList()):
 
@@ -356,6 +460,11 @@ class SolidSampleAPI(_BaseSampleAPI):
                 )
 
         return ret_samples
+
+
+    async def update_sample(self, samples: hcms.SampleList = hcms.SampleList()):
+        self._base.print_message("Update is not supported yet for solid sample", error=True)
+        await asyncio.sleep(0.001)
 
 
 class OldLiquidSampleAPI:
@@ -387,8 +496,10 @@ class OldLiquidSampleAPI:
         else:
             return False
 
+
     async def _close_db(self):
         await self.fdb.close()
+
 
     async def count_samples(self):
         # TODO: faster way?
@@ -538,12 +649,14 @@ class UnifiedSampleDataAPI:
         self.gasAPI = GasSampleAPI(self._base, self._dbfilepath)
         self.assemblyAPI = AssemblySampleAPI(self._base, self._dbfilepath)
 
+
     async def init_db(self):
         await self.solidAPI.init_db()
         await self.liquidAPI.init_db()
         await self.gasAPI.init_db()
         await self.assemblyAPI.init_db()
         self._base.print_message("unified db initialized")
+
 
     async def new_sample(self, samples: hcms.SampleList = hcms.SampleList()):
         retval = hcms.SampleList()
@@ -568,6 +681,7 @@ class UnifiedSampleDataAPI:
                 retval.samples.append(None)
 
         return retval
+
 
     async def get_sample(self, samples: hcms.SampleList = hcms.SampleList()):
         """this will only use the sample_no for local sample, or global_label for external samples
@@ -600,3 +714,24 @@ class UnifiedSampleDataAPI:
                 retval.samples.append(None)
 
         return retval
+
+    
+    async def update_sample(self, samples: hcms.SampleList = hcms.SampleList()):
+        if not isinstance(samples, hcms.SampleList):
+            self._base.print_message("not a valid sample list", info=True)
+            return
+
+        for sample in samples.samples:
+            if isinstance(sample, hcms.LiquidSample):
+                await self.liquidAPI.update_sample(hcms.SampleList(samples=[sample]))
+            elif isinstance(sample, hcms.SolidSample):
+                await self.solidAPI.update_sample(hcms.SampleList(samples=[sample]))
+            elif isinstance(sample, hcms.GasSample):
+                await self.gasAPI.update_sample(hcms.SampleList(samples=[sample]))
+            elif isinstance(sample, hcms.AssemblySample):
+                await self.assemblyAPI.update_sample(hcms.SampleList(samples=[sample]))
+            else:
+                self._base.print_message(
+                    f"validation error, type '{type(sample)}' is not a valid sample model",
+                    error=True,
+                )

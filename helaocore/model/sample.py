@@ -72,10 +72,8 @@ class _BaseSample(BaseModel):
     # A Sample ref would have no global label 
     # only a sample_type.
     # 
-    global_label: Optional[str] = None
+    global_label: Optional[str] = None # is None for a ref sample
     sample_type: Optional[str] = None
-
-
 
 
     # additional parameters
@@ -115,28 +113,65 @@ class _BaseSample(BaseModel):
             return None
 
     def create_initial_prc_dict(self):
+        if type(self.status) is not list:
+            self.status = [self.status]
+
         return {
             "global_label": self.get_global_label(),
             "sample_type": self.sample_type,
             "sample_no": self.sample_no,
             "machine_name": self.machine_name if self.machine_name is not None else gethostname(),
             "sample_creation_timecode": self.sample_creation_timecode,
+            "last_update": self.last_update,
+            "sample_position":self.sample_position,
+            "inheritance":self.inheritance,
+            "status":self.status
         }
 
 
     def get_global_label(self):
          pass
 
+        
+    def update_vol(self, delta_vol_ml, dilute):
+        if hasattr(self, "volume_ml"):
+            old_vol = self.volume_ml
+            tot_vol = old_vol+delta_vol_ml
+            self.volume_ml = tot_vol
+            if hasattr(self, "dilution_factor"):
+                old_df = self.dilution_factor
+                new_df = tot_vol/(old_vol/old_df)
+                self.dilution_factor = new_df
+
+
+    def get_vol_ml(self):
+        if hasattr(self, "volume_ml"):
+            return self.volume_ml
+        else:
+            return 0.0
+
+        
+    def get_dilution_factor(self):
+        if hasattr(self, "dilution_factor"):
+            return self.dilution_factor
+        else:
+            return 1.0
+    
+
 
 class LiquidSample(_BaseSample):
     """base class for liquid samples"""
 
     sample_type: Optional[str] = "liquid"
-    volume_ml: Optional[float] = None
+    volume_ml: Optional[float] = 0.0
     ph: Optional[float] = None
+    dilution_factor: Optional[float] = 1.0
 
     def prc_dict(self):
         prc_dict = self.create_initial_prc_dict()
+        prc_dict.update({"volume_ml": self.volume_ml})
+        prc_dict.update({"ph": self.ph})
+        prc_dict.update({"dilution_factor": self.dilution_factor})
         return prc_dict
 
     def get_global_label(self):
@@ -201,10 +236,13 @@ class GasSample(_BaseSample):
     """base class for gas samples"""
 
     sample_type: Optional[str] = "gas"
-    volume_ml: Optional[float] = None
+    volume_ml: Optional[float] = 0.0
+    dilution_factor: Optional[float] = 1.0
 
     def prc_dict(self):
         prc_dict = self.create_initial_prc_dict()
+        prc_dict.update({"volume_ml": self.volume_ml})
+        prc_dict.update({"dilution_factor": self.dilution_factor})
         return prc_dict
 
     def get_global_label(self):
@@ -260,14 +298,10 @@ class AssemblySample(_BaseSample):
         return "assembly"
 
     def prc_dict(self):
-        return {
-            "global_label": self.get_global_label(),
-            "sample_type": self.sample_type,
-            "machine_name": self.machine_name,
-            "sample_position": self.sample_position,
-            "sample_creation_timecode": self.sample_creation_timecode,
-            "assembly_parts": self.get_assembly_parts_prc_dict(),
-        }
+        prc_dict = self.create_initial_prc_dict()
+        prc_dict.update({"assembly_parts": self.get_assembly_parts_prc_dict()})
+        return prc_dict
+
 
     def get_assembly_parts_prc_dict(self):
         part_dict_list = []
