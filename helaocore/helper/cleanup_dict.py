@@ -11,10 +11,20 @@ def cleanupdict(d):
         elif v is not None:
             if isinstance(v, list):
                 if len(v) !=0:
-                    clean[k] = v    
+                    clean[k] = _cleanuplist(v)
             elif isinstance(v, str):
                 if len(v) !=0:
                     clean[k] = v
             else:
                 clean[k] = v
     return clean
+
+
+def _cleanuplist(input_list):
+    clean_list = []
+    for list_item in input_list:
+        if isinstance(list_item, dict):
+            clean_list.append(cleanupdict(list_item))
+        else:
+            clean_list.append(list_item)
+    return clean_list
