@@ -68,7 +68,7 @@ class Base(object):
         self.technique_name = None
         self.aloop = asyncio.get_running_loop()
 
-        if "technique_name" in self.world_cfg.keys():
+        if "technique_name" in self.world_cfg:
             self.print_message(
                 f" ... Found technique_name in config: {self.world_cfg['technique_name']}",
                 info=True,
@@ -81,7 +81,7 @@ class Base(object):
             )
 
         self.calibration = calibration
-        if "save_root" in self.world_cfg.keys():
+        if "save_root" in self.world_cfg:
             self.save_root = self.world_cfg["save_root"]
             self.print_message(
                 f" ... Found root save directory in config: {self.world_cfg['save_root']}",
@@ -186,7 +186,7 @@ class Base(object):
         return self.actives[process.process_uuid]
 
     async def get_active_info(self, process_uuid: str):
-        if process_uuid in self.actives.keys():
+        if process_uuid in self.actives:
             process_dict = await self.actives[process_uuid].active.as_dict()
             return process_dict
         else:
@@ -609,7 +609,7 @@ class Base(object):
                 if isinstance(header, dict):
                     header_dict = copy(header)
                     header = pyaml.dump(header, sort_dicts=False)
-                    # header_lines = len(header_dict.keys())
+                    # header_lines = len(header_dict)
                 else:
                     if isinstance(header, list):
                         # header_lines = len(header)
@@ -663,7 +663,7 @@ class Base(object):
             data_dict1 = dict()
             data_dict2 = dict()
             file_keys = []
-            for file_key in self.file_conn.keys():
+            for file_key in self.file_conn:
                 data_dict1[file_key] = pyaml.dump({"epoch_ns": realtime})
                 data_dict2[file_key] = "%%"
                 file_keys.append(file_key)
@@ -786,7 +786,7 @@ class Base(object):
             # data_msg should be a dict {uuid: list of values or a list of list of values}
             try:
                 async for data_msg in self.base.data_q.subscribe():
-                    if self.process.process_uuid in data_msg.keys():  # only write data for this process
+                    if self.process.process_uuid in data_msg:  # only write data for this process
                         data_dict = data_msg[self.process.process_uuid]
                         data_val = data_dict["data"]
                         self.process.data.append(data_val)
@@ -972,7 +972,7 @@ class Base(object):
             "Close file_conn, finish prc, copy aux, set endpoint status, and move active dict to past."
             await asyncio.sleep(1)
             self.base.print_message(" ... finishing data logging.")
-            for filekey in self.file_conn.keys():
+            for filekey in self.file_conn:
                 if self.file_conn[filekey]:
                     await self.file_conn[filekey].close()
             self.file_conn = dict()

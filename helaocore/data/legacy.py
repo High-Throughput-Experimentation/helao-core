@@ -40,7 +40,7 @@ class HTELegacyAPI:
             self.base.print_message(f" ... Elements: {elements}")
 
             # 3. checks that a print and anneal record exist in the info file
-            if not "prints" or not "anneals" in infod.keys():
+            if not "prints" or not "anneals" in infod:
                 self.base.print_message("Warning: no print or anneal record exists", warning=True)
 
             # 4. gets platemap and passes to alignment code
@@ -62,7 +62,7 @@ class HTELegacyAPI:
     def check_printrecord_plateid(self, plateid: int):
         infod = self.importinfo(str(plateid))
         if infod is not None:
-            if not "prints" in infod.keys():
+            if not "prints" in infod:
                 return False
             else:
                 return True
@@ -70,7 +70,7 @@ class HTELegacyAPI:
     def check_annealrecord_plateid(self, plateid: int):
         infod = self.importinfo(str(plateid))
         if infod is not None:
-            if not "anneals" in infod.keys():
+            if not "anneals" in infod:
                 return False
             else:
                 return True
@@ -98,13 +98,13 @@ class HTELegacyAPI:
                 return None
         requiredkeysthere = (
             lambda infofiled, print_key_or_keyword=print_key_or_keyword: (
-                "screening_print_id" in infofiled.keys()
+                "screening_print_id" in infofiled
             )
             if print_key_or_keyword == "screening_print_id"
-            else (print_key_or_keyword in infofiled["prints"].keys())
+            else (print_key_or_keyword in infofiled["prints"])
         )
-        while not ("prints" in infofiled.keys() and requiredkeysthere(infofiled)):
-            if not "lineage" in infofiled.keys() or not "," in infofiled["lineage"]:
+        while not ("prints" in infofiled and requiredkeysthere(infofiled)):
+            if not "lineage" in infofiled or not "," in infofiled["lineage"]:
                 return None
             parentplateidstr = infofiled["lineage"].split(",")[-2].strip()
             infofiled = self.importinfo(parentplateidstr)
@@ -112,14 +112,14 @@ class HTELegacyAPI:
             printdlist = [
                 printd
                 for printd in infofiled["prints"].values()
-                if "id" in printd.keys() and printd["id"] == infofiled["screening_print_id"]
+                if "id" in printd and printd["id"] == infofiled["screening_print_id"]
             ]
             if len(printdlist) == 0:
                 return None
             printd = printdlist[0]
         else:
             printd = infofiled["prints"][print_key_or_keyword]
-        if not "elements" in printd.keys():
+        if not "elements" in printd:
             return None
         els = [x for x in printd["elements"].split(",") if x not in exclude_elements_list]
 
@@ -277,7 +277,7 @@ class HTELegacyAPI:
 
         searchstr1 = "concentration_elements"
         searchstr2 = "concentration_values"
-        if not (searchstr1 in printd.keys() and searchstr2 in printd.keys()):
+        if not (searchstr1 in printd and searchstr2 in printd):
             if return_defaults_if_none:
                 nels_printchannels = [len(regexcompile("[A-Z][a-z]*").findall(el)) for el in els]
                 if max(nels_printchannels) > 1:

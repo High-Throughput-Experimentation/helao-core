@@ -105,7 +105,7 @@ class Orch(Base):
         """Subscribe to all fastapi servers in config."""
         fails = []
         for serv_key, serv_dict in self.world_cfg["servers"].items():
-            if "fast" in serv_dict.keys():
+            if "fast" in serv_dict:
                 self.print_message(f" ... trying to subscribe to {serv_key} status")
 
                 success = False
@@ -356,7 +356,7 @@ class Orch(Base):
                         # copy requested global param to process params
                         for k, v in A.from_global_params.items():
                             self.print_message(f"{k}:{v}")
-                            if k in self.active_sequence.global_params.keys():
+                            if k in self.active_sequence.global_params:
                                 A.process_params.update({v: self.active_sequence.global_params[k]})
 
                         self.print_message(" ... dispatching process", A.as_dict())
@@ -372,10 +372,10 @@ class Orch(Base):
                         # self.print_message(result)
                         if "to_global_params" in result:
                             for k in result["to_global_params"]:
-                                if k in result["process_params"].keys():
+                                if k in result["process_params"]:
                                     if (
                                         result["process_params"][k] is None
-                                        and k in self.active_sequence.global_params.keys()
+                                        and k in self.active_sequence.global_params
                                     ):
                                         self.active_sequence.global_params.pop(k)
                                     else:
@@ -657,7 +657,7 @@ class Orch(Base):
     def append_process(self, sup_process: Process):
         """Add process to end of current process queue."""
         if len(self.process_dq) == 0:
-            last_ordering = floor(max(list(self.dispatched_processes.keys())))
+            last_ordering = floor(max(list(self.dispatched_processes)))
         else:
             last_ordering = floor(self.process_dq[-1].process_ordering)
         new_ordering = int(last_ordering + 1)
