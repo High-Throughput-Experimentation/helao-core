@@ -9,7 +9,7 @@ from socket import gethostname
 from typing import List, Optional, Union
 
 from helaocore.helper import print_message
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, validator, root_validator
 
 
 
@@ -113,7 +113,7 @@ class _BaseSample(BaseModel):
             return None
 
     def create_initial_prc_dict(self):
-        if type(self.status) is not list:
+        if not isinstance(self.status, list):
             self.status = [self.status]
 
         return {
@@ -133,15 +133,24 @@ class _BaseSample(BaseModel):
          pass
 
         
-    def update_vol(self, delta_vol_ml, dilute):
+    def update_vol(self, delta_vol_ml: float, dilute: bool):
         if hasattr(self, "volume_ml"):
             old_vol = self.volume_ml
             tot_vol = old_vol+delta_vol_ml
+            if tot_vol < 0:
+                print_message({}, "model", "new volume is < 0, setting it to zero.", error=True)
+                tot_vol = 0
             self.volume_ml = tot_vol
-            if hasattr(self, "dilution_factor"):
-                old_df = self.dilution_factor
-                new_df = tot_vol/(old_vol/old_df)
-                self.dilution_factor = new_df
+            if dilute:
+                if hasattr(self, "dilution_factor"):
+                    old_df = self.dilution_factor
+                    if old_vol <= 0:
+                        print_message({}, "model", "previous volume is <= 0, setting new df to 0.", error=True)
+                        new_df = -1
+                    else:
+                        new_df = tot_vol/(old_vol/old_df)
+                    self.dilution_factor = new_df
+                    print_message({}, "model", f"updated sample dilution-factor: {self.dilution_factor}", error=True)
 
 
     def get_vol_ml(self):
@@ -231,6 +240,16 @@ class SolidSample(_BaseSample):
             raise ValueError("must be solid")
         return "solid"
 
+    @root_validator(pre=False, skip_on_failure=True)
+    def validate_global_label(cls, values):
+        machine_name = values.get("machine_name")
+        plate_id = values.get("plate_id")
+        sample_no = values.get("sample_no")
+        if machine_name == "legacy":
+            values["global_label"] = f"{machine_name}__solid__{plate_id}_{sample_no}"
+            return values
+        else:
+            raise ValueError("Only legacy solid sample supported for now.")
 
 class GasSample(_BaseSample):
     """base class for gas samples"""
