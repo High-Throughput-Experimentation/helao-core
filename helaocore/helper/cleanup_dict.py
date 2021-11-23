@@ -1,5 +1,6 @@
 __all__ = ["cleanupdict"]
 
+from enum import Enum
 
 def cleanupdict(d):
     clean = {}
@@ -9,7 +10,9 @@ def cleanupdict(d):
             if len(nested.keys()) > 0:
                 clean[k] = nested
         elif v is not None:
-            if isinstance(v, list):
+            if isinstance(v, Enum):
+                clean[k] = v.name
+            elif isinstance(v, list):
                 if len(v) !=0:
                     clean[k] = _cleanuplist(v)
             elif isinstance(v, str):
