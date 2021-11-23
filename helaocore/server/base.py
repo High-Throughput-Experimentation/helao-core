@@ -109,11 +109,10 @@ class Base(object):
         self.ntp_offset = None  # add to system time for correction
         self.ntp_last_sync = None
         if os.path.exists("ntpLastSync.txt"):
-            time_inst = open("ntpLastSync.txt", "r")
-            tmps = time_inst.readline()
-            time_inst.close()
-            self.ntp_last_sync, self.ntp_offset = tmps.strip().split(",")
-            self.ntp_offset = float(self.ntp_offset)
+            with open("ntpLastSync.txt", "r") as f:
+                tmps = f.readline()
+                self.ntp_last_sync, self.ntp_offset = tmps.strip().split(",")
+                self.ntp_offset = float(self.ntp_offset)
         elif self.ntp_last_sync is None:
             asyncio.gather(self.get_ntp_time())
         self.init_endpoint_status(fastapp)
@@ -215,9 +214,9 @@ class Base(object):
             self.print_message(f" ... ntp_offset: {self.ntp_offset}")
             self.print_message(f" ... ntp_last_sync: {self.ntp_last_sync}")
 
-            time_inst = await aiofiles.open("ntpLastSync.txt", "w")
-            await time_inst.write(f"{self.ntp_last_sync},{self.ntp_offset}")
-            await time_inst.close()
+            async with aiofiles.open("ntpLastSync.txt", "w") as f:
+                await f.write(f"{self.ntp_last_sync},{self.ntp_offset}")
+
 
     async def attach_client(self, client_servkey: str, retry_limit=5):
         "Add client for pushing status updates via HTTP POST."
@@ -373,9 +372,8 @@ class Base(object):
                 await asyncio.sleep(10)
                 lock = asyncio.Lock()
                 async with lock:
-                    time_inst = await aiofiles.open("ntpLastSync.txt", "r")
-                    ntp_last_sync = await time_inst.readline()
-                    await time_inst.close()
+                    async with aiofiles.open("ntpLastSync.txt", "r") as f:
+                        ntp_last_sync = await f.readline()
                     parts = ntp_last_sync.strip().split(",")
                     if len(parts) == 2:
                         self.ntp_last_sync = float(parts[0])
@@ -413,14 +411,12 @@ class Base(object):
 
         if not os.path.exists(output_path):
             os.makedirs(output_path, exist_ok=True)
+        
+        async with aiofiles.open(output_file, mode="a+") as f:
+            if not output_str.endswith("\n"):
+                output_str += "\n"
+                await f.write(output_str)
 
-        file_instance = await aiofiles.open(output_file, mode="a+")
-
-        if not output_str.endswith("\n"):
-            output_str += "\n"
-
-        await file_instance.write(output_str)
-        await file_instance.close()
 
     def get_sequence_dir(self, sequence):
         """accepts process or sequence object"""
@@ -517,7 +513,7 @@ class Base(object):
 
             self.data_logger = self.base.aloop.create_task(self.log_data_task())
 
-        def update_prc_file(self):
+        async def update_prc_file(self):
             # need to remove swagger workaround value if present
             if "scratch" in self.process.process_params:
                 del self.process.process_params["scratch"]
@@ -542,6 +538,9 @@ class Base(object):
                 process_abbr=self.process.process_abbr,
                 process_params=self.process.process_params,
             )
+            # write initial temporary prc file
+            await self.write_prc()
+
 
         async def myinit(self):
             if self.process.save_prc:
@@ -550,7 +549,7 @@ class Base(object):
                     exist_ok=True,
                 )
                 self.process.process_num = f"{self.process.process_abbr}-{self.process.process_ordering}"
-                self.update_prc_file()
+                await self.update_prc_file()
 
                 if self.manual:
                     # create and write prg file for manual process
@@ -861,11 +860,10 @@ class Base(object):
                 output_path = os.path.join(self.base.save_root, self.process.output_dir, filename)
                 self.base.print_message(f" ... writing non stream data to: {output_path}")
 
-                file_instance = await aiofiles.open(output_path, mode="w")
-                await file_instance.write(header + output_str)
-                await file_instance.close()
-                self.process.file_dict.update({filename: file_info})
-                return output_path
+                async with aiofiles.open(output_path, mode="w") as f:
+                    await f.write(header + output_str)
+                    self.process.file_dict.update({filename: file_info})
+                    return output_path
             else:
                 return None
 
@@ -894,32 +892,25 @@ class Base(object):
                 )
                 output_path = os.path.join(self.base.save_root, self.process.output_dir, filename)
                 self.base.print_message(f" ... writing non stream data to: {output_path}")
-
-                file_instance = open(output_path, mode="w")
-                file_instance.write(header + output_str)
-                file_instance.close()
-                self.process.file_dict.update({filename: file_info})
-                return output_path
+                with open(output_path, mode="w") as f:
+                    f.write(header + output_str)
+                    self.process.file_dict.update({filename: file_info})
+                    return output_path
             else:
                 return None
 
-        async def write_to_prc(self, prc_dict: dict):
-            "Create new prc if it doesn't exist, otherwise append prc_dict to file."
+        async def write_prc(self):
+            "Create new prc if it doesn't exist."
             output_path = os.path.join(
                 self.base.save_root,
                 self.process.output_dir,
                 f"{self.process.process_timestamp}.prc",
             )
             self.base.print_message(f" ... writing to prc: {output_path}")
-            # self.base.print_message(" ... writing:",prc_dict)
-            output_str = pyaml.dump(prc_dict, sort_dicts=False)
-            file_instance = await aiofiles.open(output_path, mode="a+")
+            async with aiofiles.open(output_path, mode="w") as f:
+                await f.write(pyaml.dump(cleanupdict(self.prc_file.dict()), 
+                                         sort_dicts=False))
 
-            if not output_str.endswith("\n"):
-                output_str += "\n"
-
-            await file_instance.write(output_str)
-            await file_instance.close()
 
         async def append_sample(self, samples, IO: str):
             "Add sample to samples_out and samples_in dict"
@@ -986,7 +977,7 @@ class Base(object):
                 self.prc_file.files = self.process.file_dict
 
             # write full prc header to file
-            await self.write_to_prc(cleanupdict(self.prc_file.dict()))
+            await self.write_prc()
 
             await self.clear_status()
             self.data_logger.cancel()
