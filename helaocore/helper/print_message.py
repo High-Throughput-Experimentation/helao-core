@@ -2,17 +2,17 @@ __all__ = ["print_message"]
 
 from time import strftime
 
-from colorama import Fore, Style
+from colorama import Fore, Back, Style
 
 
 def print_message(server_cfg, server_name, *args, **kwargs):
     precolor = ""
     if "error" in kwargs:
-        precolor = f"{Style.BRIGHT}{Fore.RED}"
+        precolor = f"{Style.BRIGHT}{Fore.WHITE}{Back.RED}"
     if "warning" in kwargs:
-        precolor = f"{Style.BRIGHT}{Fore.YELLOW}"
+        precolor = f"{Fore.BLACK}{Back.YELLOW}"
     if "info" in kwargs:
-        precolor = f"{Style.BRIGHT}{Fore.GREEN}"
+        precolor = f"{Fore.BLACK}{Back.GREEN}"
 
     srv_type = server_cfg.get("group", "")
     style = ""
@@ -26,7 +26,6 @@ def print_message(server_cfg, server_name, *args, **kwargs):
         style = f"{Style.BRIGHT}{Fore.CYAN}"
     else:
         style = ""
-    # style = server_cfg.get("msg_color",style)
 
     for arg in args:
         print(
