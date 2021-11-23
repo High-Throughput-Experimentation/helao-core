@@ -63,6 +63,7 @@ class _BaseSampleAPI(object):
         self._cur = None
         # convert these to json when saving them to the db
         self._jsonkeys = ["chemical", "mass", "supplier", "lot_number", "source", "status"]
+        self.ready = False
 
     def _open_db(self):
         self._con = sqlite3.connect(self._db)
@@ -162,6 +163,9 @@ class _BaseSampleAPI(object):
         return sample
 
     async def new_sample(self, samples: hcms.SampleList = hcms.SampleList()):
+        while not self.ready:
+            self._base.print_message("db not ready", info = True)
+            await asyncio.sleep(0.1)
         await asyncio.sleep(0.001)
         ret_samples = hcms.SampleList()
         if not isinstance(samples, hcms.SampleList):
@@ -203,10 +207,14 @@ class _BaseSampleAPI(object):
             else:
                 self._base.print_message(f" ... {self._sample_type} table found!")
             self._close_db()
-        await self.count_samples() # has also a separate lock
         self._base.print_message(f" '{self._sample_type}' db initialized")
+        self.ready = True
+        await self.count_samples() # has also a separate lock
 
     async def count_samples(self):
+        while not self.ready:
+            self._base.print_message("db not ready", info = True)
+            await asyncio.sleep(0.1)
         await asyncio.sleep(0.001)
         lock = asyncio.Lock()
         async with lock:
@@ -222,6 +230,9 @@ class _BaseSampleAPI(object):
         and fills in the rest from the db and returns the list again.
         We expect to not have mixed sample types here.
         """
+        while not self.ready:
+            self._base.print_message("db not ready", info = True)
+            await asyncio.sleep(0.1)
         await asyncio.sleep(0.001)
         ret_samples = hcms.SampleList()
         if not isinstance(samples, hcms.SampleList):
@@ -287,6 +298,10 @@ class _BaseSampleAPI(object):
 
 
     async def update_sample(self, samples: hcms.SampleList = hcms.SampleList()):
+        while not self.ready:
+            self._base.print_message("db not ready", info = True)
+            await asyncio.sleep(0.1)
+        
         await asyncio.sleep(0.001)
         ret_samples = hcms.SampleList()
         if not isinstance(samples, hcms.SampleList):
@@ -648,7 +663,7 @@ class UnifiedSampleDataAPI:
         self.liquidAPI = LiquidSampleAPI(self._base, self._dbfilepath)
         self.gasAPI = GasSampleAPI(self._base, self._dbfilepath)
         self.assemblyAPI = AssemblySampleAPI(self._base, self._dbfilepath)
-
+        self.ready = False
 
     async def init_db(self):
         await self.solidAPI.init_db()
@@ -656,7 +671,7 @@ class UnifiedSampleDataAPI:
         await self.gasAPI.init_db()
         await self.assemblyAPI.init_db()
         self._base.print_message("unified db initialized")
-
+        self.ready = True
 
     async def new_sample(self, samples: hcms.SampleList = hcms.SampleList()):
         retval = hcms.SampleList()
@@ -694,6 +709,7 @@ class UnifiedSampleDataAPI:
             return retval
 
         for sample in samples.samples:
+            self._base.print_message(f"retrieving sample {sample.global_label}", info=True)
             if isinstance(sample, hcms.LiquidSample):
                 tmp = await self.liquidAPI.get_sample(hcms.SampleList(samples=[sample]))
                 retval.samples.append(tmp.samples[0])
