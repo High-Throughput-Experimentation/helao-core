@@ -62,7 +62,7 @@ class _BaseSampleAPI(object):
         self._con = None
         self._cur = None
         # convert these to json when saving them to the db
-        self._jsonkeys = ["chemical", "mass", "supplier", "lot_number", "source"]
+        self._jsonkeys = ["chemical", "mass", "supplier", "lot_number", "source", "status"]
 
     def _open_db(self):
         self._con = sqlite3.connect(self._db)
@@ -263,13 +263,13 @@ class _BaseSampleAPI(object):
         for key, val in sample_dfdict.items():
             if key in self.column_types and key != "idx":
                 col_type = self.column_types[key]
-                # print(key, val, self.column_notNULL[key])
                 if not (self.column_notNULL[key] and val is None):
                     if col_type in ['integer', 'real']:
                         if val is None:
                             cmd = f'''UPDATE {self._sample_type} SET {key} = NULL WHERE idx = {idx};'''
                         else:
                             cmd = f'''UPDATE {self._sample_type} SET {key} = {val} WHERE idx = {idx};'''
+                        self._base.print_message(f"dbcommand: {cmd}", info=True)
                         self._cur.execute(cmd)
                     else:
                         if val is not None:
@@ -278,6 +278,7 @@ class _BaseSampleAPI(object):
                             cmd = f'''UPDATE {self._sample_type} SET {key} = "{val}" WHERE idx = {idx};'''
                         else:
                             cmd = f'''UPDATE {self._sample_type} SET {key} = NULL WHERE idx = {idx};'''
+                        self._base.print_message(f"dbcommand: {cmd}", info=True)
                         self._cur.execute(cmd)
 
             else:
@@ -543,17 +544,16 @@ class OldLiquidSampleAPI:
         """
 
         async def load_json_file(filename, linenr=1):
-            self.fjsonread = await aiofiles.open(os.path.join(self._dbfilepath, filename), "r+")
-            counter = 0
-            retval = ""
-            await self.fjsonread.seek(0)
-            async for line in self.fjsonread:
-                counter += 1
-                if counter == linenr:
-                    retval = line
-            await self.fjsonread.close()
-            retval = json.loads(retval)
-            return retval
+            async with aiofiles.open(os.path.join(self._dbfilepath, filename), "r+") as f:
+                counter = 0
+                retval = ""
+                await f.seek(0)
+                async for line in f:
+                    counter += 1
+                    if counter == linenr:
+                        retval = line
+                retval = json.loads(retval)
+                return retval
 
         async def get_sample_details(sample_no):
             # need to add headerline count
@@ -722,6 +722,7 @@ class UnifiedSampleDataAPI:
             return
 
         for sample in samples.samples:
+            self._base.print_message(f"updating sample: {sample.global_label}", info=True)
             if isinstance(sample, hcms.LiquidSample):
                 await self.liquidAPI.update_sample(hcms.SampleList(samples=[sample]))
             elif isinstance(sample, hcms.SolidSample):
@@ -729,6 +730,9 @@ class UnifiedSampleDataAPI:
             elif isinstance(sample, hcms.GasSample):
                 await self.gasAPI.update_sample(hcms.SampleList(samples=[sample]))
             elif isinstance(sample, hcms.AssemblySample):
+                # update also the parts
+                for part in sample.parts:
+                    await self.update_sample(hcms.SampleList(samples=[part]))
                 await self.assemblyAPI.update_sample(hcms.SampleList(samples=[sample]))
             else:
                 self._base.print_message(
