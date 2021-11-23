@@ -51,27 +51,27 @@ class Sequence(object):
 
     def as_dict(self):
         d = vars(self)
-        attr_only = {k: v for k, v in d.items() if type(v) != types.FunctionType and not k.startswith("__")}
+        attr_only = {k: v for k, v in d.items() if not isinstance(v,types.FunctionType) and not k.startswith("__")}
         return attr_only
 
     def fastdict(self):
         d = vars(self)
         params_dict = {
-            k: int(v) if type(v) == bool else v
+            k: int(v) if isinstance(v, bool) else v
             for k, v in d.items()
-            if type(v) != types.FunctionType
+            if not isinstance(v,types.FunctionType)
             and not k.startswith("__")
             and (v is not None)
-            and (type(v) != dict)
+            and not isinstance(v,dict)
             and (v != {})
         }
         json_dict = {
             k: v
             for k, v in d.items()
-            if type(v) != types.FunctionType
+            if not isinstance(v,types.FunctionType)
             and not k.startswith("__")
             and (v is not None)
-            and (type(v) == dict)
+            and isinstance(v,dict)
         }
         return params_dict, json_dict
 
@@ -133,8 +133,8 @@ class Process(Sequence):
         self.file_dict.update(imports.get("file_dict", {}))
 
         # TODO: make the following attributes private
-        self.save_prc = imports.get("save_prc", True)
-        self.save_data = imports.get("save_data", True)
+        self.save_prc = imports.get("save_prc", True) # default should be true
+        self.save_data = imports.get("save_data", True) # default should be true
         self.plate_id = imports.get("plate_id", None)
         self.prc_samples_in = []  # holds sample list of dict for prc writing
         self.prc_samples_out = []
@@ -217,3 +217,7 @@ class Sequencer(object):
         new_process_dict = self._pg.as_dict()
         new_process_dict.update(process_dict)
         self.process_list.append(Process(inputdict=new_process_dict))
+
+
+    def add_process_list(self, process_list: list):
+        self.process_list.append(process_list)

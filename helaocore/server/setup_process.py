@@ -41,9 +41,9 @@ async def setup_process(request: Request):
     if "fast_samples_in" in A.process_params:
         tmp_fast_samples_in = A.process_params.get("fast_samples_in", [])
         del A.process_params["fast_samples_in"]
-        if type(tmp_fast_samples_in) is dict:
+        if isinstance(tmp_fast_samples_in,dict):
             A.samples_in = hcms.SampleList(**tmp_fast_samples_in)
-        elif type(tmp_fast_samples_in) is list:
+        elif isinstance(tmp_fast_samples_in, list):
             A.samples_in = hcms.SampleList(samples=tmp_fast_samples_in)
 
     if A.process_abbr is None:
