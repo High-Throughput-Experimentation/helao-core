@@ -406,7 +406,7 @@ class Base(object):
         output_path = os.path.join(self.save_root, sequence_dir)
         output_file = os.path.join(output_path, f"{sequence_timestamp}.prg")
 
-        self.print_message(f" ... writing to prg: {output_path}")
+        self.print_message(f" ... writing to prg: {output_file}")
         output_str = pyaml.dump(prg_dict, sort_dicts=False)
 
         if not os.path.exists(output_path):
@@ -415,7 +415,7 @@ class Base(object):
         async with aiofiles.open(output_file, mode="a+") as f:
             if not output_str.endswith("\n"):
                 output_str += "\n"
-                await f.write(output_str)
+            await f.write(output_str)
 
 
     def get_sequence_dir(self, sequence):
@@ -510,7 +510,6 @@ class Base(object):
                     self.sequence_dir,
                     f"{self.process.process_timestamp}__{self.process.process_server}__{self.process.process_name}__{self.process.process_uuid}",
                 )
-
             self.data_logger = self.base.aloop.create_task(self.log_data_task())
 
         async def update_prc_file(self):
