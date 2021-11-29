@@ -359,7 +359,6 @@ class Orch(Base):
                             if k in self.active_sequence.global_params:
                                 A.process_params.update({v: self.active_sequence.global_params[k]})
 
-                        self.print_message(" ... dispatching process", A.as_dict())
                         self.print_message(
                             f" ... dispatching process {A.process_name} on server {A.process_server}"
                         )
