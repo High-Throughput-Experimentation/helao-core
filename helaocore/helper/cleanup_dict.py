@@ -5,7 +5,9 @@ from enum import Enum
 def cleanupdict(d):
     clean = {}
     for k, v in d.items():
-        if isinstance(v, dict):
+        if k.startswith("_"):
+            continue
+        elif isinstance(v, dict):
             nested = cleanupdict(v)
             if len(nested.keys()) > 0:
                 clean[k] = nested
