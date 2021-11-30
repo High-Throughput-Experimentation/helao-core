@@ -135,7 +135,7 @@ class Process(Sequence):
         # TODO: make the following attributes private
         self.save_prc = imports.get("save_prc", True) # default should be true
         self.save_data = imports.get("save_data", True) # default should be true
-        self.plate_id = imports.get("plate_id", None)
+        # self.plate_id = imports.get("plate_id", None) # not needed anymore
         self.prc_samples_in = []  # holds sample list of dict for prc writing
         self.prc_samples_out = []
         self.file_paths = imports.get("file_paths", [])
@@ -220,4 +220,5 @@ class Sequencer(object):
 
 
     def add_process_list(self, process_list: list):
-        self.process_list.append(process_list)
+        for process in process_list:
+            self.process_list.append(process)
