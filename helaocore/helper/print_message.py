@@ -9,10 +9,12 @@ def print_message(server_cfg, server_name, *args, **kwargs):
     precolor = ""
     if "error" in kwargs:
         precolor = f"{Style.BRIGHT}{Fore.WHITE}{Back.RED}"
-    if "warning" in kwargs:
+    elif "warning" in kwargs:
         precolor = f"{Fore.BLACK}{Back.YELLOW}"
-    if "info" in kwargs:
+    elif "info" in kwargs:
         precolor = f"{Fore.BLACK}{Back.GREEN}"
+    else:
+        precolor = f"{Style.RESET_ALL}"
 
     srv_type = server_cfg.get("group", "")
     style = ""
