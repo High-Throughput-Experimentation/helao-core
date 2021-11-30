@@ -109,20 +109,25 @@ class Orch(Base):
                 self.print_message(f" ... trying to subscribe to {serv_key} status")
 
                 success = False
-                for _ in range(retry_limit):
-                    response = await async_private_dispatcher(
-                        world_config_dict=self.world_cfg,
-                        server=serv_key,
-                        private_process="attach_client",
-                        params_dict={"client_servkey": self.server_name},
-                        json_dict={},
-                    )
-                    if response == True:
-                        success = True
-                        break
-
                 serv_addr = serv_dict["host"]
                 serv_port = serv_dict["port"]
+                for _ in range(retry_limit):
+                    try:
+                        response = await async_private_dispatcher(
+                            world_config_dict=self.world_cfg,
+                            server=serv_key,
+                            private_process="attach_client",
+                            params_dict={"client_servkey": self.server_name},
+                            json_dict={},
+                        )
+                        if response == True:
+                            success = True
+                            break
+                    except aiohttp.client_exceptions.ClientConnectorError:
+                        self.print_message(f"failed to subscribe to {serv_key} at {serv_addr}:{serv_port}, trying again in 1sec", error = True)
+                        await asyncio.sleep(1) 
+                        
+
                 if success:
                     self.print_message(f"Subscribed to {serv_key} at {serv_addr}:{serv_port}")
                 else:
