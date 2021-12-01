@@ -98,7 +98,7 @@ class Orch(Base):
     async def check_wait_for_all_processes(self):
         running_states, _ = await self.check_global_state()
         global_free = len(running_states) == 0
-        self.print_message(f" ... check len(running_states): {len(running_states)}")
+        self.print_message(f"check len(running_states): {len(running_states)}")
         return global_free
 
     async def subscribe_all(self, retry_limit: int = 5):
@@ -106,7 +106,7 @@ class Orch(Base):
         fails = []
         for serv_key, serv_dict in self.world_cfg["servers"].items():
             if "fast" in serv_dict:
-                self.print_message(f" ... trying to subscribe to {serv_key} status")
+                self.print_message(f"trying to subscribe to {serv_key} status")
 
                 success = False
                 serv_addr = serv_dict["host"]
@@ -133,14 +133,14 @@ class Orch(Base):
                 else:
                     fails.append(serv_key)
                     self.print_message(
-                        f" ... Failed to subscribe to {serv_key} at {serv_addr}:{serv_port}. Check connection."
+                        f"Failed to subscribe to {serv_key} at {serv_addr}:{serv_port}. Check connection."
                     )
 
         if len(fails) == 0:
             self.init_success = True
         else:
             self.print_message(
-                " ... Orchestrator cannot process sequence_dq unless all FastAPI servers in config file are accessible."
+                "Orchestrator cannot process sequence_dq unless all FastAPI servers in config file are accessible."
             )
 
     async def update_status(self, process_serv: str, status_dict: dict):
@@ -155,11 +155,11 @@ class Orch(Base):
                 removed = set(last_dict[act_name]).difference(acts)
                 ongoing = set(acts).intersection(last_dict[act_name])
                 if removed:
-                    self.print_message(f" ... '{process_serv}:{act_name}' finished {','.join(removed)}")
+                    self.print_message(f"'{process_serv}:{act_name}' finished {','.join(removed)}")
                 if started:
-                    self.print_message(f" ... '{process_serv}:{act_name}' started {','.join(started)}")
+                    self.print_message(f"'{process_serv}:{act_name}' started {','.join(started)}")
                 if ongoing:
-                    self.print_message(f" ... '{process_serv}:{act_name}' ongoing {','.join(ongoing)}")
+                    self.print_message(f"'{process_serv}:{act_name}' ongoing {','.join(ongoing)}")
         self.global_state_dict[process_serv].update(status_dict)
         await self.global_q.put(self.global_state_dict)
         return True
@@ -191,16 +191,16 @@ class Orch(Base):
                 self.global_state_str = "idle"
             else:
                 self.global_state_str = "busy"
-                self.print_message(f" ... running_states: {running_states}")
+                self.print_message(f"running_states: {running_states}")
 
     async def check_global_state(self):
         """Return global state of process servers."""
         running_states = []
         idle_states = []
-        # self.print_message(" ... checking global state:")
+        # self.print_message("checking global state:")
         # self.print_message(self.global_state_dict.items())
         for process_serv, act_dict in self.global_state_dict.items():
-            self.print_message(f" ... checking {process_serv} state")
+            self.print_message(f"checking {process_serv} state")
             for act_name, act_uuids in act_dict.items():
                 if len(act_uuids) == 0:
                     idle_states.append(f"{process_serv}:{act_name}")
@@ -213,20 +213,20 @@ class Orch(Base):
 
     async def dispatch_loop_task(self):
         """Parse sequence and process queues, and dispatch process_dq while tracking run state flags."""
-        self.print_message(" ... running operator orch")
-        self.print_message(f" ... orch status: {self.global_state_str}")
+        self.print_message("running operator orch")
+        self.print_message(f"orch status: {self.global_state_str}")
         # clause for resuming paused process list
-        self.print_message(f" ... orch descisions: {self.sequence_dq}")
+        self.print_message(f"orch descisions: {self.sequence_dq}")
         try:
             self.loop_state = "started"
             while self.loop_state == "started" and (self.process_dq or self.sequence_dq):
-                self.print_message(f" ... current content of process_dq: {self.process_dq}")
-                self.print_message(f" ... current content of sequence_dq: {self.sequence_dq}")
+                self.print_message(f"current content of process_dq: {self.process_dq}")
+                self.print_message(f"current content of sequence_dq: {self.sequence_dq}")
                 await asyncio.sleep(
                     0.001
                 )  # allows status changes to affect between process_dq, also enforce unique timestamp
                 if not self.process_dq:
-                    self.print_message(" ... getting process_dq from new sequence")
+                    self.print_message("getting process_dq from new sequence")
                     # generate uids when populating, generate timestamp when acquring
                     self.last_sequence = copy(self.active_sequence)
                     self.active_sequence = self.sequence_dq.popleft()
@@ -243,8 +243,8 @@ class Orch(Base):
                     # TODO:update sequence code
                     self.process_dq = deque(unpacked_acts)
                     self.dispatched_processes = {}
-                    self.print_message(f" ... got: {self.process_dq}")
-                    self.print_message(f" ... optional params: {self.active_sequence.sequence_params}")
+                    self.print_message(f"got: {self.process_dq}")
+                    self.print_message(f"optional params: {self.active_sequence.sequence_params}")
 
                     self.prg_file = hcmf.PrgFile(
                         hlo_version=f"{version.hlo_version}",
@@ -263,7 +263,7 @@ class Orch(Base):
 
                 else:
                     if self.loop_intent == "stop":
-                        self.print_message(" ... stopping orchestrator")
+                        self.print_message("stopping orchestrator")
                         # monitor status of running process_dq, then end loop
                         # async for _ in self.global_q.subscribe():
                         while True:
@@ -276,7 +276,7 @@ class Orch(Base):
                         # clear process queue, forcing next sequence
                         self.process_dq.clear()
                         await self.intend_none()
-                        self.print_message(" ... skipping to next sequence")
+                        self.print_message("skipping to next sequence")
                     else:
                         # all process blocking is handled like preempt, check Process requirements
                         A = self.process_dq.popleft()
@@ -286,11 +286,11 @@ class Orch(Base):
                         # see async_process_dispatcher for unpacking
                         if isinstance(A.start_condition, int):
                             if A.start_condition == process_start_condition.no_wait:
-                                self.print_message(" ... orch is dispatching an unconditional process")
+                                self.print_message("orch is dispatching an unconditional process")
                             else:
                                 if A.start_condition == process_start_condition.wait_for_endpoint:
                                     self.print_message(
-                                        " ... orch is waiting for endpoint to become available"
+                                        "orch is waiting for endpoint to become available"
                                     )
                                     # async for _ in self.global_q.subscribe():
                                     while True:
@@ -301,7 +301,7 @@ class Orch(Base):
                                         if endpoint_free:
                                             break
                                 elif A.start_condition == process_start_condition.wait_for_server:
-                                    self.print_message(" ... orch is waiting for server to become available")
+                                    self.print_message("orch is waiting for server to become available")
                                     # async for _ in self.global_q.subscribe():
                                     while True:
                                         _ = await self.check_dispatch_queue()
@@ -316,16 +316,16 @@ class Orch(Base):
                                         if server_free:
                                             break
                                 else:  # start_condition is 3 or unsupported value
-                                    self.print_message(" ... orch is waiting for all process_dq to finish")
+                                    self.print_message("orch is waiting for all process_dq to finish")
                                     if not await self.check_wait_for_all_processes():
                                         while True:
                                             _ = await self.check_dispatch_queue()
                                             if await self.check_wait_for_all_processes():
                                                 break
                                     else:
-                                        self.print_message(" ... global_free is true")
+                                        self.print_message("global_free is true")
                         elif isinstance(A.start_condition, dict):
-                            self.print_message(" ... waiting for multiple conditions on external servers")
+                            self.print_message("waiting for multiple conditions on external servers")
                             condition_dict = A.start_condition
                             # async for _ in self.global_q.subscribe():
                             while True:
@@ -348,7 +348,7 @@ class Orch(Base):
                                     break
                         else:
                             self.print_message(
-                                " ... invalid start condition, waiting for all process_dq to finish"
+                                "invalid start condition, waiting for all process_dq to finish"
                             )
                             # async for _ in self.global_q.subscribe():
                             while True:
@@ -356,7 +356,7 @@ class Orch(Base):
                                 if await self.check_wait_for_all_processes():
                                     break
 
-                        self.print_message(" ... copying global vars to process")
+                        self.print_message("copying global vars to process")
 
                         # copy requested global param to process params
                         for k, v in A.from_global_params.items():
@@ -365,14 +365,14 @@ class Orch(Base):
                                 A.process_params.update({v: self.active_sequence.global_params[k]})
 
                         self.print_message(
-                            f" ... dispatching process {A.process_name} on server {A.process_server}"
+                            f"dispatching process {A.process_name} on server {A.process_server}"
                         )
                         # keep running list of dispatched processes
                         self.dispatched_processes[A.process_ordering] = copy(A)
                         result = await async_process_dispatcher(self.world_cfg, A)
                         self.active_sequence.result_dict[A.process_ordering] = result
 
-                        self.print_message(" ... copying global vars back to sequence")
+                        self.print_message("copying global vars back to sequence")
                         # self.print_message(result)
                         if "to_global_params" in result:
                             for k in result["to_global_params"]:
@@ -386,18 +386,18 @@ class Orch(Base):
                                         self.active_sequence.global_params.update(
                                             {k: result["process_params"][k]}
                                         )
-                        self.print_message(" ... done copying global vars back to sequence")
+                        self.print_message("done copying global vars back to sequence")
 
-            self.print_message(" ... sequence queue is empty")
-            self.print_message(" ... stopping operator orch")
+            self.print_message("sequence queue is empty")
+            self.print_message("stopping operator orch")
             self.loop_state = "stopped"
             await self.intend_none()
             return True
         # except asyncio.CancelledError:
-        #     self.print_message(" ... serious orch exception occurred",error = True)
+        #     self.print_message("serious orch exception occurred",error = True)
         #     return False
         except Exception as e:
-            self.print_message(" ... serious orch exception occurred", error=True)
+            self.print_message("serious orch exception occurred", error=True)
             self.print_message(f"ERROR: {e}", error=True)
             return False
 
@@ -405,9 +405,9 @@ class Orch(Base):
         if self.loop_state == "stopped":
             self.loop_task = asyncio.create_task(self.dispatch_loop_task())
         elif self.loop_state == "E-STOP":
-            self.print_message(" ... E-STOP flag was raised, clear E-STOP before starting.")
+            self.print_message("E-STOP flag was raised, clear E-STOP before starting.")
         else:
-            self.print_message(" ... loop already started.")
+            self.print_message("loop already started.")
         return self.loop_state
 
     async def estop_loop(self):
@@ -431,7 +431,7 @@ class Orch(Base):
         for serv in running_servers:
             serv_conf = self.world_cfg["servers"][serv]
             async with aiohttp.ClientSession() as session:
-                self.print_message(f" ... Sending force-stop request to {serv}")
+                self.print_message(f"Sending force-stop request to {serv}")
                 async with session.post(f"http://{serv_conf['host']}:{serv_conf['port']}/force_stop") as resp:
                     response = await resp.text()
                     self.print_message(response)
@@ -450,21 +450,21 @@ class Orch(Base):
 
     async def clear_estate(self, clear_estop=True, clear_error=True):
         if not clear_estop and not clear_error:
-            self.print_message(" ... both clear_estop and clear_error parameters are False, nothing to clear")
+            self.print_message("both clear_estop and clear_error parameters are False, nothing to clear")
         cleared_status = copy(self.global_state_dict)
         if clear_estop:
             for serv, process, myuuid in self.estop_uuids:
-                self.print_message(f" ... clearing E-STOP {process} on {serv}")
+                self.print_message(f"clearing E-STOP {process} on {serv}")
                 cleared_status[serv][process] = cleared_status[serv][process].remove(myuuid)
         if clear_error:
             for serv, process, myuuid in self.error_uuids:
-                self.print_message(f" ... clearing error {process} on {serv}")
+                self.print_message(f"clearing error {process} on {serv}")
                 cleared_status[serv][process] = cleared_status[serv][process].remove(myuuid)
         await self.global_q.put(cleared_status)
-        self.print_message(" ... resetting dispatch loop state")
+        self.print_message("resetting dispatch loop state")
         self.loop_state = "stopped"
         self.print_message(
-            f" ... {len(self.running_uuids)} running process_dq did not fully stop after E-STOP/error was raised"
+            f"{len(self.running_uuids)} running process_dq did not fully stop after E-STOP/error was raised"
         )
 
     async def add_sequence(
@@ -498,28 +498,28 @@ class Orch(Base):
             if self.active_sequence is not None:
                 active_label = self.active_sequence.sequence_label
                 self.print_message(
-                    f" ... sequence_label not specified, inheriting {active_label} from active sequence"
+                    f"sequence_label not specified, inheriting {active_label} from active sequence"
                 )
                 D.sequence_label = active_label
             elif self.last_sequence is not None:
                 last_label = self.last_sequence.sequence_label
                 self.print_message(
-                    f" ... sequence_label not specified, inheriting {last_label} from previous sequence"
+                    f"sequence_label not specified, inheriting {last_label} from previous sequence"
                 )
                 D.sequence_label = last_label
             else:
                 self.print_message(
-                    " ... sequence_label not specified, no past sequence_dq to inherit so using default 'nolabel"
+                    "sequence_label not specified, no past sequence_dq to inherit so using default 'nolabel"
                 )
         await asyncio.sleep(0.001)
         if at_index:
             self.sequence_dq.insert(i=at_index, x=D)
         elif prepend:
             self.sequence_dq.appendleft(D)
-            self.print_message(f" ... sequence {D.sequence_uuid} prepended to queue")
+            self.print_message(f"sequence {D.sequence_uuid} prepended to queue")
         else:
             self.sequence_dq.append(D)
-            self.print_message(f" ... sequence {D.sequence_uuid} appended to queue")
+            self.print_message(f"sequence {D.sequence_uuid} appended to queue")
 
     def list_sequences(self):
         """Return the current queue of sequence_dq."""

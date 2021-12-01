@@ -18,7 +18,11 @@ import numpy as np
 import pyaml
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.openapi.utils import get_flat_params
-from helaocore.helper import MultisubscriberQueue, async_copy, cleanupdict, print_message
+from helaocore.helper import MultisubscriberQueue
+from helaocore.helper import async_copy
+from helaocore.helper import cleanupdict
+from helaocore.helper import print_message
+from helaocore.helper import helao_dirs
 from helaocore.schema import Process
 
 from .api import HelaoFastAPI
@@ -64,14 +68,21 @@ class Base(object):
         self.server_params = fastapp.helao_cfg["servers"][self.server_name].get("params", dict())
         self.world_cfg = fastapp.helao_cfg
         self.hostname = gethostname()
-        self.save_root = None
         self.technique_name = None
         self.aloop = asyncio.get_running_loop()
 
+        self.root, self.save_root, self.log_root, self.states_root = \
+            helao_dirs(self.world_cfg)
+        
+        if self.root is None:
+            raise ValueError(
+                "Warning: root directory was not defined. Logs, PRCs, PRGs, and data will not be written.",
+                error=True,
+            )
+
         if "technique_name" in self.world_cfg:
             self.print_message(
-                f" ... Found technique_name in config: {self.world_cfg['technique_name']}",
-                info=True,
+                f"Found technique_name in config: {self.world_cfg['technique_name']}",
             )
             self.technique_name = self.world_cfg["technique_name"]
         else:
@@ -81,23 +92,6 @@ class Base(object):
             )
 
         self.calibration = calibration
-        if "save_root" in self.world_cfg:
-            self.save_root = self.world_cfg["save_root"]
-            self.print_message(
-                f" ... Found root save directory in config: {self.world_cfg['save_root']}",
-                info=True,
-            )
-            if not os.path.isdir(self.save_root):
-                self.print_message(
-                    " ... Warning: root save directory does not exist. Creatig it.",
-                    warning=True,
-                )
-                os.makedirs(self.save_root)
-        else:
-            raise ValueError(
-                " ... Warning: root save directory was not defined. Logs, PRCs, PRGs, and data will not be written.",
-                error=True,
-            )
         self.actives = {}
         self.status = {}
         self.endpoints = []
@@ -108,12 +102,17 @@ class Base(object):
         self.ntp_response = None
         self.ntp_offset = None  # add to system time for correction
         self.ntp_last_sync = None
-        if os.path.exists("ntpLastSync.txt"):
-            with open("ntpLastSync.txt", "r") as f:
-                tmps = f.readline()
-                self.ntp_last_sync, self.ntp_offset = tmps.strip().split(",")
-                self.ntp_offset = float(self.ntp_offset)
-        elif self.ntp_last_sync is None:
+        
+        self.ntp_last_sync_file = None
+        if self.root is not None:
+            self.ntp_last_sync_file = os.path.join(self.states_root, "ntpLastSync.txt")
+            if os.path.exists(self.ntp_last_sync_file):
+                with open(self.ntp_last_sync_file, "r") as f:
+                    tmps = f.readline()
+                    self.ntp_last_sync, self.ntp_offset = tmps.strip().split(",")
+                    self.ntp_offset = float(self.ntp_offset)
+
+        if self.ntp_last_sync is None:
             asyncio.gather(self.get_ntp_time())
         self.init_endpoint_status(fastapp)
         self.fast_urls = self.get_endpoint_urls(fastapp)
@@ -121,7 +120,7 @@ class Base(object):
         self.ntp_syncer = self.aloop.create_task(self.sync_ntp_task())
 
     def print_message(self, *args, **kwargs):
-        print_message(self.server_cfg, self.server_name, *args, **kwargs)
+        print_message(self.server_cfg, self.server_name, log_dir = self.log_root, *args, **kwargs)
 
         # style = self.server_cfg.get("msg_color","")
         # for arg in args:
@@ -135,7 +134,7 @@ class Base(object):
                 self.status[route.name] = []
                 self.endpoints.append(route.name)
         self.print_message(
-            f" ... Found {len(self.status)} endpoints for status monitoring on {self.server_name}."
+            f"Found {len(self.status)} endpoints for status monitoring on {self.server_name}."
         )
 
     def get_endpoint_urls(self, app: HelaoFastAPI):
@@ -189,7 +188,7 @@ class Base(object):
             process_dict = await self.actives[process_uuid].active.as_dict()
             return process_dict
         else:
-            self.print_message(f" ... Specified process uuid {process_uuid} was not found.", error=True)
+            self.print_message(f"Specified process uuid {process_uuid} was not found.", error=True)
             return None
 
     async def get_ntp_time(self):
@@ -203,19 +202,20 @@ class Base(object):
                 self.ntp_last_sync = response.orig_time
                 self.ntp_offset = response.offset
                 self.print_message(
-                    f" ... retrieved time at {ctime(self.ntp_response.tx_timestamp)} from {self.ntp_server}",
+                    f"retrieved time at {ctime(self.ntp_response.tx_timestamp)} from {self.ntp_server}",
                     info=True,
                 )
             except ntplib.NTPException:
-                self.print_message(f" ... {self.ntp_server} ntp timeout", error=True)
+                self.print_message(f"{self.ntp_server} ntp timeout", error=True)
                 self.ntp_last_sync = time()
                 self.ntp_offset = 0.0
 
-            self.print_message(f" ... ntp_offset: {self.ntp_offset}")
-            self.print_message(f" ... ntp_last_sync: {self.ntp_last_sync}")
+            self.print_message(f"ntp_offset: {self.ntp_offset}")
+            self.print_message(f"ntp_last_sync: {self.ntp_last_sync}")
 
-            async with aiofiles.open("ntpLastSync.txt", "w") as f:
-                await f.write(f"{self.ntp_last_sync},{self.ntp_offset}")
+            if self.ntp_last_sync_file is not None:
+                async with aiofiles.open(self.ntp_last_sync_file, "w") as f:
+                    await f.write(f"{self.ntp_last_sync},{self.ntp_offset}")
 
 
     async def attach_client(self, client_servkey: str, retry_limit=5):
@@ -226,7 +226,7 @@ class Base(object):
 
             if client_servkey in self.status_clients:
                 self.print_message(
-                    f" ... Client {client_servkey} is already subscribed to {self.server_name} status updates."
+                    f"Client {client_servkey} is already subscribed to {self.server_name} status updates."
                 )
             else:
                 self.status_clients.add(client_servkey)
@@ -245,23 +245,23 @@ class Base(object):
                     )
                     if response == True:
                         self.print_message(
-                            f" ... Added {client_servkey} to {self.server_name} status subscriber list."
+                            f"Added {client_servkey} to {self.server_name} status subscriber list."
                         )
                         success = True
                         break
                     else:
                         self.print_message(
-                            f" ... Failed to add {client_servkey} to {self.server_name} status subscriber list.",
+                            f"Failed to add {client_servkey} to {self.server_name} status subscriber list.",
                             error=True,
                         )
 
             if success:
                 self.print_message(
-                    f" ... Updated {self.server_name} status to {current_status} on {client_servkey}."
+                    f"Updated {self.server_name} status to {current_status} on {client_servkey}."
                 )
             else:
                 self.print_message(
-                    f" ... Failed to push status message to {client_servkey} after {retry_limit} attempts.",
+                    f"Failed to push status message to {client_servkey} after {retry_limit} attempts.",
                     error=True,
                 )
 
@@ -273,37 +273,37 @@ class Base(object):
             self.status_clients.remove(client_servkey)
             self.print_message(f"Client {client_servkey} will no longer receive status updates.")
         else:
-            self.print_message(f" ... Client {client_servkey} is not subscribed.")
+            self.print_message(f"Client {client_servkey} is not subscribed.")
 
     async def ws_status(self, websocket: WebSocket):
         "Subscribe to status queue and send message to websocket client."
-        self.print_message(" ... got new status subscriber")
+        self.print_message("got new status subscriber")
         await websocket.accept()
         try:
             async for status_msg in self.status_q.subscribe():
                 await websocket.send_text(json.dumps(status_msg))
         except WebSocketDisconnect:
             self.print_message(
-                f" ... Status websocket client {websocket.client[0]}:{websocket.client[1]} disconnected.",
+                f"Status websocket client {websocket.client[0]}:{websocket.client[1]} disconnected.",
                 error=True,
             )
 
     async def ws_data(self, websocket: WebSocket):
         "Subscribe to data queue and send messages to websocket client."
-        self.print_message(" ... got new data subscriber")
+        self.print_message("got new data subscriber")
         await websocket.accept()
         try:
             async for data_msg in self.data_q.subscribe():
                 await websocket.send_text(json.dumps(data_msg))
         except WebSocketDisconnect:
             self.print_message(
-                f" ... Data websocket client {websocket.client[0]}:{websocket.client[1]} disconnected.",
+                f"Data websocket client {websocket.client[0]}:{websocket.client[1]} disconnected.",
                 error=True,
             )
 
     async def log_status_task(self, retry_limit: int = 5):
         "Self-subscribe to status queue, log status changes, POST to clients."
-        self.print_message(f" ... {self.server_name} status log task created.")
+        self.print_message(f"{self.server_name} status log task created.")
 
         try:
             async for status_msg in self.status_q.subscribe():
@@ -324,24 +324,24 @@ class Base(object):
                             json_dict={},
                         )
                         if response == True:
-                            self.print_message(f" ... send status msg to {client_servkey}.")
+                            self.print_message(f"send status msg to {client_servkey}.")
                             success = True
                             break
                         else:
-                            self.print_message(f" ... Failed to send status msg {client_servkey}.")
+                            self.print_message(f"Failed to send status msg {client_servkey}.")
 
                     if success:
                         self.print_message(
-                            f" ... Updated {self.server_name} status to {status_msg} on {client_servkey}."
+                            f"Updated {self.server_name} status to {status_msg} on {client_servkey}."
                         )
                     else:
                         self.print_message(
-                            f" ... Failed to push status message to {client_servkey} after {retry_limit} attempts."
+                            f"Failed to push status message to {client_servkey} after {retry_limit} attempts."
                         )
 
                 # TODO:write to log if save_root exists
         except asyncio.CancelledError:
-            self.print_message(" ... status logger task was cancelled", error=True)
+            self.print_message("status logger task was cancelled", error=True)
 
     async def detach_subscribers(self):
         await self.status_q.put(StopAsyncIteration)
@@ -372,8 +372,10 @@ class Base(object):
                 await asyncio.sleep(10)
                 lock = asyncio.Lock()
                 async with lock:
-                    async with aiofiles.open("ntpLastSync.txt", "r") as f:
-                        ntp_last_sync = await f.readline()
+                    ntp_last_sync = ""
+                    if self.ntp_last_sync_file is not None:
+                        async with aiofiles.open(self.ntp_last_sync_file, "r") as f:
+                            ntp_last_sync = await f.readline()
                     parts = ntp_last_sync.strip().split(",")
                     if len(parts) == 2:
                         self.ntp_last_sync = float(parts[0])
@@ -383,17 +385,17 @@ class Base(object):
                         self.ntp_offset = 0.0
                     if time() - self.ntp_last_sync > resync_time:
                         self.print_message(
-                            f" ... last time check was more then { resync_time} ago, syncing time again.",
+                            f"last time check was more then { resync_time} ago, syncing time again.",
                             error=True,
                         )
                         await self.get_ntp_time()
                     else:
                         # wait_time = time() - self.ntp_last_sync
                         wait_time = resync_time
-                        self.print_message(f" ... waiting {wait_time} until next time check", info=True)
+                        self.print_message(f"waiting {wait_time} until next time check")
                         await asyncio.sleep(wait_time)
         except asyncio.CancelledError:
-            self.print_message(" ... ntp sync task was cancelled", error=True)
+            self.print_message("ntp sync task was cancelled", error=True)
 
     async def shutdown(self):
         await self.detach_subscribers()
@@ -406,7 +408,7 @@ class Base(object):
         output_path = os.path.join(self.save_root, sequence_dir)
         output_file = os.path.join(output_path, f"{sequence_timestamp}.prg")
 
-        self.print_message(f" ... writing to prg: {output_file}")
+        self.print_message(f"writing to prg: {output_file}")
         output_str = pyaml.dump(prg_dict, sort_dicts=False)
 
         if not os.path.exists(output_path):
@@ -485,13 +487,13 @@ class Base(object):
             self.file_conn = dict()
             if self.process.sequence_timestamp is None:
                 self.manual = True
-                self.base.print_message(" ... Manual Process.", info=True)
+                self.base.print_message("Manual Process.", info=True)
                 self.process.set_dtime(offset=self.base.ntp_offset)
                 self.process.gen_uuid_sequence(self.base.hostname)
 
             if not self.base.save_root:
                 self.base.print_message(
-                    " ... Root save directory not specified, cannot save process results."
+                    "Root save directory not specified, cannot save process results."
                 )
                 self.process.save_data = False
                 self.process.save_prc = False
@@ -674,7 +676,7 @@ class Base(object):
         async def add_status(self):
             self.base.status[self.process.process_name].append(self.process.process_uuid)
             self.base.print_message(
-                f" ... Added {self.process.process_uuid} to {self.process.process_name} status list."
+                f"Added {self.process.process_uuid} to {self.process.process_name} status list."
             )
             await self.base.status_q.put(
                 {self.process.process_name: self.base.status[self.process.process_name]}
@@ -684,12 +686,12 @@ class Base(object):
             if self.process.process_uuid in self.base.status[self.process.process_name]:
                 self.base.status[self.process.process_name].remove(self.process.process_uuid)
                 self.base.print_message(
-                    f" ... Removed {self.process.process_uuid} from {self.process.process_name} status list.",
+                    f"Removed {self.process.process_uuid} from {self.process.process_name} status list.",
                     info=True,
                 )
             else:
                 self.base.print_message(
-                    f" ... {self.process.process_uuid} did not excist in {self.process.process_name} status list.",
+                    f"{self.process.process_uuid} did not excist in {self.process.process_name} status list.",
                     error=True,
                 )
             await self.base.status_q.put(
@@ -700,7 +702,7 @@ class Base(object):
             self.base.status[self.process.process_name].remove(self.process.process_uuid)
             self.base.status[self.process.process_name].append(f"{self.process.process_uuid}__estop")
             self.base.print_message(
-                f" ... E-STOP {self.process.process_uuid} on {self.process.process_name} status.",
+                f"E-STOP {self.process.process_uuid} on {self.process.process_name} status.",
                 error=True,
             )
             await self.base.status_q.put(
@@ -711,7 +713,7 @@ class Base(object):
             self.base.status[self.process.process_name].remove(self.process.process_uuid)
             self.base.status[self.process.process_name].append(f"{self.process.process_uuid}__error")
             self.base.print_message(
-                f" ... ERROR {self.process.process_uuid} on {self.process.process_name} status.",
+                f"ERROR {self.process.process_uuid} on {self.process.process_name} status.",
                 error=True,
             )
             if err_msg:
@@ -732,7 +734,7 @@ class Base(object):
         async def set_output_file(self, filename: str, file_sample_key: str, header: Optional[str] = None):
             "Set active save_path, write header if supplied."
             output_path = os.path.join(self.base.save_root, self.process.output_dir, filename)
-            self.base.print_message(f" ... writing data to: {output_path}")
+            self.base.print_message(f"writing data to: {output_path}")
             # create output file and set connection
             self.file_conn[file_sample_key] = await aiofiles.open(output_path, mode="a+")
             self.finished_hlo_header[file_sample_key] = False
@@ -780,7 +782,7 @@ class Base(object):
 
         async def log_data_task(self):
             """Self-subscribe to data queue, write to present file path."""
-            self.base.print_message(" ... starting data logger")
+            self.base.print_message("starting data logger")
             # data_msg should be a dict {uuid: list of values or a list of list of values}
             try:
                 async for data_msg in self.base.data_q.subscribe():
@@ -796,7 +798,7 @@ class Base(object):
                                     # e.g. just write the separator
                                     if not self.finished_hlo_header[sample]:
                                         self.base.print_message(
-                                            f" ... {self.process.process_abbr} data file {sample} is missing hlo separator. Writing it.",
+                                            f"{self.process.process_abbr} data file {sample} is missing hlo separator. Writing it.",
                                             error=True,
                                         )
                                         self.finished_hlo_header[sample] = True
@@ -811,7 +813,7 @@ class Base(object):
                                             output_str = json.dumps(sample_data)
                                         except TypeError:
                                             self.base.print_message(
-                                            " ... Data is not json serializable.",
+                                            "Data is not json serializable.",
                                             error=True,
                                             )
                                             output_str = "Error: data was not serializable."
@@ -826,12 +828,12 @@ class Base(object):
                                         )
                             else:
                                 self.base.print_message(
-                                    " ... {sample} doesn not exist in file_conn.",
+                                    "{sample} doesn not exist in file_conn.",
                                     error=True,
                                 )
 
             except asyncio.CancelledError:
-                self.base.print_message(" ... data logger task was cancelled", error=True)
+                self.base.print_message("data logger task was cancelled", error=True)
 
         async def write_file(
             self,
@@ -857,7 +859,7 @@ class Base(object):
                     process_abbr=self.process.process_abbr,
                 )
                 output_path = os.path.join(self.base.save_root, self.process.output_dir, filename)
-                self.base.print_message(f" ... writing non stream data to: {output_path}")
+                self.base.print_message(f"writing non stream data to: {output_path}")
 
                 async with aiofiles.open(output_path, mode="w") as f:
                     await f.write(header + output_str)
@@ -890,7 +892,7 @@ class Base(object):
                     process_abbr=self.process.process_abbr,
                 )
                 output_path = os.path.join(self.base.save_root, self.process.output_dir, filename)
-                self.base.print_message(f" ... writing non stream data to: {output_path}")
+                self.base.print_message(f"writing non stream data to: {output_path}")
                 with open(output_path, mode="w") as f:
                     f.write(header + output_str)
                     self.process.file_dict.update({filename: file_info})
@@ -905,7 +907,7 @@ class Base(object):
                 self.process.output_dir,
                 f"{self.process.process_timestamp}.prc",
             )
-            self.base.print_message(f" ... writing to prc: {output_path}")
+            self.base.print_message(f"writing to prc: {output_path}")
             async with aiofiles.open(output_path, mode="w") as f:
                 await f.write(pyaml.dump(cleanupdict(self.prc_file.dict()), 
                                          sort_dicts=False))
@@ -961,7 +963,7 @@ class Base(object):
         async def finish(self):
             "Close file_conn, finish prc, copy aux, set endpoint status, and move active dict to past."
             await asyncio.sleep(1)
-            self.base.print_message(" ... finishing data logging.")
+            self.base.print_message("finishing data logging.")
             for filekey in self.file_conn:
                 if self.file_conn[filekey]:
                     await self.file_conn[filekey].close()
@@ -991,7 +993,7 @@ class Base(object):
             filename = os.path.basename(file_path)
             self.process.file_dict.update({filename: file_info})
             self.base.print_message(
-                f" ... {filename} added to files_technique__{self.process.process_num} / aux_files list."
+                f"{filename} added to files_technique__{self.process.process_num} / aux_files list."
             )
 
         async def relocate_files(self):

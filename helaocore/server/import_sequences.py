@@ -18,7 +18,7 @@ def import_sequences(world_config_dict: dict, sequence_path: str = None, server_
         print_message(
             world_config_dict,
             server_name,
-            f" ... sequence path {sequence_path} was specified but is not a valid directory",
+            f"sequence path {sequence_path} was specified but is not a valid directory",
         )
         return process_lib  # False
     sys.path.append(sequence_path)
@@ -28,6 +28,6 @@ def import_sequences(world_config_dict: dict, sequence_path: str = None, server_
     print_message(
         world_config_dict,
         server_name,
-        f" ... imported {len(world_config_dict['process_libraries'])} sequences specified by config.",
+        f"imported {len(world_config_dict['process_libraries'])} sequences specified by config.",
     )
     return process_lib  # True
