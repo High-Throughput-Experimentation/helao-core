@@ -10,6 +10,7 @@ import inspect
 import types
 from collections import defaultdict
 from datetime import datetime
+import copy
 
 import helaocore.model.sample as hcms
 from helaocore.helper import gen_uuid, print_message
@@ -192,7 +193,7 @@ class Sequencer(object):
     ):
         frame = inspect.currentframe().f_back
         _args, _varargs, _keywords, _locals = inspect.getargvalues(frame)
-        self._pg = pg
+        self._pg = copy.deepcopy(pg)
         self.process_list = []
         self.pars = self._C()
         for key, val in self._pg.sequence_params.items():
