@@ -3,8 +3,8 @@ Return models returned in API response. Will be deprecated.
 
 """
 __all__ = [
-    "ReturnProcessGroup",
-    "ReturnProcessGroupList",
+    "ReturnSequence",
+    "ReturnSequenceList",
     "ReturnProcess",
     "ReturnProcessList",
     "ReturnFinishedProcess",
@@ -18,31 +18,31 @@ from pydantic import BaseModel
 
 
 # TODO: deprecate return* models in favor of original models.
-class ReturnProcessGroup(BaseModel):
-    """Return class for queried cProcess_group objects."""
+class ReturnSequence(BaseModel):
+    """Return class for queried Sequence objects."""
 
     index: int
-    uid: Union[str, None]
-    label: str
-    sequence: str
-    pars: dict
+    sequence_uuid: Union[str, None]
+    sequence_label: str
+    sequence_name: str
+    sequence_params: dict
     access: str
 
 
-class ReturnProcessGroupList(BaseModel):
-    """Return class for queried cProcess_group list."""
+class ReturnSequenceList(BaseModel):
+    """Return class for queried Sequence list."""
 
-    process_groups: List[ReturnProcessGroup]
+    sequences: List[ReturnSequence]
 
 
 class ReturnProcess(BaseModel):
     """Return class for queried process objects."""
 
     index: int
-    uid: Union[str, None]
+    process_uuid: Union[str, None]
     server: str
-    process: str
-    pars: dict
+    process_name: str
+    process_params: dict
     preempt: int
 
 
@@ -58,19 +58,19 @@ class ReturnFinishedProcess(BaseModel):
     technique_name: str
     access: str
     orch_name: str
-    process_group_timestamp: str
-    process_group_uuid: str
-    process_group_label: str
-    sequence: str
-    sequence_pars: dict
+    sequence_timestamp: str
+    sequence_uuid: str
+    sequence_label: str
+    sequence_name: str
+    sequence_params: dict
     result_dict: dict
     process_server: str
-    process_queue_time: str
+    process_timestamp: str
     process_real_time: Optional[str]
     process_name: str
     process_params: dict
     process_uuid: str
-    process_enum: str
+    process_ordering: str
     process_abbr: str
     process_num: str
     start_condition: Union[int, dict]
@@ -91,19 +91,19 @@ class ReturnRunningProcess(BaseModel):
     technique_name: str
     access: str
     orch_name: str
-    process_group_timestamp: str
-    process_group_uuid: str
-    process_group_label: str
-    sequence: str
-    sequence_pars: dict
+    sequence_timestamp: str
+    sequence_uuid: str
+    sequence_label: str
+    sequence_name: str
+    sequence_params: dict
     result_dict: dict
     process_server: str
-    process_queue_time: str
+    process_timestamp: str
     process_real_time: Optional[str]
     process_name: str
     process_params: dict
     process_uuid: str
-    process_enum: str
+    process_ordering: str
     process_abbr: str
     process_num: str
     start_condition: Union[int, dict]
