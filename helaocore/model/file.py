@@ -18,10 +18,10 @@ class PrcFile(BaseModel):
     machine_name: str
     access: str
     output_dir: str
-    process_group_uuid: str
-    process_group_timestamp: str
+    sequence_uuid: str
+    sequence_timestamp: str
     process_uuid: str
-    process_queue_time: str
+    process_timestamp: str
     process_enum: Optional[float] = 0.0
     process_name: str
     process_abbr: Optional[str] = None
@@ -36,9 +36,9 @@ class PrgFile(BaseModel):
     orchestrator: str
     machine_name: str
     access: str
-    process_group_uuid: str
-    process_group_timestamp: str
-    process_group_label: str
+    sequence_uuid: str
+    sequence_timestamp: str
+    sequence_label: str
     technique_name: str
     sequence_name: str
     sequence_params: Union[dict, None] = None

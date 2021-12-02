@@ -13,3 +13,4 @@ class error_codes(str, Enum):
     not_available = "not_available"
     ssh_error = "ssh_error"
     not_initialized = "not_initialized"
+    bug = "bug"

@@ -1,11 +1,11 @@
 # __init__.py
 from .file import PrcFile, PrgFile
 from .returnmodel import (
-    ReturnFinishedProcess,
+    ReturnSequence,
+    ReturnSequenceList,
     ReturnProcess,
-    ReturnProcessGroup,
-    ReturnProcessGroupList,
     ReturnProcessList,
     ReturnRunningProcess,
+    ReturnFinishedProcess,
 )
 from .sample import AssemblySample, GasSample, LiquidSample, SampleList, SolidSample

@@ -5,7 +5,7 @@ from socket import gethostname
 
 import helaocore.model.sample as hcms
 from fastapi import Request
-from helaocore.schema import cProcess
+from helaocore.schema import Process
 
 
 async def setup_process(request: Request):
@@ -36,14 +36,14 @@ async def setup_process(request: Request):
 
     process_dict["process_server"] = servKey
     process_dict["process_name"] = process_name
-    A = cProcess(process_dict)
+    A = Process(process_dict)
 
     if "fast_samples_in" in A.process_params:
         tmp_fast_samples_in = A.process_params.get("fast_samples_in", [])
         del A.process_params["fast_samples_in"]
-        if type(tmp_fast_samples_in) is dict:
+        if isinstance(tmp_fast_samples_in,dict):
             A.samples_in = hcms.SampleList(**tmp_fast_samples_in)
-        elif type(tmp_fast_samples_in) is list:
+        elif isinstance(tmp_fast_samples_in, list):
             A.samples_in = hcms.SampleList(samples=tmp_fast_samples_in)
 
     if A.process_abbr is None:
@@ -55,7 +55,7 @@ async def setup_process(request: Request):
     if A.technique_name is None:
         A.technique_name = "MANUAL"
         A.orch_name = "MANUAL"
-        A.process_group_label = "MANUAL"
+        A.sequence_label = "MANUAL"
     # sample_list cannot be serialized so needs to be updated here
     if A.samples_in == []:
         A.samples_in = hcms.SampleList()
