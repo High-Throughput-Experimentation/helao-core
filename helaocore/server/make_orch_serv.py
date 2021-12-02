@@ -15,7 +15,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
 
     @app.on_event("startup")
     async def startup_event():
-        """Run startup processes.
+        """Run startup actions.
 
         When FastAPI server starts, create a global OrchHandler object, initiate the
         monitor_states coroutine which runs forever, and append dummy sequences to the
@@ -27,7 +27,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
 
     @app.post("/update_status")
     async def update_status(server: str, status: str):
-        return await app.orch.update_status(process_serv=server, status_dict=json.loads(status))
+        return await app.orch.update_status(action_serv=server, status_dict=json.loads(status))
 
     @app.post("/attach_client")
     async def attach_client(client_servkey: str):
@@ -44,7 +44,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
 
     @app.websocket("/ws_data")
     async def websocket_data(websocket: WebSocket):
-        """Subscribe to process server status dicts.
+        """Subscribe to action server status dicts.
 
         Args:
         websocket: a fastapi.WebSocket object
@@ -52,10 +52,10 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         await app.orch.ws_data(websocket)
 
     @app.post("/start")
-    async def start_process():
-        """Begin processing sequence and process queues."""
+    async def start_action():
+        """Begin processing sequence and action queues."""
         if app.orch.loop_state == "stopped":
-            if app.orch.process_dq or app.orch.sequence_dq:  # resume processes from a paused run
+            if app.orch.action_dq or app.orch.sequence_dq:  # resume actions from a paused run
                 await app.orch.start_loop()
             else:
                 app.orch.print_message("sequence list is empty")
@@ -64,8 +64,8 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         return {}
 
     @app.post("/estop")
-    async def estop_process():
-        """Emergency stop sequence and process queues, interrupt running processes."""
+    async def estop_action():
+        """Emergency stop sequence and action queues, interrupt running actions."""
         if app.orch.loop_state == "started":
             await app.orch.estop_loop()
         elif app.orch.loop_state == "E-STOP":
@@ -75,8 +75,8 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         return {}
 
     @app.post("/stop")
-    async def stop_process():
-        """Stop processing sequence and process queues after current processes finish."""
+    async def stop_action():
+        """Stop processing sequence and action queues after current actions finish."""
         if app.orch.loop_state == "started":
             await app.orch.intend_stop()
         elif app.orch.loop_state == "E-STOP":
@@ -103,21 +103,21 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
 
     @app.post("/skip")
     async def skip_sequence():
-        """Clear the present process queue while running."""
+        """Clear the present action queue while running."""
         if app.orch.loop_state == "started":
             await app.orch.intend_skip()
         else:
-            app.orch.print_message("orchestrator not running, clearing process queue")
+            app.orch.print_message("orchestrator not running, clearing action queue")
             await asyncio.sleep(0.001)
-            app.orch.process_dq.clear()
+            app.orch.action_dq.clear()
         return {}
 
-    @app.post("/clear_processes")
-    async def clear_processes():
-        """Clear the present process queue while stopped."""
-        app.orch.print_message("clearing process queue")
+    @app.post("/clear_actions")
+    async def clear_actions():
+        """Clear the present action queue while stopped."""
+        app.orch.print_message("clearing action queue")
         await asyncio.sleep(0.001)
-        app.orch.process_dq.clear()
+        app.orch.action_dq.clear()
         return {}
 
     @app.post("/clear_sequences")
@@ -144,9 +144,9 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         orch_name: Orchestrator server key (optional), as str.
         plate_id: The sample's plate id (no checksum), as int.
         sample_no: A sample number, as int.
-        sequence_name: The name of the sequence for building the process list, as str.
+        sequence_name: The name of the sequence for building the action list, as str.
         sequence_params: sequence parameters, as dict.
-        result_dict: process responses dict keyed by process_ordering.
+        result_dict: action responses dict keyed by action_ordering.
         access: Access control group, as str.
 
         Returns:
@@ -179,9 +179,9 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         orch_name: Orchestrator server key (optional), as str.
         plate_id: The sample's plate id (no checksum), as int.
         sample_no: A sample number, as int.
-        sequence_name: The name of the sequence for building the process list, as str.
+        sequence_name: The name of the sequence for building the action list, as str.
         sequence_params: sequence parameters, as dict.
-        result_dict: process responses dict keyed by process_ordering.
+        result_dict: action responses dict keyed by action_ordering.
         access: Access control group, as str.
 
         Returns:
@@ -217,9 +217,9 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         orch_name: Orchestrator server key (optional), as str.
         plate_id: The sample's plate id (no checksum), as int.
         sample_no: A sample number, as int.
-        sequence_name: The name of the sequence for building the process list, as str.
+        sequence_name: The name of the sequence for building the action list, as str.
         sequence_params: sequence parameters, as dict.
-        result_dict: process responses dict keyed by process_ordering.
+        result_dict: action responses dict keyed by action_ordering.
         access: Access control group, as str.
 
         Returns:
@@ -250,17 +250,17 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
     @app.post("/last_sequence")
     def last_sequence():
         """Return the last sequence."""
-        return app.orch.get_process_group(last=True)
+        return app.orch.get_action_group(last=True)
 
-    @app.post("/list_processes")
-    def list_processes():
-        """Return the current list of processes."""
-        return app.orch.list_processes()
+    @app.post("/list_actions")
+    def list_actions():
+        """Return the current list of actions."""
+        return app.orch.list_actions()
 
-    @app.post("/list_active_processes")
-    def list_active_processes():
-        """Return the current list of processes."""
-        return app.orch.list_active_processes()
+    @app.post("/list_active_actions")
+    def list_active_actions():
+        """Return the current list of actions."""
+        return app.orch.list_active_actions()
 
     @app.post("/endpoints")
     def get_all_urls():
@@ -269,7 +269,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
 
     @app.on_event("shutdown")
     def disconnect():
-        """Run shutdown processes."""
+        """Run shutdown actions."""
         # emergencyStop = True
         time.sleep(0.75)
 

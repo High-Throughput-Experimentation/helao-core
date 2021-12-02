@@ -86,8 +86,8 @@ class _BaseSample(BaseModel):
     inheritance: Optional[str] = None  # only for internal use
     status: Union[List[str], str] = None  # only for internal use
     sequence_uuid: Optional[str] = None
-    process_uuid: Optional[str] = None
-    process_timestamp: Optional[str] = None  # "%Y%m%d.%H%M%S%f"
+    action_uuid: Optional[str] = None
+    action_timestamp: Optional[str] = None  # "%Y%m%d.%H%M%S%f"
     server_name: Optional[str] = None
     chemical: Optional[List[str]] = []
     mass: Optional[List[str]] = []
@@ -97,15 +97,15 @@ class _BaseSample(BaseModel):
     comment: Optional[str] = None
 
 
-    @validator("process_timestamp")
-    def validate_process_timestamp(cls, v):
+    @validator("action_timestamp")
+    def validate_action_timestamp(cls, v):
         if v is not None:
             if v != "00000000.000000000000":
                 try:
                     atime = datetime.strptime(v, "%Y%m%d.%H%M%S%f")
                 except ValueError:
-                    print_message({}, "model", f"invalid 'process_timestamp': {v}", error=True)
-                    raise ValueError("invalid 'process_timestamp'")
+                    print_message({}, "model", f"invalid 'action_timestamp': {v}", error=True)
+                    raise ValueError("invalid 'action_timestamp'")
                 return atime.strftime("%Y%m%d.%H%M%S%f")
             else:
                 return v

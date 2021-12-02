@@ -5,10 +5,10 @@ Return models returned in API response. Will be deprecated.
 __all__ = [
     "ReturnSequence",
     "ReturnSequenceList",
-    "ReturnProcess",
-    "ReturnProcessList",
-    "ReturnFinishedProcess",
-    "ReturnRunningProcess",
+    "ReturnAction",
+    "ReturnActionList",
+    "ReturnFinishedAction",
+    "ReturnRunningAction",
 ]
 
 
@@ -35,25 +35,25 @@ class ReturnSequenceList(BaseModel):
     sequences: List[ReturnSequence]
 
 
-class ReturnProcess(BaseModel):
-    """Return class for queried process objects."""
+class ReturnAction(BaseModel):
+    """Return class for queried action objects."""
 
     index: int
-    process_uuid: Union[str, None]
+    action_uuid: Union[str, None]
     server: str
-    process_name: str
-    process_params: dict
+    action_name: str
+    action_params: dict
     preempt: int
 
 
-class ReturnProcessList(BaseModel):
-    """Return class for queried process list."""
+class ReturnActionList(BaseModel):
+    """Return class for queried action list."""
 
-    processes: List[ReturnProcess]
+    actions: List[ReturnAction]
 
 
-class ReturnFinishedProcess(BaseModel):
-    """Standard return class for processes that finish with response."""
+class ReturnFinishedAction(BaseModel):
+    """Standard return class for actions that finish with response."""
 
     technique_name: str
     access: str
@@ -64,15 +64,15 @@ class ReturnFinishedProcess(BaseModel):
     sequence_name: str
     sequence_params: dict
     result_dict: dict
-    process_server: str
-    process_timestamp: str
-    process_real_time: Optional[str]
-    process_name: str
-    process_params: dict
-    process_uuid: str
-    process_ordering: str
-    process_abbr: str
-    process_num: str
+    action_server: str
+    action_timestamp: str
+    action_real_time: Optional[str]
+    action_name: str
+    action_params: dict
+    action_uuid: str
+    action_ordering: str
+    action_abbr: str
+    action_num: str
     start_condition: Union[int, dict]
     save_prc: bool
     save_data: bool
@@ -85,8 +85,8 @@ class ReturnFinishedProcess(BaseModel):
     data: Optional[list]
 
 
-class ReturnRunningProcess(BaseModel):
-    """Standard return class for processes that finish after response."""
+class ReturnRunningAction(BaseModel):
+    """Standard return class for actions that finish after response."""
 
     technique_name: str
     access: str
@@ -97,15 +97,15 @@ class ReturnRunningProcess(BaseModel):
     sequence_name: str
     sequence_params: dict
     result_dict: dict
-    process_server: str
-    process_timestamp: str
-    process_real_time: Optional[str]
-    process_name: str
-    process_params: dict
-    process_uuid: str
-    process_ordering: str
-    process_abbr: str
-    process_num: str
+    action_server: str
+    action_timestamp: str
+    action_real_time: Optional[str]
+    action_name: str
+    action_params: dict
+    action_uuid: str
+    action_ordering: str
+    action_abbr: str
+    action_num: str
     start_condition: Union[int, dict]
     save_prc: bool
     save_data: bool

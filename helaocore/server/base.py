@@ -23,7 +23,7 @@ from helaocore.helper import async_copy
 from helaocore.helper import cleanupdict
 from helaocore.helper import print_message
 from helaocore.helper import helao_dirs
-from helaocore.schema import Process
+from helaocore.schema import Action
 
 from .api import HelaoFastAPI
 from .dispatcher import async_private_dispatcher
@@ -37,7 +37,7 @@ class Base(object):
     """Base class for all HELAO servers.
 
     Base is a general class which implements message passing, status update, data
-    writing, and data streaming via async tasks. Every instrument and process server
+    writing, and data streaming via async tasks. Every instrument and action server
     should import this class for efficient integration into an orchestrated environment.
 
     A Base initialized within a FastAPI startup event will launch three async tasks
@@ -56,9 +56,9 @@ class Base(object):
     {%y.%j}/  # sequence_date year.weeknum
         {%Y%m%d}/  # sequence_date
             {%H%M%S}__{sequence_label}/  # sequence_time
-                {%Y%m%d.%H%M%S}__{process_server_name}__{process_name}__{process_uuid}/
+                {%Y%m%d.%H%M%S}__{action_server_name}__{action_name}__{action_uuid}/
                     {filename}.{ext}
-                    {%Y%m%d.%H%M%S%f}.prc  # process_datetime
+                    {%Y%m%d.%H%M%S%f}.prc  # action_datetime
                     (aux_files)
     """
 
@@ -160,9 +160,9 @@ class Base(object):
             url_list.append(routeD)
         return url_list
 
-    async def contain_process(
+    async def contain_action(
         self,
-        process: Process,
+        action: Action,
         file_type: str = "helao__file",
         file_data_keys: Optional[str] = None,  # this is also keyd by file_sample_keys
         file_sample_label: Optional[str] = None,  # this is also keyd by file_sample_keys
@@ -171,24 +171,24 @@ class Base(object):
         ] = None,  # I need one key per datafile, but each datafile can still be based on multiple samples
         header: Optional[str] = None,  # this is also keyd by file_sample_keys
     ):
-        self.actives[process.process_uuid] = Base.Active(
+        self.actives[action.action_uuid] = Base.Active(
             self,
-            process=process,
+            action=action,
             file_type=file_type,
             file_data_keys=file_data_keys,
             file_sample_label=file_sample_label,
             file_sample_keys=file_sample_keys,
             header=header,
         )
-        await self.actives[process.process_uuid].myinit()
-        return self.actives[process.process_uuid]
+        await self.actives[action.action_uuid].myinit()
+        return self.actives[action.action_uuid]
 
-    async def get_active_info(self, process_uuid: str):
-        if process_uuid in self.actives:
-            process_dict = await self.actives[process_uuid].active.as_dict()
-            return process_dict
+    async def get_active_info(self, action_uuid: str):
+        if action_uuid in self.actives:
+            action_dict = await self.actives[action_uuid].active.as_dict()
+            return action_dict
         else:
-            self.print_message(f"Specified process uuid {process_uuid} was not found.", error=True)
+            self.print_message(f"Specified action uuid {action_uuid} was not found.", error=True)
             return None
 
     async def get_ntp_time(self):
@@ -235,7 +235,7 @@ class Base(object):
                     response = await async_private_dispatcher(
                         world_config_dict=self.world_cfg,
                         server=client_servkey,
-                        private_process="update_status",
+                        private_action="update_status",
                         params_dict={
                             "server": self.server_name,
                             "status": json.dumps(current_status),
@@ -315,7 +315,7 @@ class Base(object):
                         response = await async_private_dispatcher(
                             world_config_dict=self.world_cfg,
                             server=client_servkey,
-                            private_process="update_status",
+                            private_action="update_status",
                             params_dict={
                                 "server": self.server_name,
                                 "status": json.dumps(status_msg),
@@ -419,7 +419,7 @@ class Base(object):
 
 
     def get_sequence_dir(self, sequence):
-        """accepts process or sequence object"""
+        """accepts action or sequence object"""
         sequence_date = sequence.sequence_timestamp.split(".")[0]
         sequence_time = sequence.sequence_timestamp.split(".")[-1]
         year_week = strftime("%y.%U", strptime(sequence_date, "%Y%m%d"))
@@ -430,12 +430,12 @@ class Base(object):
         )
 
     class Active(object):
-        """Active process holder which wraps data queing and prc writing."""
+        """Active action holder which wraps data queing and prc writing."""
 
         def __init__(
             self,
             base,  # outer instance
-            process: Process,
+            action: Action,
             file_type: str = "helao__file",
             file_data_keys: Optional[str] = None,
             file_sample_label: Optional[str] = None,
@@ -443,145 +443,145 @@ class Base(object):
             header: Optional[str] = None,
         ):
             self.base = base
-            self.process = process
-            self.process.file_type = file_type
-            self.process.file_group = "helao_files"
-            self.process.file_data_keys = file_data_keys
-            self.process.file_sample_label = file_sample_label
-            self.process.header = header
+            self.action = action
+            self.action.file_type = file_type
+            self.action.file_group = "helao_files"
+            self.action.file_data_keys = file_data_keys
+            self.action.file_sample_label = file_sample_label
+            self.action.header = header
             self.prc_file = None
             self.manual_prg_file = None
             self.manual = False
             self.sequence_dir = None
 
             if file_sample_keys is None:
-                self.process.file_sample_keys = ["None"]
-                self.process.file_sample_label = {"None": self.process.file_sample_label}
-                self.process.file_data_keys = {"None": self.process.file_data_keys}
-                self.process.header = {"None": self.process.header}
+                self.action.file_sample_keys = ["None"]
+                self.action.file_sample_label = {"None": self.action.file_sample_label}
+                self.action.file_data_keys = {"None": self.action.file_data_keys}
+                self.action.header = {"None": self.action.header}
             else:
-                self.process.file_sample_keys = file_sample_keys
-                if type(self.process.file_sample_keys) is not list:
-                    self.process.file_sample_keys = [self.process.file_sample_keys]
-                if self.process.file_sample_label is None:
-                    self.process.file_sample_label = {
-                        f"{file_sample_key}": None for file_sample_key in self.process.file_sample_keys
+                self.action.file_sample_keys = file_sample_keys
+                if type(self.action.file_sample_keys) is not list:
+                    self.action.file_sample_keys = [self.action.file_sample_keys]
+                if self.action.file_sample_label is None:
+                    self.action.file_sample_label = {
+                        f"{file_sample_key}": None for file_sample_key in self.action.file_sample_keys
                     }
-                if self.process.file_data_keys is None:
-                    self.process.file_data_keys = {
-                        f"{file_sample_key}": None for file_sample_key in self.process.file_sample_keys
+                if self.action.file_data_keys is None:
+                    self.action.file_data_keys = {
+                        f"{file_sample_key}": None for file_sample_key in self.action.file_sample_keys
                     }
-                if self.process.header is None:
-                    self.process.header = {
-                        f"{file_sample_key}": None for file_sample_key in self.process.file_sample_keys
+                if self.action.header is None:
+                    self.action.header = {
+                        f"{file_sample_key}": None for file_sample_key in self.action.file_sample_keys
                     }
 
-            self.process.set_atime(offset=self.base.ntp_offset)
-            self.process.gen_uuid_process(self.base.hostname)
+            self.action.set_atime(offset=self.base.ntp_offset)
+            self.action.gen_uuid_action(self.base.hostname)
             # signals the data logger that it got data and hlo header was written or not
             # active.finish_hlo_header should be called within the driver before
             # any data is pushed to avoid a forced header end write
             self.finished_hlo_header = dict()
             self.file_conn = dict()
-            if self.process.sequence_timestamp is None:
+            if self.action.sequence_timestamp is None:
                 self.manual = True
-                self.base.print_message("Manual Process.", info=True)
-                self.process.set_dtime(offset=self.base.ntp_offset)
-                self.process.gen_uuid_sequence(self.base.hostname)
+                self.base.print_message("Manual Action.", info=True)
+                self.action.set_dtime(offset=self.base.ntp_offset)
+                self.action.gen_uuid_sequence(self.base.hostname)
 
             if not self.base.save_root:
                 self.base.print_message(
-                    "Root save directory not specified, cannot save process results."
+                    "Root save directory not specified, cannot save action results."
                 )
-                self.process.save_data = False
-                self.process.save_prc = False
-                self.process.output_dir = None
+                self.action.save_data = False
+                self.action.save_prc = False
+                self.action.output_dir = None
             else:
-                if self.process.save_data is None:
-                    self.process.save_data = False
-                if self.process.save_prc is None:
-                    self.process.save_prc = False
+                if self.action.save_data is None:
+                    self.action.save_data = False
+                if self.action.save_prc is None:
+                    self.action.save_prc = False
                 # cannot save data without prc
-                if self.process.save_data is True:
-                    self.process.save_prc = True
+                if self.action.save_data is True:
+                    self.action.save_prc = True
 
-                self.sequence_dir = self.base.get_sequence_dir(self.process)
-                self.process.output_dir = os.path.join(
+                self.sequence_dir = self.base.get_sequence_dir(self.action)
+                self.action.output_dir = os.path.join(
                     self.sequence_dir,
-                    f"{self.process.process_timestamp}__{self.process.process_server}__{self.process.process_name}__{self.process.process_uuid}",
+                    f"{self.action.action_timestamp}__{self.action.action_server}__{self.action.action_name}__{self.action.action_uuid}",
                 )
             self.data_logger = self.base.aloop.create_task(self.log_data_task())
 
         async def update_prc_file(self):
             # need to remove swagger workaround value if present
-            if "scratch" in self.process.process_params:
-                del self.process.process_params["scratch"]
+            if "scratch" in self.action.action_params:
+                del self.action.action_params["scratch"]
 
-            if self.process.process_ordering is None:
-                self.process.process_ordering = 0.0
+            if self.action.action_ordering is None:
+                self.action.action_ordering = 0.0
 
             self.prc_file = hcmf.PrcFile(
                 hlo_version=f"{version.hlo_version}",
-                technique_name=self.process.technique_name,
+                technique_name=self.action.technique_name,
                 server_name=self.base.server_name,
-                orchestrator=self.process.orch_name,
-                machine_name=self.process.machine_name,
-                access=self.process.access,
-                output_dir=Path(self.process.output_dir).as_posix(),
-                sequence_uuid=self.process.sequence_uuid,
-                sequence_timestamp=self.process.sequence_timestamp,
-                process_uuid=self.process.process_uuid,
-                process_timestamp=self.process.process_timestamp,
-                process_ordering=self.process.process_ordering,
-                process_name=self.process.process_name,
-                process_abbr=self.process.process_abbr,
-                process_params=self.process.process_params,
+                orchestrator=self.action.orch_name,
+                machine_name=self.action.machine_name,
+                access=self.action.access,
+                output_dir=Path(self.action.output_dir).as_posix(),
+                sequence_uuid=self.action.sequence_uuid,
+                sequence_timestamp=self.action.sequence_timestamp,
+                action_uuid=self.action.action_uuid,
+                action_timestamp=self.action.action_timestamp,
+                action_ordering=self.action.action_ordering,
+                action_name=self.action.action_name,
+                action_abbr=self.action.action_abbr,
+                action_params=self.action.action_params,
             )
             # write initial temporary prc file
             await self.write_prc()
 
 
         async def myinit(self):
-            if self.process.save_prc:
+            if self.action.save_prc:
                 os.makedirs(
-                    os.path.join(self.base.save_root, self.process.output_dir),
+                    os.path.join(self.base.save_root, self.action.output_dir),
                     exist_ok=True,
                 )
-                self.process.process_num = f"{self.process.process_abbr}-{self.process.process_ordering}"
+                self.action.action_num = f"{self.action.action_abbr}-{self.action.action_ordering}"
                 await self.update_prc_file()
 
                 if self.manual:
-                    # create and write prg file for manual process
+                    # create and write prg file for manual action
                     self.manual_prg_file = hcmf.PrgFile(
                         hlo_version=f"{version.hlo_version}",
-                        orchestrator=self.process.orch_name,
+                        orchestrator=self.action.orch_name,
                         machine_name=gethostname(),
-                        access=self.process.access,
-                        sequence_uuid=self.process.sequence_uuid,
-                        sequence_timestamp=self.process.sequence_timestamp,
-                        sequence_label=self.process.sequence_label,
-                        technique_name=self.process.technique_name,
+                        access=self.action.access,
+                        sequence_uuid=self.action.sequence_uuid,
+                        sequence_timestamp=self.action.sequence_timestamp,
+                        sequence_label=self.action.sequence_label,
+                        technique_name=self.action.technique_name,
                         sequence_name="MANUAL",
                         sequence_params=None,
                         sequence_model=None,
                     )
-                    await self.base.write_to_prg(cleanupdict(self.manual_prg_file.dict()), self.process)
+                    await self.base.write_to_prg(cleanupdict(self.manual_prg_file.dict()), self.action)
 
-                if self.process.save_data:
-                    for i, file_sample_key in enumerate(self.process.file_sample_keys):
+                if self.action.save_data:
+                    for i, file_sample_key in enumerate(self.action.file_sample_keys):
                         filename, header, file_info = self.init_datafile(
-                            header=self.process.header.get(file_sample_key, None),
-                            file_type=self.process.file_type,
-                            file_data_keys=self.process.file_data_keys.get(file_sample_key, None),
-                            file_sample_label=self.process.file_sample_label.get(file_sample_key, None),
+                            header=self.action.header.get(file_sample_key, None),
+                            file_type=self.action.file_type,
+                            file_data_keys=self.action.file_data_keys.get(file_sample_key, None),
+                            file_sample_label=self.action.file_sample_label.get(file_sample_key, None),
                             filename=None,  # always autogen a filename
-                            file_group=self.process.file_group,
-                            process_ordering=self.process.process_ordering,
-                            process_abbr=self.process.process_abbr,
+                            file_group=self.action.file_group,
+                            action_ordering=self.action.action_ordering,
+                            action_abbr=self.action.action_abbr,
                             filenum=i,
                         )
 
-                        self.process.file_dict.update({filename: file_info})
+                        self.action.file_dict.update({filename: file_info})
                         await self.set_output_file(
                             filename=filename,
                             header=header,
@@ -598,8 +598,8 @@ class Base(object):
             file_sample_label,
             filename,
             file_group,
-            process_ordering,
-            process_abbr,
+            action_ordering,
+            action_abbr,
             filenum: Optional[int] = 0,
         ):
 
@@ -629,9 +629,9 @@ class Base(object):
 
                     header_dict = {
                         "hlo_version": version.hlo_version,
-                        "process_name": self.process.process_abbr
-                        if self.process.process_abbr is not None
-                        else self.process.process_name,
+                        "action_name": self.action.action_abbr
+                        if self.action.action_abbr is not None
+                        else self.action.action_name,
                         "column_headings": file_data_keys,
                     }
 
@@ -642,10 +642,10 @@ class Base(object):
                 else:  # aux_files
                     pass
 
-                if process_ordering is not None:
-                    filename = f"{process_abbr}-{process_ordering:.1f}__{filenum}.{file_ext}"
+                if action_ordering is not None:
+                    filename = f"{action_abbr}-{action_ordering:.1f}__{filenum}.{file_ext}"
                 else:
-                    filename = f"{process_abbr}-0.0__{filenum}.{file_ext}"
+                    filename = f"{action_abbr}-0.0__{filenum}.{file_ext}"
 
             if header:
                 if not header.endswith("\n"):
@@ -672,54 +672,54 @@ class Base(object):
             self.enqueue_data_nowait(data_dict2, file_sample_keys=file_keys)
 
         async def add_status(self):
-            self.base.status[self.process.process_name].append(self.process.process_uuid)
+            self.base.status[self.action.action_name].append(self.action.action_uuid)
             self.base.print_message(
-                f"Added {self.process.process_uuid} to {self.process.process_name} status list."
+                f"Added {self.action.action_uuid} to {self.action.action_name} status list."
             )
             await self.base.status_q.put(
-                {self.process.process_name: self.base.status[self.process.process_name]}
+                {self.action.action_name: self.base.status[self.action.action_name]}
             )
 
         async def clear_status(self):
-            if self.process.process_uuid in self.base.status[self.process.process_name]:
-                self.base.status[self.process.process_name].remove(self.process.process_uuid)
+            if self.action.action_uuid in self.base.status[self.action.action_name]:
+                self.base.status[self.action.action_name].remove(self.action.action_uuid)
                 self.base.print_message(
-                    f"Removed {self.process.process_uuid} from {self.process.process_name} status list.",
+                    f"Removed {self.action.action_uuid} from {self.action.action_name} status list.",
                     info=True,
                 )
             else:
                 self.base.print_message(
-                    f"{self.process.process_uuid} did not excist in {self.process.process_name} status list.",
+                    f"{self.action.action_uuid} did not excist in {self.action.action_name} status list.",
                     error=True,
                 )
             await self.base.status_q.put(
-                {self.process.process_name: self.base.status[self.process.process_name]}
+                {self.action.action_name: self.base.status[self.action.action_name]}
             )
 
         async def set_estop(self):
-            self.base.status[self.process.process_name].remove(self.process.process_uuid)
-            self.base.status[self.process.process_name].append(f"{self.process.process_uuid}__estop")
+            self.base.status[self.action.action_name].remove(self.action.action_uuid)
+            self.base.status[self.action.action_name].append(f"{self.action.action_uuid}__estop")
             self.base.print_message(
-                f"E-STOP {self.process.process_uuid} on {self.process.process_name} status.",
+                f"E-STOP {self.action.action_uuid} on {self.action.action_name} status.",
                 error=True,
             )
             await self.base.status_q.put(
-                {self.process.process_name: self.base.status[self.process.process_name]}
+                {self.action.action_name: self.base.status[self.action.action_name]}
             )
 
         async def set_error(self, err_msg: Optional[str] = None):
-            self.base.status[self.process.process_name].remove(self.process.process_uuid)
-            self.base.status[self.process.process_name].append(f"{self.process.process_uuid}__error")
+            self.base.status[self.action.action_name].remove(self.action.action_uuid)
+            self.base.status[self.action.action_name].append(f"{self.action.action_uuid}__error")
             self.base.print_message(
-                f"ERROR {self.process.process_uuid} on {self.process.process_name} status.",
+                f"ERROR {self.action.action_uuid} on {self.action.action_name} status.",
                 error=True,
             )
             if err_msg:
-                self.process.error_code = err_msg
+                self.action.error_code = err_msg
             else:
-                self.process.error_code = "-1 unspecified error"
+                self.action.error_code = "-1 unspecified error"
             await self.base.status_q.put(
-                {self.process.process_name: self.base.status[self.process.process_name]}
+                {self.action.action_name: self.base.status[self.action.action_name]}
             )
 
         async def set_realtime(self, epoch_ns: Optional[float] = None, offset: Optional[float] = None):
@@ -731,7 +731,7 @@ class Base(object):
 
         async def set_output_file(self, filename: str, file_sample_key: str, header: Optional[str] = None):
             "Set active save_path, write header if supplied."
-            output_path = os.path.join(self.base.save_root, self.process.output_dir, filename)
+            output_path = os.path.join(self.base.save_root, self.action.output_dir, filename)
             self.base.print_message(f"writing data to: {output_path}")
             # create output file and set connection
             self.file_conn[file_sample_key] = await aiofiles.open(output_path, mode="a+")
@@ -770,9 +770,9 @@ class Base(object):
                     data_dict[file_sample_key] = data.get(file_sample_key, dict())
 
             data_msg = {
-                self.process.process_uuid: {
+                self.action.action_uuid: {
                     "data": data_dict,
-                    "process_name": self.process.process_name,
+                    "action_name": self.action.action_name,
                     "errors": errors,
                 }
             }
@@ -784,10 +784,10 @@ class Base(object):
             # data_msg should be a dict {uuid: list of values or a list of list of values}
             try:
                 async for data_msg in self.base.data_q.subscribe():
-                    if self.process.process_uuid in data_msg:  # only write data for this process
-                        data_dict = data_msg[self.process.process_uuid]
+                    if self.action.action_uuid in data_msg:  # only write data for this action
+                        data_dict = data_msg[self.action.action_uuid]
                         data_val = data_dict["data"]
-                        self.process.data.append(data_val)
+                        self.action.data.append(data_val)
                         for sample, sample_data in data_val.items():
                             if sample in self.file_conn:
                                 if self.file_conn[sample]:
@@ -796,7 +796,7 @@ class Base(object):
                                     # e.g. just write the separator
                                     if not self.finished_hlo_header[sample]:
                                         self.base.print_message(
-                                            f"{self.process.process_abbr} data file {sample} is missing hlo separator. Writing it.",
+                                            f"{self.action.action_abbr} data file {sample} is missing hlo separator. Writing it.",
                                             error=True,
                                         )
                                         self.finished_hlo_header[sample] = True
@@ -845,7 +845,7 @@ class Base(object):
             file_data_keys: Optional[str] = None,
         ):
             "Write complete file, not used with queue streaming."
-            if self.process.save_data:
+            if self.action.save_data:
                 filename, header, file_info = self.init_datafile(
                     header=header,
                     file_type=file_type,
@@ -853,15 +853,15 @@ class Base(object):
                     file_sample_label=file_sample_label,
                     filename=filename,
                     file_group=file_group,
-                    process_ordering=self.process.process_ordering,
-                    process_abbr=self.process.process_abbr,
+                    action_ordering=self.action.action_ordering,
+                    action_abbr=self.action.action_abbr,
                 )
-                output_path = os.path.join(self.base.save_root, self.process.output_dir, filename)
+                output_path = os.path.join(self.base.save_root, self.action.output_dir, filename)
                 self.base.print_message(f"writing non stream data to: {output_path}")
 
                 async with aiofiles.open(output_path, mode="w") as f:
                     await f.write(header + output_str)
-                    self.process.file_dict.update({filename: file_info})
+                    self.action.file_dict.update({filename: file_info})
                     return output_path
             else:
                 return None
@@ -878,7 +878,7 @@ class Base(object):
             file_data_keys: Optional[str] = None,
         ):
             "Write complete file, not used with queue streaming."
-            if self.process.save_data:
+            if self.action.save_data:
                 filename, header, file_info = self.init_datafile(
                     header=header,
                     file_type=file_type,
@@ -886,14 +886,14 @@ class Base(object):
                     file_sample_label=file_sample_label,
                     filename=filename,
                     file_group=file_group,
-                    process_ordering=self.process.process_ordering,
-                    process_abbr=self.process.process_abbr,
+                    action_ordering=self.action.action_ordering,
+                    action_abbr=self.action.action_abbr,
                 )
-                output_path = os.path.join(self.base.save_root, self.process.output_dir, filename)
+                output_path = os.path.join(self.base.save_root, self.action.output_dir, filename)
                 self.base.print_message(f"writing non stream data to: {output_path}")
                 with open(output_path, mode="w") as f:
                     f.write(header + output_str)
-                    self.process.file_dict.update({filename: file_info})
+                    self.action.file_dict.update({filename: file_info})
                     return output_path
             else:
                 return None
@@ -902,8 +902,8 @@ class Base(object):
             "Create new prc if it doesn't exist."
             output_path = os.path.join(
                 self.base.save_root,
-                self.process.output_dir,
-                f"{self.process.process_timestamp}.prc",
+                self.action.output_dir,
+                f"{self.action.action_timestamp}.prc",
             )
             self.base.print_message(f"writing to prc: {output_path}")
             async with aiofiles.open(output_path, mode="w") as f:
@@ -921,10 +921,10 @@ class Base(object):
             # block_both:
 
             # - status:
-            # created: pretty self-explanatory; the sample was created during the process.
+            # created: pretty self-explanatory; the sample was created during the action.
             # destroyed: also self-explanatory
-            # preserved: the sample exists before and after the process. e.g. an echem experiment
-            # incorporated: the sample was combined with others in the process. E.g. the creation of an electrode assembly from electrodes and electrolytes
+            # preserved: the sample exists before and after the action. e.g. an echem experiment
+            # incorporated: the sample was combined with others in the action. E.g. the creation of an electrode assembly from electrodes and electrolytes
             # recovered: the opposite of incorporated. E.g. an electrode assembly is taken apart, and the original electrodes are recovered, and further experiments may be done on those electrodes
 
             if samples is None:
@@ -948,15 +948,15 @@ class Base(object):
                 append_dict = sample.prc_dict()
                 if append_dict is not None:
                     # check if list for safety reasons
-                    if type(self.process.prc_samples_in) is not list:
-                        self.process.prc_samples_in = []
-                    if type(self.process.prc_samples_out) is not list:
-                        self.process.prc_samples_out = []
+                    if type(self.action.prc_samples_in) is not list:
+                        self.action.prc_samples_in = []
+                    if type(self.action.prc_samples_out) is not list:
+                        self.action.prc_samples_out = []
 
                     if IO == "in":
-                        self.process.prc_samples_in.append(append_dict)
+                        self.action.prc_samples_in.append(append_dict)
                     elif IO == "out":
-                        self.process.prc_samples_out.append(append_dict)
+                        self.action.prc_samples_out.append(append_dict)
 
         async def finish(self):
             "Close file_conn, finish prc, copy aux, set endpoint status, and move active dict to past."
@@ -967,35 +967,35 @@ class Base(object):
                     await self.file_conn[filekey].close()
             self.file_conn = dict()
             # (1) update sample_in and sample_out
-            if self.process.prc_samples_in:
-                self.prc_file.samples_in = self.process.prc_samples_in
-            if self.process.prc_samples_out:
-                self.prc_file.samples_out = self.process.prc_samples_out
+            if self.action.prc_samples_in:
+                self.prc_file.samples_in = self.action.prc_samples_in
+            if self.action.prc_samples_out:
+                self.prc_file.samples_out = self.action.prc_samples_out
             # (2) update file dict in prc header
-            if self.process.file_dict:
-                self.prc_file.files = self.process.file_dict
+            if self.action.file_dict:
+                self.prc_file.files = self.action.file_dict
 
             # write full prc header to file
             await self.write_prc()
 
             await self.clear_status()
             self.data_logger.cancel()
-            _ = self.base.actives.pop(self.process.process_uuid, None)
-            return self.process
+            _ = self.base.actives.pop(self.action.action_uuid, None)
+            return self.action
 
         async def track_file(self, file_type: str, file_path: str, sample_no: str):
             "Add auxiliary files to file dictionary."
-            if os.path.dirname(file_path) != os.path.join(self.base.save_root, self.process.output_dir):
-                self.process.file_paths.append(file_path)
+            if os.path.dirname(file_path) != os.path.join(self.base.save_root, self.action.output_dir):
+                self.action.file_paths.append(file_path)
             file_info = f"{file_type};{sample_no}"
             filename = os.path.basename(file_path)
-            self.process.file_dict.update({filename: file_info})
+            self.action.file_dict.update({filename: file_info})
             self.base.print_message(
-                f"{filename} added to files_technique__{self.process.process_num} / aux_files list."
+                f"{filename} added to files_technique__{self.action.action_num} / aux_files list."
             )
 
         async def relocate_files(self):
             "Copy auxiliary files from folder path to prc directory."
-            for x in self.process.file_paths:
-                new_path = os.path.join(self.base.save_root, self.process.output_dir, os.path.basename(x))
+            for x in self.action.file_paths:
+                new_path = os.path.join(self.base.save_root, self.action.output_dir, os.path.basename(x))
                 await async_copy(x, new_path)

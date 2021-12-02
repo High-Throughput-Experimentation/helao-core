@@ -1,4 +1,4 @@
-__all__ = ["make_process_serv"]
+__all__ = ["make_action_serv"]
 
 from fastapi import WebSocket
 
@@ -6,7 +6,7 @@ from .api import HelaoFastAPI
 from .base import Base
 
 
-def make_process_serv(config, server_key, server_title, description, version, driver_class=None):
+def make_action_serv(config, server_key, server_title, description, version, driver_class=None):
     app = HelaoFastAPI(config, server_key, title=server_title, description=description, version=version)
 
     @app.on_event("startup")

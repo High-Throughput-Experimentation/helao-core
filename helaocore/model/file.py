@@ -20,12 +20,12 @@ class PrcFile(BaseModel):
     output_dir: str
     sequence_uuid: str
     sequence_timestamp: str
-    process_uuid: str
-    process_timestamp: str
-    process_enum: Optional[float] = 0.0
-    process_name: str
-    process_abbr: Optional[str] = None
-    process_params: Union[dict, None] = None
+    action_uuid: str
+    action_timestamp: str
+    action_enum: Optional[float] = 0.0
+    action_name: str
+    action_abbr: Optional[str] = None
+    action_params: Union[dict, None] = None
     samples_in: Optional[Union[dict, None]] = None
     samples_out: Optional[Union[dict, None]] = None
     files: Optional[Union[dict, None]] = None

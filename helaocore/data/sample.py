@@ -33,8 +33,8 @@ class _BaseSampleAPI(object):
               inheritance TEXT,
               status TEXT,
               sequence_uuid VARCHAR(255),
-              process_uuid VARCHAR(255),
-              process_timestamp VARCHAR(255),
+              action_uuid VARCHAR(255),
+              action_timestamp VARCHAR(255),
               server_name VARCHAR(255),
               chemical TEXT,
               mass TEXT,
@@ -122,9 +122,9 @@ class _BaseSampleAPI(object):
                 sample.machine_name = self._base.hostname
             if sample.server_name is None:
                 sample.server_name = self._base.server_name
-            if sample.process_timestamp is None:
+            if sample.action_timestamp is None:
                 atime = datetime.fromtimestamp(datetime.now().timestamp() + self._base.ntp_offset)
-                sample.process_timestamp = atime.strftime("%Y%m%d.%H%M%S%f")
+                sample.action_timestamp = atime.strftime("%Y%m%d.%H%M%S%f")
             if sample.sample_creation_timecode is None:
                 sample.sample_creation_timecode = self._base.set_realtime_nowait()
             if sample.last_update is None:
@@ -397,8 +397,8 @@ class LiquidSampleAPI(_BaseSampleAPI):
             sample.machine_name = gethostname()
             sample.global_label = sample.get_global_label()
             sample.sample_creation_timecode = 0
-            # sample.process_timestamp = "00000000.000000000000"
-            # sample.process_timestamp = "12345678.123456789012"
+            # sample.action_timestamp = "00000000.000000000000"
+            # sample.action_timestamp = "12345678.123456789012"
             await self.new_sample(hcms.SampleList(samples = [sample]))
 
 
@@ -547,12 +547,12 @@ class OldLiquidSampleAPI:
         self._base.print_message(f"new liquid sample no: {new_sample.sample_no}")
         # dump dict to separate json file
         await write_sample_no_jsonfile(
-            f"{new_sample.sample_no:08d}__{new_sample.sequence_uuid}__{new_sample.process_uuid}.json",
+            f"{new_sample.sample_no:08d}__{new_sample.sequence_uuid}__{new_sample.action_uuid}.json",
             new_sample.dict(),
         )
         # add newid to db csv
         await self._open_db("a+")
-        await add_line(f"{new_sample.sample_no},{new_sample.sequence_uuid},{new_sample.process_uuid}")
+        await add_line(f"{new_sample.sample_no},{new_sample.sequence_uuid},{new_sample.action_uuid}")
         await self._close_db()
         return new_sample
 
@@ -601,8 +601,8 @@ class OldLiquidSampleAPI:
             data = data.strip("\n").split(",")
             fileID = int(data[0])
             sequence_uuid = data[1]
-            process_uuid = data[2]
-            filename = f"{fileID:08d}__{sequence_uuid}__{process_uuid}.json"
+            action_uuid = data[2]
+            filename = f"{fileID:08d}__{sequence_uuid}__{action_uuid}.json"
             self._base.print_message(f"data json file: {filename}")
 
             liquid_sample_jsondict = await load_json_file(filename, 1)
@@ -616,7 +616,7 @@ class OldLiquidSampleAPI:
             # the action time was something different and doesn't map
             # to any new fields
             # del liquid_sample_jsondict["action_time"]
-            liquid_sample_jsondict.update({"process_timestamp":liquid_sample_jsondict.get("action_time","00000000.000000000000")})
+            liquid_sample_jsondict.update({"action_timestamp":liquid_sample_jsondict.get("action_time","00000000.000000000000")})
             
             
             
@@ -642,7 +642,7 @@ class OldLiquidSampleAPI:
                 del liquid_sample_jsondict["sample_id"]
 
             if "AUID" in liquid_sample_jsondict:
-                liquid_sample_jsondict["process_uuid"] = liquid_sample_jsondict["AUID"]
+                liquid_sample_jsondict["action_uuid"] = liquid_sample_jsondict["AUID"]
                 del liquid_sample_jsondict["AUID"]
 
             if "DUID" in liquid_sample_jsondict:

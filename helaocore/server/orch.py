@@ -16,13 +16,13 @@ import helaocore.model.returnmodel as hcmr
 import helaocore.server.version as version
 
 from helaocore.helper import MultisubscriberQueue, cleanupdict
-from helaocore.schema import Process, Sequence
+from helaocore.schema import Action, Sequence
 
 from .api import HelaoFastAPI
 from .base import Base
-from .dispatcher import async_private_dispatcher, async_process_dispatcher
+from .dispatcher import async_private_dispatcher, async_action_dispatcher
 from .import_sequences import import_sequences
-from .process_start_condition import process_start_condition
+from .action_start_condition import action_start_condition
 
 # ANSI color codes converted to the Windows versions
 colorama.init(strip=not sys.stdout.isatty())  # strip colors if stdout is redirected
@@ -32,40 +32,40 @@ colorama.init(strip=not sys.stdout.isatty())  # strip colors if stdout is redire
 class Orch(Base):
     """Base class for async orchestrator with trigger support and pushed status update.
 
-    Websockets are not used for critical communications. Orch will attach to all process
+    Websockets are not used for critical communications. Orch will attach to all action
     servers listed in a config and maintain a dict of {serverName: status}, which is
-    updated by POST requests from process servers. Orch will simultaneously dispatch as
-    many process_dq as possible in process queue until it encounters any of the following
+    updated by POST requests from action servers. Orch will simultaneously dispatch as
+    many action_dq as possible in action queue until it encounters any of the following
     conditions:
-      (1) last executed process is final process in queue
-      (2) last executed process is blocking
-      (3) next process to execute is preempted
-      (4) next process is on a busy process server
-    which triggers a temporary async task to monitor the process server status dict until
+      (1) last executed action is final action in queue
+      (2) last executed action is blocking
+      (3) next action to execute is preempted
+      (4) next action is on a busy action server
+    which triggers a temporary async task to monitor the action server status dict until
     all conditions are cleared.
 
-    POST requests from process servers are added to a multisubscriber queue and consumed
-    by a self-subscriber task to update the process server status dict and log changes.
+    POST requests from action servers are added to a multisubscriber queue and consumed
+    by a self-subscriber task to update the action server status dict and log changes.
     """
 
     def __init__(self, fastapp: HelaoFastAPI):
         super().__init__(fastapp)
-        self.process_lib = import_sequences(
+        self.action_lib = import_sequences(
             world_config_dict=self.world_cfg,
             sequence_path=None,
             server_name=self.server_name,
         )
-        # instantiate sequence/experiment queue, process queue
+        # instantiate sequence/experiment queue, action queue
         self.sequence_dq = deque([])
-        self.process_dq = deque([])
-        self.dispatched_processes = {}
+        self.action_dq = deque([])
+        self.dispatched_actions = {}
         self.active_sequence = None
         self.last_sequence = None
         self.prg_file = None
 
-        # compilation of process server status dicts
+        # compilation of action server status dicts
         self.global_state_dict = defaultdict(lambda: defaultdict(list))
-        self.global_state_dict["_internal"]["async_process_dispatcher"] = []
+        self.global_state_dict["_internal"]["async_action_dispatcher"] = []
         self.global_q = MultisubscriberQueue()  # passes global_state_dict dicts
         self.dispatch_q = self.global_q.queue()
 
@@ -95,7 +95,7 @@ class Orch(Base):
             val = await self.dispatch_q.get()
         return val
 
-    async def check_wait_for_all_processes(self):
+    async def check_wait_for_all_actions(self):
         running_states, _ = await self.check_global_state()
         global_free = len(running_states) == 0
         self.print_message(f"check len(running_states): {len(running_states)}")
@@ -116,7 +116,7 @@ class Orch(Base):
                         response = await async_private_dispatcher(
                             world_config_dict=self.world_cfg,
                             server=serv_key,
-                            private_process="attach_client",
+                            private_action="attach_client",
                             params_dict={"client_servkey": self.server_name},
                             json_dict={},
                         )
@@ -140,36 +140,36 @@ class Orch(Base):
             self.init_success = True
         else:
             self.print_message(
-                "Orchestrator cannot process sequence_dq unless all FastAPI servers in config file are accessible."
+                "Orchestrator cannot action sequence_dq unless all FastAPI servers in config file are accessible."
             )
 
-    async def update_status(self, process_serv: str, status_dict: dict):
-        """Dict update method for process server to push status messages.
+    async def update_status(self, action_serv: str, status_dict: dict):
+        """Dict update method for action server to push status messages.
 
-        Async task for updating orch status dict {process_serv_key: {act_name: [act_uuid]}}
+        Async task for updating orch status dict {action_serv_key: {act_name: [act_uuid]}}
         """
-        last_dict = self.global_state_dict[process_serv]
+        last_dict = self.global_state_dict[action_serv]
         for act_name, acts in status_dict.items():
             if set(acts) != set(last_dict[act_name]):
                 started = set(acts).difference(last_dict[act_name])
                 removed = set(last_dict[act_name]).difference(acts)
                 ongoing = set(acts).intersection(last_dict[act_name])
                 if removed:
-                    self.print_message(f"'{process_serv}:{act_name}' finished {','.join(removed)}")
+                    self.print_message(f"'{action_serv}:{act_name}' finished {','.join(removed)}")
                 if started:
-                    self.print_message(f"'{process_serv}:{act_name}' started {','.join(started)}")
+                    self.print_message(f"'{action_serv}:{act_name}' started {','.join(started)}")
                 if ongoing:
-                    self.print_message(f"'{process_serv}:{act_name}' ongoing {','.join(ongoing)}")
-        self.global_state_dict[process_serv].update(status_dict)
+                    self.print_message(f"'{action_serv}:{act_name}' ongoing {','.join(ongoing)}")
+        self.global_state_dict[action_serv].update(status_dict)
         await self.global_q.put(self.global_state_dict)
         return True
 
     async def update_global_state(self, status_dict: dict):
         _running_uuids = []
-        for process_serv, act_named in status_dict.items():
+        for action_serv, act_named in status_dict.items():
             for act_name, uuids in act_named.items():
                 for myuuid in uuids:
-                    uuid_tup = (process_serv, act_name, myuuid)
+                    uuid_tup = (action_serv, act_name, myuuid)
                     if myuuid.endswith("__estop"):
                         self.estop_uuids.append(uuid_tup)
                     elif myuuid.endswith("__error"):
@@ -194,39 +194,39 @@ class Orch(Base):
                 self.print_message(f"running_states: {running_states}")
 
     async def check_global_state(self):
-        """Return global state of process servers."""
+        """Return global state of action servers."""
         running_states = []
         idle_states = []
         # self.print_message("checking global state:")
         # self.print_message(self.global_state_dict.items())
-        for process_serv, act_dict in self.global_state_dict.items():
-            self.print_message(f"checking {process_serv} state")
+        for action_serv, act_dict in self.global_state_dict.items():
+            self.print_message(f"checking {action_serv} state")
             for act_name, act_uuids in act_dict.items():
                 if len(act_uuids) == 0:
-                    idle_states.append(f"{process_serv}:{act_name}")
+                    idle_states.append(f"{action_serv}:{act_name}")
                 else:
-                    running_states.append(f"{process_serv}:{act_name}:{len(act_uuids)}")
+                    running_states.append(f"{action_serv}:{act_name}:{len(act_uuids)}")
             await asyncio.sleep(
                 0.001
-            )  # allows status changes to affect between process_dq, also enforce unique timestamp
+            )  # allows status changes to affect between action_dq, also enforce unique timestamp
         return running_states, idle_states
 
     async def dispatch_loop_task(self):
-        """Parse sequence and process queues, and dispatch process_dq while tracking run state flags."""
+        """Parse sequence and action queues, and dispatch action_dq while tracking run state flags."""
         self.print_message("running operator orch")
         self.print_message(f"orch status: {self.global_state_str}")
-        # clause for resuming paused process list
+        # clause for resuming paused action list
         self.print_message(f"orch descisions: {self.sequence_dq}")
         try:
             self.loop_state = "started"
-            while self.loop_state == "started" and (self.process_dq or self.sequence_dq):
-                self.print_message(f"current content of process_dq: {self.process_dq}")
+            while self.loop_state == "started" and (self.action_dq or self.sequence_dq):
+                self.print_message(f"current content of action_dq: {self.action_dq}")
                 self.print_message(f"current content of sequence_dq: {self.sequence_dq}")
                 await asyncio.sleep(
                     0.001
-                )  # allows status changes to affect between process_dq, also enforce unique timestamp
-                if not self.process_dq:
-                    self.print_message("getting process_dq from new sequence")
+                )  # allows status changes to affect between action_dq, also enforce unique timestamp
+                if not self.action_dq:
+                    self.print_message("getting action_dq from new sequence")
                     # generate uids when populating, generate timestamp when acquring
                     self.last_sequence = copy(self.active_sequence)
                     self.active_sequence = self.sequence_dq.popleft()
@@ -236,14 +236,14 @@ class Orch(Base):
                     self.active_sequence.gen_uuid_sequence(self.hostname)
                     sequence_name = self.active_sequence.sequence_name
                     # additional sequence params should be stored in sequence.sequence_params
-                    unpacked_acts = self.process_lib[sequence_name](self.active_sequence)
+                    unpacked_acts = self.action_lib[sequence_name](self.active_sequence)
                     for i, act in enumerate(unpacked_acts):
-                        act.process_ordering = float(i)  # f"{i}"
+                        act.action_ordering = float(i)  # f"{i}"
                         # act.gen_uuid()
                     # TODO:update sequence code
-                    self.process_dq = deque(unpacked_acts)
-                    self.dispatched_processes = {}
-                    self.print_message(f"got: {self.process_dq}")
+                    self.action_dq = deque(unpacked_acts)
+                    self.dispatched_actions = {}
+                    self.print_message(f"got: {self.action_dq}")
                     self.print_message(f"optional params: {self.active_sequence.sequence_params}")
 
                     self.prg_file = hcmf.PrgFile(
@@ -264,7 +264,7 @@ class Orch(Base):
                 else:
                     if self.loop_intent == "stop":
                         self.print_message("stopping orchestrator")
-                        # monitor status of running process_dq, then end loop
+                        # monitor status of running action_dq, then end loop
                         # async for _ in self.global_q.subscribe():
                         while True:
                             _ = await self.check_dispatch_queue()
@@ -273,22 +273,22 @@ class Orch(Base):
                                 await self.intend_none()
                                 break
                     elif self.loop_intent == "skip":
-                        # clear process queue, forcing next sequence
-                        self.process_dq.clear()
+                        # clear action queue, forcing next sequence
+                        self.action_dq.clear()
                         await self.intend_none()
                         self.print_message("skipping to next sequence")
                     else:
-                        # all process blocking is handled like preempt, check Process requirements
-                        A = self.process_dq.popleft()
-                        # append previous results to current process
+                        # all action blocking is handled like preempt, check Action requirements
+                        A = self.action_dq.popleft()
+                        # append previous results to current action
                         A.result_dict = self.active_sequence.result_dict
 
-                        # see async_process_dispatcher for unpacking
+                        # see async_action_dispatcher for unpacking
                         if isinstance(A.start_condition, int):
-                            if A.start_condition == process_start_condition.no_wait:
-                                self.print_message("orch is dispatching an unconditional process")
+                            if A.start_condition == action_start_condition.no_wait:
+                                self.print_message("orch is dispatching an unconditional action")
                             else:
-                                if A.start_condition == process_start_condition.wait_for_endpoint:
+                                if A.start_condition == action_start_condition.wait_for_endpoint:
                                     self.print_message(
                                         "orch is waiting for endpoint to become available"
                                     )
@@ -296,11 +296,11 @@ class Orch(Base):
                                     while True:
                                         _ = await self.check_dispatch_queue()
                                         endpoint_free = (
-                                            len(self.global_state_dict[A.process_server][A.process_name]) == 0
+                                            len(self.global_state_dict[A.action_server][A.action_name]) == 0
                                         )
                                         if endpoint_free:
                                             break
-                                elif A.start_condition == process_start_condition.wait_for_server:
+                                elif A.start_condition == action_start_condition.wait_for_server:
                                     self.print_message("orch is waiting for server to become available")
                                     # async for _ in self.global_q.subscribe():
                                     while True:
@@ -309,18 +309,18 @@ class Orch(Base):
                                             [
                                                 len(uuid_list) == 0
                                                 for _, uuid_list in self.global_state_dict[
-                                                    A.process_server
+                                                    A.action_server
                                                 ].items()
                                             ]
                                         )
                                         if server_free:
                                             break
                                 else:  # start_condition is 3 or unsupported value
-                                    self.print_message("orch is waiting for all process_dq to finish")
-                                    if not await self.check_wait_for_all_processes():
+                                    self.print_message("orch is waiting for all action_dq to finish")
+                                    if not await self.check_wait_for_all_actions():
                                         while True:
                                             _ = await self.check_dispatch_queue()
-                                            if await self.check_wait_for_all_processes():
+                                            if await self.check_wait_for_all_actions():
                                                 break
                                     else:
                                         self.print_message("global_free is true")
@@ -348,43 +348,43 @@ class Orch(Base):
                                     break
                         else:
                             self.print_message(
-                                "invalid start condition, waiting for all process_dq to finish"
+                                "invalid start condition, waiting for all action_dq to finish"
                             )
                             # async for _ in self.global_q.subscribe():
                             while True:
                                 _ = await self.check_dispatch_queue()
-                                if await self.check_wait_for_all_processes():
+                                if await self.check_wait_for_all_actions():
                                     break
 
-                        self.print_message("copying global vars to process")
+                        self.print_message("copying global vars to action")
 
-                        # copy requested global param to process params
+                        # copy requested global param to action params
                         for k, v in A.from_global_params.items():
                             self.print_message(f"{k}:{v}")
                             if k in self.active_sequence.global_params:
-                                A.process_params.update({v: self.active_sequence.global_params[k]})
+                                A.action_params.update({v: self.active_sequence.global_params[k]})
 
                         self.print_message(
-                            f"dispatching process {A.process_name} on server {A.process_server}"
+                            f"dispatching action {A.action_name} on server {A.action_server}"
                         )
-                        # keep running list of dispatched processes
-                        self.dispatched_processes[A.process_ordering] = copy(A)
-                        result = await async_process_dispatcher(self.world_cfg, A)
-                        self.active_sequence.result_dict[A.process_ordering] = result
+                        # keep running list of dispatched actions
+                        self.dispatched_actions[A.action_ordering] = copy(A)
+                        result = await async_action_dispatcher(self.world_cfg, A)
+                        self.active_sequence.result_dict[A.action_ordering] = result
 
                         self.print_message("copying global vars back to sequence")
                         # self.print_message(result)
                         if "to_global_params" in result:
                             for k in result["to_global_params"]:
-                                if k in result["process_params"]:
+                                if k in result["action_params"]:
                                     if (
-                                        result["process_params"][k] is None
+                                        result["action_params"][k] is None
                                         and k in self.active_sequence.global_params
                                     ):
                                         self.active_sequence.global_params.pop(k)
                                     else:
                                         self.active_sequence.global_params.update(
-                                            {k: result["process_params"][k]}
+                                            {k: result["action_params"][k]}
                                         )
                         self.print_message("done copying global vars back to sequence")
 
@@ -413,16 +413,16 @@ class Orch(Base):
     async def estop_loop(self):
         self.loop_state = "E-STOP"
         self.loop_task.cancel()
-        await self.force_stop_running_process_q()
+        await self.force_stop_running_action_q()
         await self.intend_none()
 
-    async def force_stop_running_process_q(self):
+    async def force_stop_running_action_q(self):
         running_uuids = []
         estop_uuids = []
-        for process_serv, act_named in self.global_state_dict.items():
+        for action_serv, act_named in self.global_state_dict.items():
             for act_name, uuids in act_named.items():
                 for myuuid in uuids:
-                    uuid_tup = (process_serv, act_name, myuuid)
+                    uuid_tup = (action_serv, act_name, myuuid)
                     if myuuid.endswith("__estop"):
                         estop_uuids.append(uuid_tup)
                     else:
@@ -453,18 +453,18 @@ class Orch(Base):
             self.print_message("both clear_estop and clear_error parameters are False, nothing to clear")
         cleared_status = copy(self.global_state_dict)
         if clear_estop:
-            for serv, process, myuuid in self.estop_uuids:
-                self.print_message(f"clearing E-STOP {process} on {serv}")
-                cleared_status[serv][process] = cleared_status[serv][process].remove(myuuid)
+            for serv, action, myuuid in self.estop_uuids:
+                self.print_message(f"clearing E-STOP {action} on {serv}")
+                cleared_status[serv][action] = cleared_status[serv][action].remove(myuuid)
         if clear_error:
-            for serv, process, myuuid in self.error_uuids:
-                self.print_message(f"clearing error {process} on {serv}")
-                cleared_status[serv][process] = cleared_status[serv][process].remove(myuuid)
+            for serv, action, myuuid in self.error_uuids:
+                self.print_message(f"clearing error {action} on {serv}")
+                cleared_status[serv][action] = cleared_status[serv][action].remove(myuuid)
         await self.global_q.put(cleared_status)
         self.print_message("resetting dispatch loop state")
         self.loop_state = "stopped"
         self.print_message(
-            f"{len(self.running_uuids)} running process_dq did not fully stop after E-STOP/error was raised"
+            f"{len(self.running_uuids)} running action_dq did not fully stop after E-STOP/error was raised"
         )
 
     async def add_sequence(
@@ -569,57 +569,57 @@ class Orch(Base):
         retval = hcmr.ReturnSequenceList(sequences=sequence_list)
         return retval
 
-    def list_active_processes(self):
-        """Return the current queue running processes."""
-        process_list = []
+    def list_active_actions(self):
+        """Return the current queue running actions."""
+        action_list = []
         index = 0
-        for process_serv, process_dict in self.global_state_dict.items():
-            for process_name, process_uuids in process_dict.items():
-                for process_uuid in process_uuids:
-                    process_list.append(
-                        hcmr.ReturnProcess(
+        for action_serv, action_dict in self.global_state_dict.items():
+            for action_name, action_uuids in action_dict.items():
+                for action_uuid in action_uuids:
+                    action_list.append(
+                        hcmr.ReturnAction(
                             index=index,
-                            process_uuid=process_uuid,
-                            server=process_serv,
-                            process_name=process_name,
-                            process_params=dict(),
+                            action_uuid=action_uuid,
+                            server=action_serv,
+                            action_name=action_name,
+                            action_params=dict(),
                             preempt=-1,
                         )
                     )
                     index = index + 1
-        retval = hcmr.ReturnProcessList(processes=process_list)
+        retval = hcmr.ReturnActionList(actions=action_list)
         return retval
 
-    def list_processes(self):
-        """Return the current queue of process_dq."""
-        process_list = [
-            hcmr.ReturnProcess(
+    def list_actions(self):
+        """Return the current queue of action_dq."""
+        action_list = [
+            hcmr.ReturnAction(
                 index=i,
-                process_uuid=process.process_uuid,
-                server=process.process_server,
-                process_name=process.process_name,
-                process_params=process.process_params,
-                preempt=process.start_condition,
+                action_uuid=action.action_uuid,
+                server=action.action_server,
+                action_name=action.action_name,
+                action_params=action.action_params,
+                preempt=action.start_condition,
             )
-            for i, process in enumerate(self.process_dq)
+            for i, action in enumerate(self.action_dq)
         ]
-        retval = hcmr.ReturnProcessList(processes=process_list)
+        retval = hcmr.ReturnActionList(actions=action_list)
         return retval
 
-    def supplement_error_process(self, check_uuid: str, sup_process: Process):
-        """Insert process at front of process queue with subversion of errored process, inherit parameters if desired."""
+    def supplement_error_action(self, check_uuid: str, sup_action: Action):
+        """Insert action at front of action queue with subversion of errored action, inherit parameters if desired."""
         if self.error_uuids == []:
             self.print_message("There are no error statuses to replace")
         else:
             matching_error = [tup for tup in self.error_uuids if tup[2] == check_uuid]
             if matching_error:
                 _, _, error_uuid = matching_error[0]
-                EA = [A for _, A in self.dispatched_processes.items() if A.process_uuid == error_uuid][0]
+                EA = [A for _, A in self.dispatched_actions.items() if A.action_uuid == error_uuid][0]
                 # up to 99 supplements
-                new_ordering = round(EA.process_ordering + 0.01, 2)
-                new_process = sup_process
-                new_process.process_ordering = new_ordering
-                self.process_dq.appendleft(new_process)
+                new_ordering = round(EA.action_ordering + 0.01, 2)
+                new_action = sup_action
+                new_action.action_ordering = new_ordering
+                self.action_dq.appendleft(new_action)
             else:
                 self.print_message(f"uuid {check_uuid} not found in list of error statuses:")
                 self.print_message(", ".join(self.error_uuids))
@@ -635,39 +635,39 @@ class Orch(Base):
             return None
         del self.sequence_dq[i]
 
-    def replace_process(
+    def replace_action(
         self,
-        sup_process: Process,
+        sup_action: Action,
         by_index: Optional[int] = None,
         by_uuid: Optional[str] = None,
         by_ordering: Optional[Union[int, float]] = None,
     ):
-        """Substitute a queued process."""
+        """Substitute a queued action."""
         if by_index:
             i = by_index
         elif by_uuid:
-            i = [i for i, A in enumerate(list(self.process_dq)) if A.process_uuid == by_uuid][0]
+            i = [i for i, A in enumerate(list(self.action_dq)) if A.action_uuid == by_uuid][0]
         elif by_ordering:
-            i = [i for i, A in enumerate(list(self.process_dq)) if A.process_ordering == by_ordering][0]
+            i = [i for i, A in enumerate(list(self.action_dq)) if A.action_ordering == by_ordering][0]
         else:
-            self.print_message("No arguments given for locating existing process to replace.")
+            self.print_message("No arguments given for locating existing action to replace.")
             return None
-        current_ordering = self.process_dq[i].process_ordering
-        new_process = sup_process
-        new_process.process_ordering = current_ordering
-        self.process_dq.insert(i, new_process)
-        del self.process_dq[i + 1]
+        current_ordering = self.action_dq[i].action_ordering
+        new_action = sup_action
+        new_action.action_ordering = current_ordering
+        self.action_dq.insert(i, new_action)
+        del self.action_dq[i + 1]
 
-    def append_process(self, sup_process: Process):
-        """Add process to end of current process queue."""
-        if len(self.process_dq) == 0:
-            last_ordering = floor(max(list(self.dispatched_processes)))
+    def append_action(self, sup_action: Action):
+        """Add action to end of current action queue."""
+        if len(self.action_dq) == 0:
+            last_ordering = floor(max(list(self.dispatched_actions)))
         else:
-            last_ordering = floor(self.process_dq[-1].process_ordering)
+            last_ordering = floor(self.action_dq[-1].action_ordering)
         new_ordering = int(last_ordering + 1)
-        new_process = sup_process
-        new_process.process_ordering = new_ordering
-        self.process_dq.append(new_process)
+        new_action = sup_action
+        new_action.action_ordering = new_ordering
+        self.action_dq.append(new_action)
 
     async def write_active_sequence_prg(self):
         if self.prg_file is not None:

@@ -3,7 +3,7 @@ Standard classes for experiment queue objects.
 
 """
 
-__all__ = ["Sequence", "Process", "Sequencer"]
+__all__ = ["Sequence", "Action", "Sequencer"]
 
 
 import inspect
@@ -18,7 +18,7 @@ from helaocore.helper import gen_uuid, print_message
 
 # rename later to Sequence
 class Sequence(object):
-    "Sample-process grouping class."
+    "Sample-action grouping class."
 
     def __init__(
         self,
@@ -31,7 +31,7 @@ class Sequence(object):
         # main sequence parameters
         self.sequence_uuid = imports.get("sequence_uuid", None) #
 
-        # main parametes for Process, need to put it into 
+        # main parametes for Action, need to put it into 
         # the new Basemodel in the future
         self.machine_name = imports.get("machine_name", None)
         
@@ -100,8 +100,8 @@ class Sequence(object):
         self.sequence_timestamp = dtime.strftime("%Y%m%d.%H%M%S%f")
 
 
-class Process(Sequence):
-    "Sample-process identifier class."
+class Action(Sequence):
+    "Sample-action identifier class."
 
     def __init__(
         self,
@@ -111,25 +111,25 @@ class Process(Sequence):
         imports = {}
         imports.update(inputdict)
         
-        # main fixed parameters for Process
-        self.process_uuid = imports.get("process_uuid", None)
-        self.process_timestamp = None
+        # main fixed parameters for Action
+        self.action_uuid = imports.get("action_uuid", None)
+        self.action_timestamp = None
         # machine_name # get it from sequence later
-        self.process_ordering = imports.get("process_ordering", None)
+        self.action_ordering = imports.get("action_ordering", None)
 
 
         # other parameters
-        self.process_server = imports.get("process_server", None)
-        self.process_name = imports.get("process_name", None)
-        self.process_params = imports.get("process_params", {})
-        self.process_abbr = imports.get("process_abbr", None)
+        self.action_server = imports.get("action_server", None)
+        self.action_name = imports.get("action_name", None)
+        self.action_params = imports.get("action_params", {})
+        self.action_abbr = imports.get("action_abbr", None)
         self.start_condition = imports.get("start_condition", 3)
 
-        # holds samples basemodel for parsing between processes etc
+        # holds samples basemodel for parsing between actions etc
         self.samples_in: hcms.SampleList = []
         self.samples_out: hcms.SampleList = []
 
-        # the following attributes are set during process dispatch but can be imported
+        # the following attributes are set during action dispatch but can be imported
         self.file_dict = defaultdict(lambda: defaultdict(dict))  # TODO: replace with model
         self.file_dict.update(imports.get("file_dict", {}))
 
@@ -154,36 +154,36 @@ class Process(Sequence):
         self.from_global_params = imports.get("from_global_params", {})
         self.to_global_params = imports.get("to_global_params", [])
 
-        check_args = {"server": self.process_server, "name": self.process_name}
+        check_args = {"server": self.action_server, "name": self.action_name}
         missing_args = [k for k, v in check_args.items() if v is None]
         if missing_args:
             print_message(
                 {},
-                "process",
-                f'process {" and ".join(missing_args)} not specified. Placeholder processes will only affect the process queue enumeration.',
+                "action",
+                f'action {" and ".join(missing_args)} not specified. Placeholder actions will only affect the action queue enumeration.',
                 info=True,
             )
 
-    def gen_uuid_process(self, machine_name: str):
-        if self.process_uuid:
+    def gen_uuid_action(self, machine_name: str):
+        if self.action_uuid:
             print_message(
                 {},
-                "process",
-                f"process_uuid: {self.process_uuid} already exists",
+                "action",
+                f"action_uuid: {self.action_uuid} already exists",
                 error=True,
             )
         else:
-            self.process_uuid = gen_uuid(
-                label=f"{machine_name}_{self.process_name}",
-                timestamp=self.process_timestamp,
+            self.action_uuid = gen_uuid(
+                label=f"{machine_name}_{self.action_name}",
+                timestamp=self.action_timestamp,
             )
-            print_message({}, "process", f"process_uuid: {self.process_uuid} assigned", info=True)
+            print_message({}, "action", f"action_uuid: {self.action_uuid} assigned", info=True)
 
     def set_atime(self, offset: float = 0.0):
         atime = datetime.now()
         if offset is not None:
             atime = datetime.fromtimestamp(atime.timestamp() + offset)
-        self.process_timestamp = atime.strftime("%Y%m%d.%H%M%S%f")
+        self.action_timestamp = atime.strftime("%Y%m%d.%H%M%S%f")
 
 
 class Sequencer(object):
@@ -194,7 +194,7 @@ class Sequencer(object):
         frame = inspect.currentframe().f_back
         _args, _varargs, _keywords, _locals = inspect.getargvalues(frame)
         self._pg = copy.deepcopy(pg)
-        self.process_list = []
+        self.action_list = []
         self.pars = self._C()
         for key, val in self._pg.sequence_params.items():
             setattr(self.pars, key, val)  # we could also add it direcly to the class root by just using self
@@ -214,12 +214,12 @@ class Sequencer(object):
     class _C:
         pass
 
-    def add_process(self, process_dict: dict):
-        new_process_dict = self._pg.as_dict()
-        new_process_dict.update(process_dict)
-        self.process_list.append(Process(inputdict=new_process_dict))
+    def add_action(self, action_dict: dict):
+        new_action_dict = self._pg.as_dict()
+        new_action_dict.update(action_dict)
+        self.action_list.append(Action(inputdict=new_action_dict))
 
 
-    def add_process_list(self, process_list: list):
-        for process in process_list:
-            self.process_list.append(process)
+    def add_action_list(self, action_list: list):
+        for action in action_list:
+            self.action_list.append(action)
