@@ -3,19 +3,21 @@ Standard classes for experiment queue objects.
 
 """
 
-__all__ = ["cProcess_group", "cProcess", "Sequencer"]
+__all__ = ["Sequence", "Process", "Sequencer"]
 
 
 import inspect
 import types
 from collections import defaultdict
 from datetime import datetime
+import copy
 
 import helaocore.model.sample as hcms
 from helaocore.helper import gen_uuid, print_message
 
 
-class cProcess_group(object):
+# rename later to Sequence
+class Sequence(object):
     "Sample-process grouping class."
 
     def __init__(
@@ -24,15 +26,25 @@ class cProcess_group(object):
     ):
         imports = {}
         imports.update(inputdict)
-        self.orch_name = imports.get("orch_name", "orchestrator")
-        self.technique_name = imports.get("technique_name", None)
+
+
+        # main sequence parameters
+        self.sequence_uuid = imports.get("sequence_uuid", None) #
+
+        # main parametes for Process, need to put it into 
+        # the new Basemodel in the future
         self.machine_name = imports.get("machine_name", None)
-        self.process_group_uuid = imports.get("process_group_uuid", None)
-        self.process_group_timestamp = imports.get("process_group_timestamp", None)
-        self.process_group_label = imports.get("process_group_label", "noLabel")
+        
+
+        # others parameter
+        self.orch_name = imports.get("orch_name", "orchestrator")
+        self.sequence_timestamp = imports.get("sequence_timestamp", None)
+        self.sequence_label = imports.get("sequence_label", "noLabel")
         self.access = imports.get("access", "hte")
-        self.sequence = imports.get("sequence", None)  # TODO: rename to "sequencer"
-        self.sequence_pars = imports.get("sequence_pars", {})  # TODO: rename to "sequencer_params"
+        self.sequence_name = imports.get("sequence_name", None)
+        self.sequence_params = imports.get("sequence_params", {})
+        # name of "instrument": sdc, anec, adss etc. defined in world config
+        self.technique_name = imports.get("technique_name", None)
 
         # TODO: make the following attributes private
         self.result_dict = {}  # imports.get("result_dict", {})# this gets big really fast, bad for debugging
@@ -40,70 +52,76 @@ class cProcess_group(object):
 
     def as_dict(self):
         d = vars(self)
-        attr_only = {k: v for k, v in d.items() if type(v) != types.FunctionType and not k.startswith("__")}
+        attr_only = {k: v for k, v in d.items() if not isinstance(v,types.FunctionType) and not k.startswith("__")}
         return attr_only
 
     def fastdict(self):
         d = vars(self)
         params_dict = {
-            k: int(v) if type(v) == bool else v
+            k: int(v) if isinstance(v, bool) else v
             for k, v in d.items()
-            if type(v) != types.FunctionType
+            if not isinstance(v,types.FunctionType)
             and not k.startswith("__")
             and (v is not None)
-            and (type(v) != dict)
+            and not isinstance(v,dict)
             and (v != {})
         }
         json_dict = {
             k: v
             for k, v in d.items()
-            if type(v) != types.FunctionType
+            if not isinstance(v,types.FunctionType)
             and not k.startswith("__")
             and (v is not None)
-            and (type(v) == dict)
+            and isinstance(v,dict)
         }
         return params_dict, json_dict
 
-    def gen_uuid_process_group(self, machine_name: str):
+    def gen_uuid_sequence(self, machine_name: str):
         "server_name can be any string used in generating random uuid"
-        if self.process_group_uuid:
+        if self.sequence_uuid:
             print_message(
                 {},
-                "process_group",
-                f"process_group_uuid: {self.process_group_uuid} already exists",
+                "sequence",
+                f"sequence_uuid: {self.sequence_uuid} already exists",
                 info=True,
             )
         else:
-            self.process_group_uuid = gen_uuid(label=machine_name, timestamp=self.process_group_timestamp)
+            self.sequence_uuid = gen_uuid(label=machine_name, timestamp=self.sequence_timestamp)
             print_message(
                 {},
-                "process_group",
-                f"process_group_uuid: {self.process_group_uuid} assigned",
+                "sequence",
+                f"sequence_uuid: {self.sequence_uuid} assigned",
                 info=True,
             )
 
     def set_dtime(self, offset: float = 0):
         dtime = datetime.now()
         dtime = datetime.fromtimestamp(dtime.timestamp() + offset)
-        self.process_group_timestamp = dtime.strftime("%Y%m%d.%H%M%S%f")
+        self.sequence_timestamp = dtime.strftime("%Y%m%d.%H%M%S%f")
 
 
-class cProcess(cProcess_group):
+class Process(Sequence):
     "Sample-process identifier class."
 
     def __init__(
         self,
         inputdict: dict = {},
     ):
-        super().__init__(inputdict)  # grab process_group keys
+        super().__init__(inputdict)  # grab sequence keys
         imports = {}
         imports.update(inputdict)
+        
+        # main fixed parameters for Process
         self.process_uuid = imports.get("process_uuid", None)
-        self.process_queue_time = imports.get("process_queue_time", None)
+        self.process_timestamp = None
+        # machine_name # get it from sequence later
+        self.process_ordering = imports.get("process_ordering", None)
+
+
+        # other parameters
         self.process_server = imports.get("process_server", None)
         self.process_name = imports.get("process_name", None)
         self.process_params = imports.get("process_params", {})
-        self.process_enum = imports.get("process_enum", None)
         self.process_abbr = imports.get("process_abbr", None)
         self.start_condition = imports.get("start_condition", 3)
 
@@ -116,9 +134,9 @@ class cProcess(cProcess_group):
         self.file_dict.update(imports.get("file_dict", {}))
 
         # TODO: make the following attributes private
-        self.save_prc = imports.get("save_prc", True)
-        self.save_data = imports.get("save_data", True)
-        self.plate_id = imports.get("plate_id", None)
+        self.save_prc = imports.get("save_prc", True) # default should be true
+        self.save_data = imports.get("save_data", True) # default should be true
+        # self.plate_id = imports.get("plate_id", None) # not needed anymore
         self.prc_samples_in = []  # holds sample list of dict for prc writing
         self.prc_samples_out = []
         self.file_paths = imports.get("file_paths", [])
@@ -157,7 +175,7 @@ class cProcess(cProcess_group):
         else:
             self.process_uuid = gen_uuid(
                 label=f"{machine_name}_{self.process_name}",
-                timestamp=self.process_queue_time,
+                timestamp=self.process_timestamp,
             )
             print_message({}, "process", f"process_uuid: {self.process_uuid} assigned", info=True)
 
@@ -165,24 +183,24 @@ class cProcess(cProcess_group):
         atime = datetime.now()
         if offset is not None:
             atime = datetime.fromtimestamp(atime.timestamp() + offset)
-        self.process_queue_time = atime.strftime("%Y%m%d.%H%M%S%f")
+        self.process_timestamp = atime.strftime("%Y%m%d.%H%M%S%f")
 
 
 class Sequencer(object):
     def __init__(
         self,
-        pg: cProcess_group,
+        pg: Sequence,
     ):
         frame = inspect.currentframe().f_back
         _args, _varargs, _keywords, _locals = inspect.getargvalues(frame)
-        self._pg = pg
+        self._pg = copy.deepcopy(pg)
         self.process_list = []
         self.pars = self._C()
-        for key, val in self._pg.sequence_pars.items():
+        for key, val in self._pg.sequence_params.items():
             setattr(self.pars, key, val)  # we could also add it direcly to the class root by just using self
 
         for key, val in _locals.items():
-            if key != "pg_Obj" and key not in self._pg.sequence_pars.keys():
+            if key != "pg_Obj" and key not in self._pg.sequence_params.keys():
                 print_message(
                     {},
                     "sequencer",
@@ -199,4 +217,9 @@ class Sequencer(object):
     def add_process(self, process_dict: dict):
         new_process_dict = self._pg.as_dict()
         new_process_dict.update(process_dict)
-        self.process_list.append(cProcess(inputdict=new_process_dict))
+        self.process_list.append(Process(inputdict=new_process_dict))
+
+
+    def add_process_list(self, process_list: list):
+        for process in process_list:
+            self.process_list.append(process)

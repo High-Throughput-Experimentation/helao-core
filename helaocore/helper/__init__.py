@@ -12,5 +12,6 @@ from .make_str_enum import make_str_enum
 from .multisubscriber_queue import MultisubscriberQueue
 from .print_message import print_message
 from .rcp_to_dict import rcp_to_dict
+from .helao_dirs import helao_dirs
 
 async_copy = wrap(shutil.copy)
