@@ -32,7 +32,7 @@ class _BaseSampleAPI(object):
               last_update INTEGER NOT NULL,
               inheritance TEXT,
               status TEXT,
-              sequence_uuid VARCHAR(255),
+              process_uuid VARCHAR(255),
               action_uuid VARCHAR(255),
               action_timestamp VARCHAR(255),
               server_name VARCHAR(255),
@@ -547,12 +547,12 @@ class OldLiquidSampleAPI:
         self._base.print_message(f"new liquid sample no: {new_sample.sample_no}")
         # dump dict to separate json file
         await write_sample_no_jsonfile(
-            f"{new_sample.sample_no:08d}__{new_sample.sequence_uuid}__{new_sample.action_uuid}.json",
+            f"{new_sample.sample_no:08d}__{new_sample.process_uuid}__{new_sample.action_uuid}.json",
             new_sample.dict(),
         )
         # add newid to db csv
         await self._open_db("a+")
-        await add_line(f"{new_sample.sample_no},{new_sample.sequence_uuid},{new_sample.action_uuid}")
+        await add_line(f"{new_sample.sample_no},{new_sample.process_uuid},{new_sample.action_uuid}")
         await self._close_db()
         return new_sample
 
@@ -600,9 +600,9 @@ class OldLiquidSampleAPI:
         if data != "":
             data = data.strip("\n").split(",")
             fileID = int(data[0])
-            sequence_uuid = data[1]
+            process_uuid = data[1]
             action_uuid = data[2]
-            filename = f"{fileID:08d}__{sequence_uuid}__{action_uuid}.json"
+            filename = f"{fileID:08d}__{process_uuid}__{action_uuid}.json"
             self._base.print_message(f"data json file: {filename}")
 
             liquid_sample_jsondict = await load_json_file(filename, 1)
@@ -646,7 +646,7 @@ class OldLiquidSampleAPI:
                 del liquid_sample_jsondict["AUID"]
 
             if "DUID" in liquid_sample_jsondict:
-                liquid_sample_jsondict["sequence_uuid"] = liquid_sample_jsondict["DUID"]
+                liquid_sample_jsondict["process_uuid"] = liquid_sample_jsondict["DUID"]
                 del liquid_sample_jsondict["DUID"]
 
             ret_liquid_sample = hcms.LiquidSample(**liquid_sample_jsondict)

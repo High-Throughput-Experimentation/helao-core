@@ -16,12 +16,12 @@ import helaocore.model.returnmodel as hcmr
 import helaocore.server.version as version
 
 from helaocore.helper import MultisubscriberQueue, cleanupdict
-from helaocore.schema import Action, Sequence
+from helaocore.schema import Action, Process
 
 from .api import HelaoFastAPI
 from .base import Base
 from .dispatcher import async_private_dispatcher, async_action_dispatcher
-from .import_sequences import import_sequences
+from .import_processes import import_processes
 from .action_start_condition import action_start_condition
 
 # ANSI color codes converted to the Windows versions
@@ -50,17 +50,17 @@ class Orch(Base):
 
     def __init__(self, fastapp: HelaoFastAPI):
         super().__init__(fastapp)
-        self.action_lib = import_sequences(
+        self.action_lib = import_processes(
             world_config_dict=self.world_cfg,
-            sequence_path=None,
+            process_path=None,
             server_name=self.server_name,
         )
-        # instantiate sequence/experiment queue, action queue
-        self.sequence_dq = deque([])
+        # instantiate process/experiment queue, action queue
+        self.process_dq = deque([])
         self.action_dq = deque([])
         self.dispatched_actions = {}
-        self.active_sequence = None
-        self.last_sequence = None
+        self.active_process = None
+        self.last_process = None
         self.prg_file = None
 
         # compilation of action server status dicts
@@ -140,7 +140,7 @@ class Orch(Base):
             self.init_success = True
         else:
             self.print_message(
-                "Orchestrator cannot action sequence_dq unless all FastAPI servers in config file are accessible."
+                "Orchestrator cannot action process_dq unless all FastAPI servers in config file are accessible."
             )
 
     async def update_status(self, action_serv: str, status_dict: dict):
@@ -212,54 +212,54 @@ class Orch(Base):
         return running_states, idle_states
 
     async def dispatch_loop_task(self):
-        """Parse sequence and action queues, and dispatch action_dq while tracking run state flags."""
+        """Parse process and action queues, and dispatch action_dq while tracking run state flags."""
         self.print_message("running operator orch")
         self.print_message(f"orch status: {self.global_state_str}")
         # clause for resuming paused action list
-        self.print_message(f"orch descisions: {self.sequence_dq}")
+        self.print_message(f"orch descisions: {self.process_dq}")
         try:
             self.loop_state = "started"
-            while self.loop_state == "started" and (self.action_dq or self.sequence_dq):
+            while self.loop_state == "started" and (self.action_dq or self.process_dq):
                 self.print_message(f"current content of action_dq: {self.action_dq}")
-                self.print_message(f"current content of sequence_dq: {self.sequence_dq}")
+                self.print_message(f"current content of process_dq: {self.process_dq}")
                 await asyncio.sleep(
                     0.001
                 )  # allows status changes to affect between action_dq, also enforce unique timestamp
                 if not self.action_dq:
-                    self.print_message("getting action_dq from new sequence")
+                    self.print_message("getting action_dq from new process")
                     # generate uids when populating, generate timestamp when acquring
-                    self.last_sequence = copy(self.active_sequence)
-                    self.active_sequence = self.sequence_dq.popleft()
-                    self.active_sequence.technique_name = self.technique_name
-                    self.active_sequence.machine_name = self.hostname
-                    self.active_sequence.set_dtime(offset=self.ntp_offset)
-                    self.active_sequence.gen_uuid_sequence(self.hostname)
-                    sequence_name = self.active_sequence.sequence_name
-                    # additional sequence params should be stored in sequence.sequence_params
-                    unpacked_acts = self.action_lib[sequence_name](self.active_sequence)
+                    self.last_process = copy(self.active_process)
+                    self.active_process = self.process_dq.popleft()
+                    self.active_process.technique_name = self.technique_name
+                    self.active_process.machine_name = self.hostname
+                    self.active_process.set_dtime(offset=self.ntp_offset)
+                    self.active_process.gen_uuid_process(self.hostname)
+                    process_name = self.active_process.process_name
+                    # additional process params should be stored in process.process_params
+                    unpacked_acts = self.action_lib[process_name](self.active_process)
                     for i, act in enumerate(unpacked_acts):
                         act.action_ordering = float(i)  # f"{i}"
                         # act.gen_uuid()
-                    # TODO:update sequence code
+                    # TODO:update process code
                     self.action_dq = deque(unpacked_acts)
                     self.dispatched_actions = {}
                     self.print_message(f"got: {self.action_dq}")
-                    self.print_message(f"optional params: {self.active_sequence.sequence_params}")
+                    self.print_message(f"optional params: {self.active_process.process_params}")
 
                     self.prg_file = hcmf.PrgFile(
                         hlo_version=f"{version.hlo_version}",
-                        orchestrator=self.active_sequence.orch_name,
+                        orchestrator=self.active_process.orch_name,
                         machine_name=gethostname(),
                         access="hte",
-                        sequence_uuid=self.active_sequence.sequence_uuid,
-                        sequence_timestamp=self.active_sequence.sequence_timestamp,
-                        sequence_label=self.active_sequence.sequence_label,
-                        technique_name=self.active_sequence.technique_name,
-                        sequence_name=self.active_sequence.sequence_name,
-                        sequence_params=self.active_sequence.sequence_params,
-                        sequence_model=None,
+                        process_uuid=self.active_process.process_uuid,
+                        process_timestamp=self.active_process.process_timestamp,
+                        process_label=self.active_process.process_label,
+                        technique_name=self.active_process.technique_name,
+                        process_name=self.active_process.process_name,
+                        process_params=self.active_process.process_params,
+                        process_model=None,
                     )
-                    await self.write_active_sequence_prg()
+                    await self.write_active_process_prg()
 
                 else:
                     if self.loop_intent == "stop":
@@ -273,15 +273,15 @@ class Orch(Base):
                                 await self.intend_none()
                                 break
                     elif self.loop_intent == "skip":
-                        # clear action queue, forcing next sequence
+                        # clear action queue, forcing next process
                         self.action_dq.clear()
                         await self.intend_none()
-                        self.print_message("skipping to next sequence")
+                        self.print_message("skipping to next process")
                     else:
                         # all action blocking is handled like preempt, check Action requirements
                         A = self.action_dq.popleft()
                         # append previous results to current action
-                        A.result_dict = self.active_sequence.result_dict
+                        A.result_dict = self.active_process.result_dict
 
                         # see async_action_dispatcher for unpacking
                         if isinstance(A.start_condition, int):
@@ -361,8 +361,8 @@ class Orch(Base):
                         # copy requested global param to action params
                         for k, v in A.from_global_params.items():
                             self.print_message(f"{k}:{v}")
-                            if k in self.active_sequence.global_params:
-                                A.action_params.update({v: self.active_sequence.global_params[k]})
+                            if k in self.active_process.global_params:
+                                A.action_params.update({v: self.active_process.global_params[k]})
 
                         self.print_message(
                             f"dispatching action {A.action_name} on server {A.action_server}"
@@ -370,25 +370,25 @@ class Orch(Base):
                         # keep running list of dispatched actions
                         self.dispatched_actions[A.action_ordering] = copy(A)
                         result = await async_action_dispatcher(self.world_cfg, A)
-                        self.active_sequence.result_dict[A.action_ordering] = result
+                        self.active_process.result_dict[A.action_ordering] = result
 
-                        self.print_message("copying global vars back to sequence")
+                        self.print_message("copying global vars back to process")
                         # self.print_message(result)
                         if "to_global_params" in result:
                             for k in result["to_global_params"]:
                                 if k in result["action_params"]:
                                     if (
                                         result["action_params"][k] is None
-                                        and k in self.active_sequence.global_params
+                                        and k in self.active_process.global_params
                                     ):
-                                        self.active_sequence.global_params.pop(k)
+                                        self.active_process.global_params.pop(k)
                                     else:
-                                        self.active_sequence.global_params.update(
+                                        self.active_process.global_params.update(
                                             {k: result["action_params"][k]}
                                         )
-                        self.print_message("done copying global vars back to sequence")
+                        self.print_message("done copying global vars back to process")
 
-            self.print_message("sequence queue is empty")
+            self.print_message("process queue is empty")
             self.print_message("stopping operator orch")
             self.loop_state = "stopped"
             await self.intend_none()
@@ -467,106 +467,106 @@ class Orch(Base):
             f"{len(self.running_uuids)} running action_dq did not fully stop after E-STOP/error was raised"
         )
 
-    async def add_sequence(
+    async def add_process(
         self,
         orch_name: str = None,
-        sequence_label: str = None,
-        sequence_name: str = None,
-        sequence_params: dict = {},
+        process_label: str = None,
+        process_name: str = None,
+        process_params: dict = {},
         result_dict: dict = {},
         access: str = "hte",
         prepend: Optional[bool] = False,
         at_index: Optional[int] = None,
     ):
 
-        D = Sequence(
+        D = Process(
             {
                 "orch_name": orch_name,
-                "sequence_label": sequence_label,
-                "sequence_name": sequence_name,
-                "sequence_params": sequence_params,
+                "process_label": process_label,
+                "process_name": process_name,
+                "process_params": process_params,
                 "result_dict": result_dict,
                 "access": access,
             }
         )
 
-        # reminder: sequence_dict values take precedence over keyword args but we grab
-        # active or last sequence label if sequence_label is not specified
+        # reminder: process_dict values take precedence over keyword args but we grab
+        # active or last process label if process_label is not specified
         if D.orch_name is None:
             D.orch_name = self.server_name
-        if sequence_label is None:
-            if self.active_sequence is not None:
-                active_label = self.active_sequence.sequence_label
+        if process_label is None:
+            if self.active_process is not None:
+                active_label = self.active_process.process_label
                 self.print_message(
-                    f"sequence_label not specified, inheriting {active_label} from active sequence"
+                    f"process_label not specified, inheriting {active_label} from active process"
                 )
-                D.sequence_label = active_label
-            elif self.last_sequence is not None:
-                last_label = self.last_sequence.sequence_label
+                D.process_label = active_label
+            elif self.last_process is not None:
+                last_label = self.last_process.process_label
                 self.print_message(
-                    f"sequence_label not specified, inheriting {last_label} from previous sequence"
+                    f"process_label not specified, inheriting {last_label} from previous process"
                 )
-                D.sequence_label = last_label
+                D.process_label = last_label
             else:
                 self.print_message(
-                    "sequence_label not specified, no past sequence_dq to inherit so using default 'nolabel"
+                    "process_label not specified, no past process_dq to inherit so using default 'nolabel"
                 )
         await asyncio.sleep(0.001)
         if at_index:
-            self.sequence_dq.insert(i=at_index, x=D)
+            self.process_dq.insert(i=at_index, x=D)
         elif prepend:
-            self.sequence_dq.appendleft(D)
-            self.print_message(f"sequence {D.sequence_uuid} prepended to queue")
+            self.process_dq.appendleft(D)
+            self.print_message(f"process {D.process_uuid} prepended to queue")
         else:
-            self.sequence_dq.append(D)
-            self.print_message(f"sequence {D.sequence_uuid} appended to queue")
+            self.process_dq.append(D)
+            self.print_message(f"process {D.process_uuid} appended to queue")
 
-    def list_sequences(self):
-        """Return the current queue of sequence_dq."""
+    def list_processes(self):
+        """Return the current queue of process_dq."""
 
-        sequence_list = [
-            hcmr.ReturnSequence(
+        process_list = [
+            hcmr.ReturnProcess(
                 index=i,
-                sequence_uuid=sequence.sequence_uuid,
-                sequence_label=sequence.sequence_label,
-                sequence_name=sequence.sequence_name,
-                sequence_params=sequence.sequence_params,
-                access=sequence.access,
+                process_uuid=process.process_uuid,
+                process_label=process.process_label,
+                process_name=process.process_name,
+                process_params=process.process_params,
+                access=process.access,
             )
-            for i, sequence in enumerate(self.sequence_dq)
+            for i, process in enumerate(self.process_dq)
         ]
-        retval = hcmr.ReturnSequenceList(sequences=sequence_list)
+        retval = hcmr.ReturnProcessList(processes=process_list)
         return retval
 
-    def get_sequence(self, last=False):
-        """Return the active or last sequence."""
+    def get_process(self, last=False):
+        """Return the active or last process."""
         if last:
-            sequence = self.last_sequence
+            process = self.last_process
         else:
-            sequence = self.active_sequence
-        if sequence is not None:
-            sequence_list = [
-                hcmr.ReturnSequence(
+            process = self.active_process
+        if process is not None:
+            process_list = [
+                hcmr.ReturnProcess(
                     index=-1,
-                    sequence_uuid=sequence.sequence_uuid,
-                    sequence_label=sequence.sequence_label,
-                    sequence_name=sequence.sequence_name,
-                    sequence_params=sequence.sequence_params,
-                    access=sequence.access,
+                    process_uuid=process.process_uuid,
+                    process_label=process.process_label,
+                    process_name=process.process_name,
+                    process_params=process.process_params,
+                    access=process.access,
                 )
             ]
         else:
-            sequence_list = [
-                hcmr.ReturnSequence(
+            process_list = [
+                hcmr.ReturnProcess(
                     index=-1,
-                    sequence_uuid=None,
-                    sequence_label=None,
-                    sequence_name=None,
-                    sequence_paras=None,
+                    process_uuid=None,
+                    process_label=None,
+                    process_name=None,
+                    process_paras=None,
                     access=None,
                 )
             ]
-        retval = hcmr.ReturnSequenceList(sequences=sequence_list)
+        retval = hcmr.ReturnProcessList(processes=process_list)
         return retval
 
     def list_active_actions(self):
@@ -624,16 +624,16 @@ class Orch(Base):
                 self.print_message(f"uuid {check_uuid} not found in list of error statuses:")
                 self.print_message(", ".join(self.error_uuids))
 
-    def remove_sequence(self, by_index: Optional[int] = None, by_uuid: Optional[str] = None):
-        """Remove sequence in list by enumeration index or uuid."""
+    def remove_process(self, by_index: Optional[int] = None, by_uuid: Optional[str] = None):
+        """Remove process in list by enumeration index or uuid."""
         if by_index:
             i = by_index
         elif by_uuid:
-            i = [i for i, D in enumerate(list(self.sequence_dq)) if D.sequence_uuid == by_uuid][0]
+            i = [i for i, D in enumerate(list(self.process_dq)) if D.process_uuid == by_uuid][0]
         else:
-            self.print_message("No arguments given for locating existing sequence to remove.")
+            self.print_message("No arguments given for locating existing process to remove.")
             return None
-        del self.sequence_dq[i]
+        del self.process_dq[i]
 
     def replace_action(
         self,
@@ -669,9 +669,9 @@ class Orch(Base):
         new_action.action_ordering = new_ordering
         self.action_dq.append(new_action)
 
-    async def write_active_sequence_prg(self):
+    async def write_active_process_prg(self):
         if self.prg_file is not None:
-            await self.write_to_prg(cleanupdict(self.prg_file.dict()), self.active_sequence)
+            await self.write_to_prg(cleanupdict(self.prg_file.dict()), self.active_process)
         self.prg_file = None
 
     async def shutdown(self):

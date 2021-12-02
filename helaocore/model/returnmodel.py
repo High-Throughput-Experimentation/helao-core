@@ -3,8 +3,8 @@ Return models returned in API response. Will be deprecated.
 
 """
 __all__ = [
-    "ReturnSequence",
-    "ReturnSequenceList",
+    "ReturnProcess",
+    "ReturnProcessList",
     "ReturnAction",
     "ReturnActionList",
     "ReturnFinishedAction",
@@ -18,21 +18,21 @@ from pydantic import BaseModel
 
 
 # TODO: deprecate return* models in favor of original models.
-class ReturnSequence(BaseModel):
-    """Return class for queried Sequence objects."""
+class ReturnProcess(BaseModel):
+    """Return class for queried Process objects."""
 
     index: int
-    sequence_uuid: Union[str, None]
-    sequence_label: str
-    sequence_name: str
-    sequence_params: dict
+    process_uuid: Union[str, None]
+    process_label: str
+    process_name: str
+    process_params: dict
     access: str
 
 
-class ReturnSequenceList(BaseModel):
-    """Return class for queried Sequence list."""
+class ReturnProcessList(BaseModel):
+    """Return class for queried Process list."""
 
-    sequences: List[ReturnSequence]
+    processes: List[ReturnProcess]
 
 
 class ReturnAction(BaseModel):
@@ -58,11 +58,11 @@ class ReturnFinishedAction(BaseModel):
     technique_name: str
     access: str
     orch_name: str
-    sequence_timestamp: str
-    sequence_uuid: str
-    sequence_label: str
-    sequence_name: str
-    sequence_params: dict
+    process_timestamp: str
+    process_uuid: str
+    process_label: str
+    process_name: str
+    process_params: dict
     result_dict: dict
     action_server: str
     action_timestamp: str
@@ -91,11 +91,11 @@ class ReturnRunningAction(BaseModel):
     technique_name: str
     access: str
     orch_name: str
-    sequence_timestamp: str
-    sequence_uuid: str
-    sequence_label: str
-    sequence_name: str
-    sequence_params: dict
+    process_timestamp: str
+    process_uuid: str
+    process_label: str
+    process_name: str
+    process_params: dict
     result_dict: dict
     action_server: str
     action_timestamp: str

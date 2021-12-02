@@ -55,7 +55,7 @@ async def setup_action(request: Request):
     if A.technique_name is None:
         A.technique_name = "MANUAL"
         A.orch_name = "MANUAL"
-        A.sequence_label = "MANUAL"
+        A.process_label = "MANUAL"
     # sample_list cannot be serialized so needs to be updated here
     if A.samples_in == []:
         A.samples_in = hcms.SampleList()

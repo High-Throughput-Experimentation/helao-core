@@ -85,7 +85,7 @@ class _BaseSample(BaseModel):
     last_update: Optional[int] = None  # epoch in ns
     inheritance: Optional[str] = None  # only for internal use
     status: Union[List[str], str] = None  # only for internal use
-    sequence_uuid: Optional[str] = None
+    process_uuid: Optional[str] = None
     action_uuid: Optional[str] = None
     action_timestamp: Optional[str] = None  # "%Y%m%d.%H%M%S%f"
     server_name: Optional[str] = None

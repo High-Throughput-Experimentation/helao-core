@@ -1,8 +1,8 @@
 # __init__.py
 from .file import PrcFile, PrgFile
 from .returnmodel import (
-    ReturnSequence,
-    ReturnSequenceList,
+    ReturnProcess,
+    ReturnProcessList,
     ReturnAction,
     ReturnActionList,
     ReturnRunningAction,

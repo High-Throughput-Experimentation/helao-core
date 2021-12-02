@@ -18,8 +18,8 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         """Run startup actions.
 
         When FastAPI server starts, create a global OrchHandler object, initiate the
-        monitor_states coroutine which runs forever, and append dummy sequences to the
-        sequence queue for testing.
+        monitor_states coroutine which runs forever, and append dummy processes to the
+        process queue for testing.
         """
         app.orch = Orch(app)
         if driver_class:
@@ -53,19 +53,19 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
 
     @app.post("/start")
     async def start_action():
-        """Begin processing sequence and action queues."""
+        """Begin processing process and action queues."""
         if app.orch.loop_state == "stopped":
-            if app.orch.action_dq or app.orch.sequence_dq:  # resume actions from a paused run
+            if app.orch.action_dq or app.orch.process_dq:  # resume actions from a paused run
                 await app.orch.start_loop()
             else:
-                app.orch.print_message("sequence list is empty")
+                app.orch.print_message("process list is empty")
         else:
             app.orch.print_message("already running")
         return {}
 
     @app.post("/estop")
     async def estop_action():
-        """Emergency stop sequence and action queues, interrupt running actions."""
+        """Emergency stop process and action queues, interrupt running actions."""
         if app.orch.loop_state == "started":
             await app.orch.estop_loop()
         elif app.orch.loop_state == "E-STOP":
@@ -76,7 +76,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
 
     @app.post("/stop")
     async def stop_action():
-        """Stop processing sequence and action queues after current actions finish."""
+        """Stop processing process and action queues after current actions finish."""
         if app.orch.loop_state == "started":
             await app.orch.intend_stop()
         elif app.orch.loop_state == "E-STOP":
@@ -102,7 +102,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
             await app.orch.clear_estate(clear_estop=False, clear_error=True)
 
     @app.post("/skip")
-    async def skip_sequence():
+    async def skip_process():
         """Clear the present action queue while running."""
         if app.orch.loop_state == "started":
             await app.orch.intend_skip()
@@ -120,136 +120,136 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         app.orch.action_dq.clear()
         return {}
 
-    @app.post("/clear_sequences")
-    async def clear_sequences():
-        """Clear the present sequence queue while stopped."""
-        app.orch.print_message("clearing sequence queue")
+    @app.post("/clear_processes")
+    async def clear_processes():
+        """Clear the present process queue while stopped."""
+        app.orch.print_message("clearing process queue")
         await asyncio.sleep(0.001)
-        app.orch.sequence_dq.clear()
+        app.orch.process_dq.clear()
         return {}
 
-    @app.post("/append_sequence")
-    async def append_sequence(
+    @app.post("/append_process")
+    async def append_process(
         orch_name: str = None,
-        sequence_label: str = None,
-        sequence_name: str = None,
-        sequence_params: dict = {},
+        process_label: str = None,
+        process_name: str = None,
+        process_params: dict = {},
         result_dict: dict = {},
         access: str = "hte",
     ):
-        """Add a sequence object to the end of the sequence queue.
+        """Add a process object to the end of the process queue.
 
         Args:
-        sequence_dict: sequence parameters (optional), as dict.
+        process_dict: process parameters (optional), as dict.
         orch_name: Orchestrator server key (optional), as str.
         plate_id: The sample's plate id (no checksum), as int.
         sample_no: A sample number, as int.
-        sequence_name: The name of the sequence for building the action list, as str.
-        sequence_params: sequence parameters, as dict.
+        process_name: The name of the process for building the action list, as str.
+        process_params: process parameters, as dict.
         result_dict: action responses dict keyed by action_ordering.
         access: Access control group, as str.
 
         Returns:
         Nothing.
         """
-        await app.orch.add_sequence(
+        await app.orch.add_process(
             orch_name,
-            sequence_label,
-            sequence_name,
-            sequence_params,
+            process_label,
+            process_name,
+            process_params,
             result_dict,
             access,
             prepend=False,
         )
         return {}
 
-    @app.post("/prepend_sequence")
-    async def prepend_sequence(
+    @app.post("/prepend_process")
+    async def prepend_process(
         orch_name: str = None,
-        sequence_label: str = None,
-        sequence_name: str = None,
-        sequence_params: dict = {},
+        process_label: str = None,
+        process_name: str = None,
+        process_params: dict = {},
         result_dict: dict = {},
         access: str = "hte",
     ):
-        """Add a sequence object to the start of the sequence queue.
+        """Add a process object to the start of the process queue.
 
         Args:
-        sequence_dict: sequence parameters (optional), as dict.
+        process_dict: process parameters (optional), as dict.
         orch_name: Orchestrator server key (optional), as str.
         plate_id: The sample's plate id (no checksum), as int.
         sample_no: A sample number, as int.
-        sequence_name: The name of the sequence for building the action list, as str.
-        sequence_params: sequence parameters, as dict.
+        process_name: The name of the process for building the action list, as str.
+        process_params: process parameters, as dict.
         result_dict: action responses dict keyed by action_ordering.
         access: Access control group, as str.
 
         Returns:
         Nothing.
         """
-        await app.orch.add_sequence(
+        await app.orch.add_process(
             orch_name,
-            sequence_label,
-            sequence_name,
-            sequence_params,
+            process_label,
+            process_name,
+            process_params,
             result_dict,
             access,
             prepend=True,
         )
         return {}
 
-    @app.post("/insert_sequence")
-    async def insert_sequence(
+    @app.post("/insert_process")
+    async def insert_process(
         idx: int,
-        sequence_dict: dict = None,
+        process_dict: dict = None,
         orch_name: str = None,
-        sequence_label: str = None,
-        sequence_name: str = None,
-        sequence_params: dict = {},
+        process_label: str = None,
+        process_name: str = None,
+        process_params: dict = {},
         result_dict: dict = {},
         access: str = "hte",
     ):
-        """Insert a sequence object at sequence queue index.
+        """Insert a process object at process queue index.
 
         Args:
-        idx: index in sequence queue for insertion, as int
-        sequence_dict: sequence parameters (optional), as dict.
+        idx: index in process queue for insertion, as int
+        process_dict: process parameters (optional), as dict.
         orch_name: Orchestrator server key (optional), as str.
         plate_id: The sample's plate id (no checksum), as int.
         sample_no: A sample number, as int.
-        sequence_name: The name of the sequence for building the action list, as str.
-        sequence_params: sequence parameters, as dict.
+        process_name: The name of the process for building the action list, as str.
+        process_params: process parameters, as dict.
         result_dict: action responses dict keyed by action_ordering.
         access: Access control group, as str.
 
         Returns:
         Nothing.
         """
-        await app.orch.add_sequence(
-            sequence_dict,
+        await app.orch.add_process(
+            process_dict,
             orch_name,
-            sequence_label,
-            sequence_name,
-            sequence_params,
+            process_label,
+            process_name,
+            process_params,
             result_dict,
             access,
             at_index=idx,
         )
         return {}
 
-    @app.post("/list_sequences")
-    def list_sequences():
-        """Return the current list of sequences."""
-        return app.orch.list_sequences()
+    @app.post("/list_processes")
+    def list_processes():
+        """Return the current list of processes."""
+        return app.orch.list_processes()
 
-    @app.post("/active_sequence")
-    def active_sequence():
-        """Return the active sequence."""
-        return app.orch.get_sequence(last=False)
+    @app.post("/active_process")
+    def active_process():
+        """Return the active process."""
+        return app.orch.get_process(last=False)
 
-    @app.post("/last_sequence")
-    def last_sequence():
-        """Return the last sequence."""
+    @app.post("/last_process")
+    def last_process():
+        """Return the last process."""
         return app.orch.get_action_group(last=True)
 
     @app.post("/list_actions")

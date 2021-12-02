@@ -3,7 +3,7 @@ Standard classes for experiment queue objects.
 
 """
 
-__all__ = ["Sequence", "Action", "Sequencer"]
+__all__ = ["Process", "Action", "Sequencer"]
 
 
 import inspect
@@ -16,8 +16,8 @@ import helaocore.model.sample as hcms
 from helaocore.helper import gen_uuid, print_message
 
 
-# rename later to Sequence
-class Sequence(object):
+# rename later to Process
+class Process(object):
     "Sample-action grouping class."
 
     def __init__(
@@ -28,8 +28,8 @@ class Sequence(object):
         imports.update(inputdict)
 
 
-        # main sequence parameters
-        self.sequence_uuid = imports.get("sequence_uuid", None) #
+        # main process parameters
+        self.process_uuid = imports.get("process_uuid", None) #
 
         # main parametes for Action, need to put it into 
         # the new Basemodel in the future
@@ -38,11 +38,11 @@ class Sequence(object):
 
         # others parameter
         self.orch_name = imports.get("orch_name", "orchestrator")
-        self.sequence_timestamp = imports.get("sequence_timestamp", None)
-        self.sequence_label = imports.get("sequence_label", "noLabel")
+        self.process_timestamp = imports.get("process_timestamp", None)
+        self.process_label = imports.get("process_label", "noLabel")
         self.access = imports.get("access", "hte")
-        self.sequence_name = imports.get("sequence_name", None)
-        self.sequence_params = imports.get("sequence_params", {})
+        self.process_name = imports.get("process_name", None)
+        self.process_params = imports.get("process_params", {})
         # name of "instrument": sdc, anec, adss etc. defined in world config
         self.technique_name = imports.get("technique_name", None)
 
@@ -76,45 +76,45 @@ class Sequence(object):
         }
         return params_dict, json_dict
 
-    def gen_uuid_sequence(self, machine_name: str):
+    def gen_uuid_process(self, machine_name: str):
         "server_name can be any string used in generating random uuid"
-        if self.sequence_uuid:
+        if self.process_uuid:
             print_message(
                 {},
-                "sequence",
-                f"sequence_uuid: {self.sequence_uuid} already exists",
+                "process",
+                f"process_uuid: {self.process_uuid} already exists",
                 info=True,
             )
         else:
-            self.sequence_uuid = gen_uuid(label=machine_name, timestamp=self.sequence_timestamp)
+            self.process_uuid = gen_uuid(label=machine_name, timestamp=self.process_timestamp)
             print_message(
                 {},
-                "sequence",
-                f"sequence_uuid: {self.sequence_uuid} assigned",
+                "process",
+                f"process_uuid: {self.process_uuid} assigned",
                 info=True,
             )
 
     def set_dtime(self, offset: float = 0):
         dtime = datetime.now()
         dtime = datetime.fromtimestamp(dtime.timestamp() + offset)
-        self.sequence_timestamp = dtime.strftime("%Y%m%d.%H%M%S%f")
+        self.process_timestamp = dtime.strftime("%Y%m%d.%H%M%S%f")
 
 
-class Action(Sequence):
+class Action(Process):
     "Sample-action identifier class."
 
     def __init__(
         self,
         inputdict: dict = {},
     ):
-        super().__init__(inputdict)  # grab sequence keys
+        super().__init__(inputdict)  # grab process keys
         imports = {}
         imports.update(inputdict)
         
         # main fixed parameters for Action
         self.action_uuid = imports.get("action_uuid", None)
         self.action_timestamp = None
-        # machine_name # get it from sequence later
+        # machine_name # get it from process later
         self.action_ordering = imports.get("action_ordering", None)
 
 
@@ -189,21 +189,21 @@ class Action(Sequence):
 class Sequencer(object):
     def __init__(
         self,
-        pg: Sequence,
+        pg: Process,
     ):
         frame = inspect.currentframe().f_back
         _args, _varargs, _keywords, _locals = inspect.getargvalues(frame)
         self._pg = copy.deepcopy(pg)
         self.action_list = []
         self.pars = self._C()
-        for key, val in self._pg.sequence_params.items():
+        for key, val in self._pg.process_params.items():
             setattr(self.pars, key, val)  # we could also add it direcly to the class root by just using self
 
         for key, val in _locals.items():
-            if key != "pg_Obj" and key not in self._pg.sequence_params.keys():
+            if key != "pg_Obj" and key not in self._pg.process_params.keys():
                 print_message(
                     {},
-                    "sequencer",
+                    "processr",
                     f"local var '{key}' not found in pg_Obj, addding it to sq.pars",
                     error=True,
                 )

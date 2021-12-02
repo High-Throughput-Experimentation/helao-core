@@ -53,9 +53,9 @@ class Base(object):
 
     The data writing method will update a class attribute with the currently open file.
     For a given root directory, files and folders will be written as follows:
-    {%y.%j}/  # sequence_date year.weeknum
-        {%Y%m%d}/  # sequence_date
-            {%H%M%S}__{sequence_label}/  # sequence_time
+    {%y.%j}/  # process_date year.weeknum
+        {%Y%m%d}/  # process_date
+            {%H%M%S}__{process_label}/  # process_time
                 {%Y%m%d.%H%M%S}__{action_server_name}__{action_name}__{action_uuid}/
                     {filename}.{ext}
                     {%Y%m%d.%H%M%S%f}.prc  # action_datetime
@@ -400,11 +400,11 @@ class Base(object):
         self.status_logger.cancel()
         self.ntp_syncer.cancel()
 
-    async def write_to_prg(self, prg_dict: dict, sequence):
-        sequence_timestamp = sequence.sequence_timestamp
-        sequence_dir = self.get_sequence_dir(sequence)
-        output_path = os.path.join(self.save_root, sequence_dir)
-        output_file = os.path.join(output_path, f"{sequence_timestamp}.prg")
+    async def write_to_prg(self, prg_dict: dict, process):
+        process_timestamp = process.process_timestamp
+        process_dir = self.get_process_dir(process)
+        output_path = os.path.join(self.save_root, process_dir)
+        output_file = os.path.join(output_path, f"{process_timestamp}.prg")
 
         self.print_message(f"writing to prg: {output_file}")
         output_str = pyaml.dump(prg_dict, sort_dicts=False)
@@ -418,15 +418,15 @@ class Base(object):
             await f.write(output_str)
 
 
-    def get_sequence_dir(self, sequence):
-        """accepts action or sequence object"""
-        sequence_date = sequence.sequence_timestamp.split(".")[0]
-        sequence_time = sequence.sequence_timestamp.split(".")[-1]
-        year_week = strftime("%y.%U", strptime(sequence_date, "%Y%m%d"))
+    def get_process_dir(self, process):
+        """accepts action or process object"""
+        process_date = process.process_timestamp.split(".")[0]
+        process_time = process.process_timestamp.split(".")[-1]
+        year_week = strftime("%y.%U", strptime(process_date, "%Y%m%d"))
         return os.path.join(
             year_week,
-            sequence_date,
-            f"{sequence_time}_{sequence.sequence_label}",
+            process_date,
+            f"{process_time}_{process.process_label}",
         )
 
     class Active(object):
@@ -452,7 +452,7 @@ class Base(object):
             self.prc_file = None
             self.manual_prg_file = None
             self.manual = False
-            self.sequence_dir = None
+            self.process_dir = None
 
             if file_sample_keys is None:
                 self.action.file_sample_keys = ["None"]
@@ -483,11 +483,11 @@ class Base(object):
             # any data is pushed to avoid a forced header end write
             self.finished_hlo_header = dict()
             self.file_conn = dict()
-            if self.action.sequence_timestamp is None:
+            if self.action.process_timestamp is None:
                 self.manual = True
                 self.base.print_message("Manual Action.", info=True)
                 self.action.set_dtime(offset=self.base.ntp_offset)
-                self.action.gen_uuid_sequence(self.base.hostname)
+                self.action.gen_uuid_process(self.base.hostname)
 
             if not self.base.save_root:
                 self.base.print_message(
@@ -505,9 +505,9 @@ class Base(object):
                 if self.action.save_data is True:
                     self.action.save_prc = True
 
-                self.sequence_dir = self.base.get_sequence_dir(self.action)
+                self.process_dir = self.base.get_process_dir(self.action)
                 self.action.output_dir = os.path.join(
-                    self.sequence_dir,
+                    self.process_dir,
                     f"{self.action.action_timestamp}__{self.action.action_server}__{self.action.action_name}__{self.action.action_uuid}",
                 )
             self.data_logger = self.base.aloop.create_task(self.log_data_task())
@@ -528,8 +528,8 @@ class Base(object):
                 machine_name=self.action.machine_name,
                 access=self.action.access,
                 output_dir=Path(self.action.output_dir).as_posix(),
-                sequence_uuid=self.action.sequence_uuid,
-                sequence_timestamp=self.action.sequence_timestamp,
+                process_uuid=self.action.process_uuid,
+                process_timestamp=self.action.process_timestamp,
                 action_uuid=self.action.action_uuid,
                 action_timestamp=self.action.action_timestamp,
                 action_ordering=self.action.action_ordering,
@@ -557,13 +557,13 @@ class Base(object):
                         orchestrator=self.action.orch_name,
                         machine_name=gethostname(),
                         access=self.action.access,
-                        sequence_uuid=self.action.sequence_uuid,
-                        sequence_timestamp=self.action.sequence_timestamp,
-                        sequence_label=self.action.sequence_label,
+                        process_uuid=self.action.process_uuid,
+                        process_timestamp=self.action.process_timestamp,
+                        process_label=self.action.process_label,
                         technique_name=self.action.technique_name,
-                        sequence_name="MANUAL",
-                        sequence_params=None,
-                        sequence_model=None,
+                        process_name="MANUAL",
+                        process_params=None,
+                        process_model=None,
                     )
                     await self.base.write_to_prg(cleanupdict(self.manual_prg_file.dict()), self.action)
 
