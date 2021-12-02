@@ -203,7 +203,6 @@ class Base(object):
                 self.ntp_offset = response.offset
                 self.print_message(
                     f"retrieved time at {ctime(self.ntp_response.tx_timestamp)} from {self.ntp_server}",
-                    info=True,
                 )
             except ntplib.NTPException:
                 self.print_message(f"{self.ntp_server} ntp timeout", error=True)
@@ -386,7 +385,6 @@ class Base(object):
                     if time() - self.ntp_last_sync > resync_time:
                         self.print_message(
                             f"last time check was more then { resync_time} ago, syncing time again.",
-                            error=True,
                         )
                         await self.get_ntp_time()
                     else:
