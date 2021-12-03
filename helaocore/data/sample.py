@@ -19,7 +19,7 @@ import pandas as pd
 
 
 class _BaseSampleAPI(object):
-    def __init__(self, sampleclass, Serv_class, dbpath: str, extra_columns: str):
+    def __init__(self, sampleclass, Serv_class, extra_columns: str):
 
         self.extra_columns = extra_columns
         self.columns = f"""global_label TEXT NOT NULL,
@@ -56,8 +56,8 @@ class _BaseSampleAPI(object):
         self._sampleclass = sampleclass
         self._sample_type = f"{sampleclass.sample_type}_sample"
         self._dbfilename = gethostname() + f"__{self._sample_type}.db"
-        self._dbfilepath = dbpath
         self._base = Serv_class
+        self._dbfilepath = self._base.db_root
         self._db = os.path.join(self._dbfilepath, self._dbfilename)
         self._con = None
         self._cur = None
@@ -369,11 +369,10 @@ class _BaseSampleAPI(object):
 
 
 class LiquidSampleAPI(_BaseSampleAPI):
-    def __init__(self, Serv_class, dbpath: str):
+    def __init__(self, Serv_class):
         super().__init__(
             sampleclass=hcms.LiquidSample(),
             Serv_class=Serv_class,
-            dbpath=dbpath,
             extra_columns="volume_ml REAL NOT NULL, ph REAL, dilution_factor REAL NOT NULL",
         )
 
@@ -403,11 +402,10 @@ class LiquidSampleAPI(_BaseSampleAPI):
 
 
 class GasSampleAPI(_BaseSampleAPI):
-    def __init__(self, Serv_class, dbpath: str):
+    def __init__(self, Serv_class):
         super().__init__(
             sampleclass=hcms.GasSample(),
             Serv_class=Serv_class,
-            dbpath=dbpath,
             extra_columns="volume_ml REAL NOT NULL, dilution_factor REAL NOT NULL",
         )
 
@@ -421,22 +419,20 @@ class GasSampleAPI(_BaseSampleAPI):
 
 
 class AssemblySampleAPI(_BaseSampleAPI):
-    def __init__(self, Serv_class, dbpath: str):
+    def __init__(self, Serv_class):
         super().__init__(
             sampleclass=hcms.AssemblySample(),
             Serv_class=Serv_class,
-            dbpath=dbpath,
             extra_columns="parts TEXT",
         )
         self._jsonkeys.append("parts")
 
 
 class SolidSampleAPI(_BaseSampleAPI):
-    def __init__(self, Serv_class, dbpath: str):
+    def __init__(self, Serv_class):
         super().__init__(
             sampleclass=hcms.SolidSample(),
             Serv_class=Serv_class,
-            dbpath=dbpath,
             extra_columns="plate_id INTEGER NOT NULL",
         )
 
@@ -487,11 +483,11 @@ class SolidSampleAPI(_BaseSampleAPI):
 
 
 class OldLiquidSampleAPI:
-    def __init__(self, Serv_class, dbpath):
+    def __init__(self, Serv_class):
         self._base = Serv_class
 
         self._dbfile = "liquid_ID_database.csv"
-        self._dbfilepath = dbpath
+        self._dbfilepath = self._base.db_root
         # self._dbfilepath, self._dbfile = os.path.split(db)
         self.fdb = None
         self.headerlines = 0
@@ -658,14 +654,14 @@ class OldLiquidSampleAPI:
 
 
 class UnifiedSampleDataAPI:
-    def __init__(self, Serv_class, dbpath):
+    def __init__(self, Serv_class):
         self._base = Serv_class
-        self._dbfilepath = dbpath
+        self._dbfilepath = self._base.db_root
 
-        self.solidAPI = SolidSampleAPI(self._base, self._dbfilepath)
-        self.liquidAPI = LiquidSampleAPI(self._base, self._dbfilepath)
-        self.gasAPI = GasSampleAPI(self._base, self._dbfilepath)
-        self.assemblyAPI = AssemblySampleAPI(self._base, self._dbfilepath)
+        self.solidAPI = SolidSampleAPI(self._base)
+        self.liquidAPI = LiquidSampleAPI(self._base)
+        self.gasAPI = GasSampleAPI(self._base)
+        self.assemblyAPI = AssemblySampleAPI(self._base)
         self.ready = False
 
     async def init_db(self):

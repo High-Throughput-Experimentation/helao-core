@@ -71,7 +71,7 @@ class Base(object):
         self.technique_name = None
         self.aloop = asyncio.get_running_loop()
 
-        self.root, self.save_root, self.log_root, self.states_root = \
+        self.root, self.save_root, self.log_root, self.states_root, self.db_root = \
             helao_dirs(self.world_cfg)
         
         if self.root is None:

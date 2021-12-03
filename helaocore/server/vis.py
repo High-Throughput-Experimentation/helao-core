@@ -24,7 +24,7 @@ class Vis(object):
         self.world_cfg = bokehapp.world_cfg
         self.hostname = gethostname()
         self.doc = bokehapp.doc
-        self.root, self.save_root, self.log_root, self.states_root = \
+        self.root, self.save_root, self.log_root, self.states_root, self.db_root = \
             helao_dirs(self.world_cfg)
         
         if self.root is None:
