@@ -61,7 +61,7 @@ class Orch(Base):
         self.dispatched_actions = {}
         self.active_process = None
         self.last_process = None
-        self.prg_file = None
+        self.prc_file = None
 
         # compilation of action server status dicts
         self.global_state_dict = defaultdict(lambda: defaultdict(list))
@@ -246,7 +246,7 @@ class Orch(Base):
                     self.print_message(f"got: {self.action_dq}")
                     self.print_message(f"optional params: {self.active_process.process_params}")
 
-                    self.prg_file = hcmf.PrgFile(
+                    self.prc_file = hcmf.PrcFile(
                         hlo_version=f"{version.hlo_version}",
                         orchestrator=self.active_process.orch_name,
                         machine_name=gethostname(),
@@ -670,9 +670,9 @@ class Orch(Base):
         self.action_dq.append(new_action)
 
     async def write_active_process_prg(self):
-        if self.prg_file is not None:
-            await self.write_to_prg(cleanupdict(self.prg_file.dict()), self.active_process)
-        self.prg_file = None
+        if self.prc_file is not None:
+            await self.write_to_prg(cleanupdict(self.prc_file.dict()), self.active_process)
+        self.prc_file = None
 
     async def shutdown(self):
         await self.detach_subscribers()

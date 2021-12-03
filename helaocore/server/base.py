@@ -449,8 +449,8 @@ class Base(object):
             self.action.file_data_keys = file_data_keys
             self.action.file_sample_label = file_sample_label
             self.action.header = header
-            self.prc_file = None
-            self.manual_prg_file = None
+            self.act_file = None
+            self.manual_prc_file = None
             self.manual = False
             self.process_dir = None
 
@@ -512,7 +512,7 @@ class Base(object):
                 )
             self.data_logger = self.base.aloop.create_task(self.log_data_task())
 
-        async def update_prc_file(self):
+        async def update_act_file(self):
             # need to remove swagger workaround value if present
             if "scratch" in self.action.action_params:
                 del self.action.action_params["scratch"]
@@ -520,7 +520,7 @@ class Base(object):
             if self.action.action_ordering is None:
                 self.action.action_ordering = 0.0
 
-            self.prc_file = hcmf.PrcFile(
+            self.act_file = hcmf.ActFile(
                 hlo_version=f"{version.hlo_version}",
                 technique_name=self.action.technique_name,
                 server_name=self.base.server_name,
@@ -548,11 +548,11 @@ class Base(object):
                     exist_ok=True,
                 )
                 self.action.action_num = f"{self.action.action_abbr}-{self.action.action_ordering}"
-                await self.update_prc_file()
+                await self.update_act_file()
 
                 if self.manual:
                     # create and write prg file for manual action
-                    self.manual_prg_file = hcmf.PrgFile(
+                    self.manual_prc_file = hcmf.PrcFile(
                         hlo_version=f"{version.hlo_version}",
                         orchestrator=self.action.orch_name,
                         machine_name=gethostname(),
@@ -565,7 +565,7 @@ class Base(object):
                         process_params=None,
                         process_model=None,
                     )
-                    await self.base.write_to_prg(cleanupdict(self.manual_prg_file.dict()), self.action)
+                    await self.base.write_to_prg(cleanupdict(self.manual_prc_file.dict()), self.action)
 
                 if self.action.save_data:
                     for i, file_sample_key in enumerate(self.action.file_sample_keys):
@@ -907,7 +907,7 @@ class Base(object):
             )
             self.base.print_message(f"writing to prc: {output_path}")
             async with aiofiles.open(output_path, mode="w") as f:
-                await f.write(pyaml.dump(cleanupdict(self.prc_file.dict()), 
+                await f.write(pyaml.dump(cleanupdict(self.act_file.dict()), 
                                          sort_dicts=False))
 
 
@@ -968,12 +968,12 @@ class Base(object):
             self.file_conn = dict()
             # (1) update sample_in and sample_out
             if self.action.prc_samples_in:
-                self.prc_file.samples_in = self.action.prc_samples_in
+                self.act_file.samples_in = self.action.prc_samples_in
             if self.action.prc_samples_out:
-                self.prc_file.samples_out = self.action.prc_samples_out
+                self.act_file.samples_out = self.action.prc_samples_out
             # (2) update file dict in prc header
             if self.action.file_dict:
-                self.prc_file.files = self.action.file_dict
+                self.act_file.files = self.action.file_dict
 
             # write full prc header to file
             await self.write_prc()

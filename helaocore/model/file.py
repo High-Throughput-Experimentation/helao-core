@@ -2,7 +2,7 @@
 File models for writing/organizing .prc and .prg metadata contents.
 
 """
-__all__ = ["PrcFile", "PrgFile"]
+__all__ = ["ActFile", "PrcFile", "PrgFile"]
 
 from typing import Optional, Union
 
@@ -10,7 +10,7 @@ import helaocore.server.version as version
 from pydantic import BaseModel
 
 
-class PrcFile(BaseModel):
+class ActFile(BaseModel):
     hlo_version: str = version.hlo_version
     technique_name: str
     server_name: str
@@ -30,8 +30,7 @@ class PrcFile(BaseModel):
     samples_out: Optional[Union[dict, None]] = None
     files: Optional[Union[dict, None]] = None
 
-
-class PrgFile(BaseModel):
+class PrcFile(BaseModel):
     hlo_version: str = version.hlo_version
     orchestrator: str
     machine_name: str
@@ -43,3 +42,7 @@ class PrgFile(BaseModel):
     process_name: str
     process_params: Union[dict, None] = None
     process_model: Union[dict, None] = None
+
+
+class PrgFile(BaseModel):
+    hlo_version: str = version.hlo_version
