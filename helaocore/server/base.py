@@ -400,7 +400,7 @@ class Base(object):
         self.status_logger.cancel()
         self.ntp_syncer.cancel()
 
-    async def write_to_prg(self, prg_dict: dict, process):
+    async def write_prc(self, prg_dict: dict, process):
         process_timestamp = process.process_timestamp
         process_dir = self.get_process_dir(process)
         output_path = os.path.join(self.save_root, process_dir)
@@ -538,7 +538,7 @@ class Base(object):
                 action_params=self.action.action_params,
             )
             # write initial temporary prc file
-            await self.write_prc()
+            await self.write_act()
 
 
         async def myinit(self):
@@ -565,7 +565,7 @@ class Base(object):
                         process_params=None,
                         process_model=None,
                     )
-                    await self.base.write_to_prg(cleanupdict(self.manual_prc_file.dict()), self.action)
+                    await self.base.write_prc(cleanupdict(self.manual_prc_file.dict()), self.action)
 
                 if self.action.save_data:
                     for i, file_sample_key in enumerate(self.action.file_sample_keys):
@@ -898,7 +898,7 @@ class Base(object):
             else:
                 return None
 
-        async def write_prc(self):
+        async def write_act(self):
             "Create new prc if it doesn't exist."
             output_path = os.path.join(
                 self.base.save_root,
@@ -976,7 +976,7 @@ class Base(object):
                 self.act_file.files = self.action.file_dict
 
             # write full prc header to file
-            await self.write_prc()
+            await self.write_act()
 
             await self.clear_status()
             self.data_logger.cancel()

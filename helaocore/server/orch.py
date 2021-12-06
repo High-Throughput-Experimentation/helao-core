@@ -62,6 +62,7 @@ class Orch(Base):
         self.active_process = None
         self.last_process = None
         self.prc_file = None
+        self.prg_file = None
 
         # compilation of action server status dicts
         self.global_state_dict = defaultdict(lambda: defaultdict(list))
@@ -259,7 +260,7 @@ class Orch(Base):
                         process_params=self.active_process.process_params,
                         process_model=None,
                     )
-                    await self.write_active_process_prg()
+                    await self.write_active_process_prc()
 
                 else:
                     if self.loop_intent == "stop":
@@ -669,9 +670,9 @@ class Orch(Base):
         new_action.action_ordering = new_ordering
         self.action_dq.append(new_action)
 
-    async def write_active_process_prg(self):
+    async def write_active_process_prc(self):
         if self.prc_file is not None:
-            await self.write_to_prg(cleanupdict(self.prc_file.dict()), self.active_process)
+            await self.write_prc(cleanupdict(self.prc_file.dict()), self.active_process)
         self.prc_file = None
 
     async def shutdown(self):
