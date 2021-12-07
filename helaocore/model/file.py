@@ -2,7 +2,7 @@
 File models for writing/organizing .prc and .prg metadata contents.
 
 """
-__all__ = ["ActFile", "PrcFile", "PrgFile"]
+__all__ = ["ActFile", "PrcFile", "SeqFile"]
 
 from typing import Optional, Union
 
@@ -30,6 +30,7 @@ class ActFile(BaseModel):
     samples_out: Optional[Union[dict, None]] = None
     files: Optional[Union[dict, None]] = None
 
+
 class PrcFile(BaseModel):
     hlo_version: str = version.hlo_version
     orchestrator: str
@@ -44,5 +45,10 @@ class PrcFile(BaseModel):
     process_model: Union[dict, None] = None
 
 
-class PrgFile(BaseModel):
+class SeqFile(BaseModel):
     hlo_version: str = version.hlo_version
+    sequence_name: str
+    sequence_label: str
+    sequence_uuid: str
+    sequence_timestamp: str
+    # process_list: Optional[]
