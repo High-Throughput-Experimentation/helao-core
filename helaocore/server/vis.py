@@ -37,4 +37,4 @@ class Vis(object):
         # self.aloop = asyncio.get_running_loop()
 
     def print_message(self, *args, **kwargs):
-        print_message(self.server_cfg, self.server_name, *args, **kwargs)
+        print_message(self.server_cfg, self.server_name, log_dir = self.log_root, *args, **kwargs)
