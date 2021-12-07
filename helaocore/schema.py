@@ -3,7 +3,7 @@ Standard classes for experiment queue objects.
 
 """
 
-__all__ = ["Process", "Action", "Sequencer"]
+__all__ = ["Sequence", "Process", "Action", "Sequencer"]
 
 
 import inspect
@@ -16,14 +16,104 @@ import helaocore.model.sample as hcms
 from helaocore.helper import gen_uuid, print_message
 
 
-# rename later to Process
-class Process(object):
+
+class Sequence(object):
+    def __init__(
+        self,
+        inputdict: dict = {},
+    ):
+        imports = {}
+        imports.update(inputdict)
+
+        self.sequence_uuid = imports.get("sequence_uuid", None)
+        self.sequence_timestamp = imports.get("sequence_timestamp", None)
+        self.sequence_name = imports.get("sequence_name", None)
+        self.sequence_label = imports.get("sequence_label", "noLabel")
+        self.process_list = []
+
+
+    def __repr__(self):
+        return f"<sequence_name:{self.sequence_name}>" 
+
+
+    def __str__(self):
+        return f"sequence_name:{self.sequence_name}" 
+
+
+    def as_dict(self):
+        d = vars(self)
+        attr_only = {k: v for k, v in d.items() if not isinstance(v,types.FunctionType) and not k.startswith("__")}
+        return attr_only
+
+
+    def fastdict(self):
+        json_list_keys = ["process_list"]
+        # json_keys = []
+        d = vars(self)
+        params_dict = {
+            k: int(v) if isinstance(v, bool) else v
+            for k, v in d.items()
+            if not isinstance(v,types.FunctionType)
+            and not k.startswith("__")
+            and k not in json_list_keys
+            and (v is not None)
+            and not isinstance(v,dict)
+            and not isinstance(v,list)
+            and (v != {})
+        }
+        
+        
+        json_dict = {
+            k: v
+            for k, v in d.items()
+            if not isinstance(v,types.FunctionType)
+            and not k.startswith("__")
+            and k not in json_list_keys
+            and (v is not None)
+            and isinstance(v,dict)
+        }
+        for key in json_list_keys:
+            if key in d:
+                json_dict.update({key:[val.as_dict() for val in d[key]]})
+        #         json_dict.update({key:[]})
+
+
+        return params_dict, json_dict
+
+
+    def gen_uuid_sequence(self, machine_name: str):
+        "server_name can be any string used in generating random uuid"
+        if self.sequence_uuid:
+            print_message(
+                {},
+                "process",
+                f"process_uuid: {self.process_uuid} already exists",
+                info=True,
+            )
+        else:
+            self.sequence_uuid = gen_uuid(label=machine_name, timestamp=self.sequence_timestamp)
+            print_message(
+                {},
+                "sequence",
+                f"sequence_uuid: {self.sequence_uuid} assigned",
+                info=True,
+            )
+
+
+    def set_sequence_time(self, offset: float = 0):
+        dtime = datetime.now()
+        dtime = datetime.fromtimestamp(dtime.timestamp() + offset)
+        self.sequence_timestamp = dtime.strftime("%Y%m%d.%H%M%S%f")
+
+
+class Process(Sequence):
     "Sample-action grouping class."
 
     def __init__(
         self,
         inputdict: dict = {},
     ):
+        super().__init__(inputdict)  # grab sequence keys
         imports = {}
         imports.update(inputdict)
 
@@ -50,31 +140,17 @@ class Process(object):
         self.result_dict = {}  # imports.get("result_dict", {})# this gets big really fast, bad for debugging
         self.global_params = {}  # TODO: reserved for internal use, do not write to .prg
 
-    def as_dict(self):
-        d = vars(self)
-        attr_only = {k: v for k, v in d.items() if not isinstance(v,types.FunctionType) and not k.startswith("__")}
-        return attr_only
 
-    def fastdict(self):
-        d = vars(self)
-        params_dict = {
-            k: int(v) if isinstance(v, bool) else v
-            for k, v in d.items()
-            if not isinstance(v,types.FunctionType)
-            and not k.startswith("__")
-            and (v is not None)
-            and not isinstance(v,dict)
-            and (v != {})
-        }
-        json_dict = {
-            k: v
-            for k, v in d.items()
-            if not isinstance(v,types.FunctionType)
-            and not k.startswith("__")
-            and (v is not None)
-            and isinstance(v,dict)
-        }
-        return params_dict, json_dict
+
+        # sequence parameters which should go in its own class later
+
+    def __repr__(self):
+        return f"<process_name:{self.process_name}>" 
+
+
+    def __str__(self):
+        return f"process_name:{self.process_name}" 
+
 
     def gen_uuid_process(self, machine_name: str):
         "server_name can be any string used in generating random uuid"
@@ -164,6 +240,15 @@ class Action(Process):
                 info=True,
             )
 
+
+    def __repr__(self):
+        return f"<action_name:{self.action_name}>" 
+
+
+    def __str__(self):
+        return f"action_name:{self.action_name}" 
+
+
     def gen_uuid_action(self, machine_name: str):
         if self.action_uuid:
             print_message(
@@ -223,3 +308,23 @@ class Sequencer(object):
     def add_action_list(self, action_list: list):
         for action in action_list:
             self.action_list.append(action)
+
+
+class SequenceListMaker(object):
+    def __init__(
+        self,
+    ):
+        self.process_list = []
+
+
+    def add_process(self, selected_process, process_params):
+        
+        # process_params = {paraminput.title: to_json(paraminput.value) for paraminput in self.param_input}
+        D = Process(inputdict={
+            # "orch_name":orch_name,
+            "process_label":selected_process,
+            # "process_label":sellabel,
+            "process_name":selected_process,
+            "process_params":process_params,
+        })
+        self.process_list.append(D.as_dict())
