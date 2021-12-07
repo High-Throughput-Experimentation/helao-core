@@ -6,7 +6,7 @@ from collections import defaultdict, deque
 from copy import copy
 from math import floor
 from socket import gethostname
-from typing import Optional, Union
+from typing import Optional, Union, List
 
 import aiohttp
 import colorama
@@ -16,7 +16,7 @@ import helaocore.model.returnmodel as hcmr
 import helaocore.server.version as version
 
 from helaocore.helper import MultisubscriberQueue, cleanupdict
-from helaocore.schema import Action, Process
+from helaocore.schema import Action, Process, Sequence
 
 from .api import HelaoFastAPI
 from .base import Base
@@ -50,17 +50,20 @@ class Orch(Base):
 
     def __init__(self, fastapp: HelaoFastAPI):
         super().__init__(fastapp)
-        self.action_lib = import_processes(
+        self.process_lib = import_processes(
             world_config_dict=self.world_cfg,
             process_path=None,
             server_name=self.server_name,
         )
         # instantiate process/experiment queue, action queue
+        self.sequence_dq = deque([])
         self.process_dq = deque([])
         self.action_dq = deque([])
         self.dispatched_actions = {}
         self.active_process = None
         self.last_process = None
+        self.active_sequence = None
+        self.last_sequence = None
         self.prc_file = None
         self.prg_file = None
 
@@ -219,6 +222,35 @@ class Orch(Base):
         # clause for resuming paused action list
         self.print_message(f"orch descisions: {self.process_dq}")
         try:
+            self.last_sequence = copy(self.active_sequence)
+            self.active_sequence = self.sequence_dq.popleft()
+            self.active_sequence.set_sequence_time(offset=self.ntp_offset)
+            self.active_sequence.gen_uuid_sequence(self.hostname)
+
+            for prc in self.active_sequence.process_list:
+                    await self.add_process(
+                        process_label = prc.process_label,
+                        process_name = prc.process_name,
+                        process_params = prc.process_params,
+                        sequence_uuid = self.active_sequence.sequence_uuid,
+                        sequence_timestamp = self.active_sequence.sequence_timestamp,
+                        sequence_name = self.active_sequence.sequence_name,
+                        sequence_label = self.active_sequence.sequence_label,
+                        )
+                
+
+            self.seq_file = hcmf.SeqFile(
+                hlo_version=f"{version.hlo_version}",
+                sequence_name = self.active_sequence.sequence_name,
+                sequence_label = self.active_sequence.sequence_label,
+                sequence_uuid = self.active_sequence.sequence_uuid,
+                sequence_timestamp = self.active_sequence.sequence_timestamp
+            )
+            await self.write_seq(cleanupdict(self.seq_file.dict()), self.active_sequence)
+               
+
+
+            
             self.loop_state = "started"
             while self.loop_state == "started" and (self.action_dq or self.process_dq):
                 self.print_message(f"current content of action_dq: {self.action_dq}")
@@ -235,12 +267,24 @@ class Orch(Base):
                     self.active_process.machine_name = self.hostname
                     self.active_process.set_dtime(offset=self.ntp_offset)
                     self.active_process.gen_uuid_process(self.hostname)
+
                     process_name = self.active_process.process_name
                     # additional process params should be stored in process.process_params
-                    unpacked_acts = self.action_lib[process_name](self.active_process)
+                    unpacked_acts = self.process_lib[process_name](self.active_process)
+                    print(unpacked_acts)
+                    if unpacked_acts is None:
+                        self.print_message(
+                            "no actions in process",
+                            error = True
+                        )
+                        self.action_dq = deque([])
+                        continue
+
+
                     for i, act in enumerate(unpacked_acts):
                         act.action_ordering = float(i)  # f"{i}"
                         # act.gen_uuid()
+
                     # TODO:update process code
                     self.action_dq = deque(unpacked_acts)
                     self.dispatched_actions = {}
@@ -272,6 +316,7 @@ class Orch(Base):
                             if self.global_state_str == "idle":
                                 self.loop_state = "stopped"
                                 await self.intend_none()
+                                self.print_message("got stop")
                                 break
                     elif self.loop_intent == "skip":
                         # clear action queue, forcing next process
@@ -404,6 +449,7 @@ class Orch(Base):
 
     async def start_loop(self):
         if self.loop_state == "stopped":
+            self.print_message("starting orch loop")
             self.loop_task = asyncio.create_task(self.dispatch_loop_task())
         elif self.loop_state == "E-STOP":
             self.print_message("E-STOP flag was raised, clear E-STOP before starting.")
@@ -468,6 +514,27 @@ class Orch(Base):
             f"{len(self.running_uuids)} running action_dq did not fully stop after E-STOP/error was raised"
         )
 
+
+    async def add_sequence(
+                           self,
+                           sequence_uuid: str = None,
+                           sequence_timestamp: str = None,
+                           sequence_name: str = None,
+                           sequence_label: str = None,
+                           process_list: List[dict] = []
+                           ):
+
+        seq = Sequence()
+        seq.sequence_uuid = sequence_uuid
+        seq.sequence_timestamp = sequence_timestamp
+        seq.sequence_name = sequence_name
+        seq.sequence_label = sequence_label
+        for D_dict in process_list:
+            D = Process(D_dict)
+            seq.process_list.append(D)
+        self.sequence_dq.append(seq)
+
+
     async def add_process(
         self,
         orch_name: str = None,
@@ -476,10 +543,13 @@ class Orch(Base):
         process_params: dict = {},
         result_dict: dict = {},
         access: str = "hte",
+        sequence_uuid: str = None,
+        sequence_timestamp: str = None,
+        sequence_name: str = None,
+        sequence_label: str = None,
         prepend: Optional[bool] = False,
         at_index: Optional[int] = None,
     ):
-
         D = Process(
             {
                 "orch_name": orch_name,
@@ -487,6 +557,10 @@ class Orch(Base):
                 "process_name": process_name,
                 "process_params": process_params,
                 "result_dict": result_dict,
+                "sequence_uuid": sequence_uuid,
+                "sequence_timestamp": sequence_timestamp,
+                "sequence_name": sequence_name,
+                "sequence_label": sequence_label,
                 "access": access,
             }
         )

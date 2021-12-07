@@ -8,6 +8,7 @@ from pathlib import Path
 from socket import gethostname
 from time import ctime, strftime, strptime, time, time_ns
 from typing import Optional
+from datetime import datetime
 
 import aiofiles
 import colorama
@@ -24,6 +25,7 @@ from helaocore.helper import cleanupdict
 from helaocore.helper import print_message
 from helaocore.helper import helao_dirs
 from helaocore.schema import Action
+from helaocore.helper import gen_uuid
 
 from .api import HelaoFastAPI
 from .dispatcher import async_private_dispatcher
@@ -400,14 +402,14 @@ class Base(object):
         self.status_logger.cancel()
         self.ntp_syncer.cancel()
 
-    async def write_prc(self, prg_dict: dict, process):
-        process_timestamp = process.process_timestamp
+
+    async def write_prc(self, prc_dict: dict, process):
         process_dir = self.get_process_dir(process)
         output_path = os.path.join(self.save_root, process_dir)
-        output_file = os.path.join(output_path, f"{process_timestamp}.prg")
+        output_file = os.path.join(output_path, f"{process.process_timestamp}.prc")
 
-        self.print_message(f"writing to prg: {output_file}")
-        output_str = pyaml.dump(prg_dict, sort_dicts=False)
+        self.print_message(f"writing to prc: {output_file}")
+        output_str = pyaml.dump(prc_dict, sort_dicts=False)
 
         if not os.path.exists(output_path):
             os.makedirs(output_path, exist_ok=True)
@@ -418,16 +420,56 @@ class Base(object):
             await f.write(output_str)
 
 
-    def get_process_dir(self, process):
-        """accepts action or process object"""
-        process_date = process.process_timestamp.split(".")[0]
-        process_time = process.process_timestamp.split(".")[-1]
-        year_week = strftime("%y.%U", strptime(process_date, "%Y%m%d"))
+    async def write_seq(self, seq_dict: dict, sequence):
+        sequence_dir = self.get_sequence_dir(
+                         sequence_timestamp = sequence.sequence_timestamp,
+                         sequence_name = sequence.sequence_name,
+                         sequence_label = sequence.sequence_label
+                         )
+        output_path = os.path.join(self.save_root, sequence_dir)
+        output_file = os.path.join(output_path, f"{sequence.sequence_timestamp}.seq")
+
+        self.print_message(f"writing to seq: {output_file}")
+        output_str = pyaml.dump(seq_dict, sort_dicts=False)
+
+        if not os.path.exists(output_path):
+            os.makedirs(output_path, exist_ok=True)
+        
+        async with aiofiles.open(output_file, mode="a+") as f:
+            if not output_str.endswith("\n"):
+                output_str += "\n"
+            await f.write(output_str)
+
+
+    def get_sequence_dir(
+                         self, 
+                         sequence_timestamp,
+                         sequence_name,
+                         sequence_label
+                        ):
+        HMS = strftime("%H%M%S", strptime(sequence_timestamp, "%Y%m%d.%H%M%S%f"))
+        sequence_date = sequence_timestamp.split(".")[0]
+        year_week = strftime("%y.%U", strptime(sequence_date, "%Y%m%d"))
         return os.path.join(
             year_week,
-            process_date,
-            f"{process_time}_{process.process_label}",
+            sequence_date,
+            f"{HMS}__{sequence_name}__{sequence_label}",
         )
+
+
+    def get_process_dir(self, process):
+        """accepts action or process object"""
+        process_time = process.process_timestamp.split(".")[-1]
+        sequence_dir = self.get_sequence_dir(
+                         sequence_timestamp = process.sequence_timestamp,
+                         sequence_name = process.sequence_name,
+                         sequence_label = process.sequence_label
+                         )
+        return os.path.join(
+            sequence_dir,
+            f"{process_time}__{process.process_name}",
+        )
+
 
     class Active(object):
         """Active action holder which wraps data queing and prc writing."""
@@ -451,6 +493,7 @@ class Base(object):
             self.action.header = header
             self.act_file = None
             self.manual_prc_file = None
+            self.manual_seq_file = None
             self.manual = False
             self.process_dir = None
 
@@ -483,6 +526,12 @@ class Base(object):
             # any data is pushed to avoid a forced header end write
             self.finished_hlo_header = dict()
             self.file_conn = dict()
+            if self.action.sequence_timestamp is None:
+                self.manual = True
+                self.base.print_message("Manual Sequence.", info=True)
+                self.action.sequence_name = "manual_swagger_seq"
+                self.action.set_sequence_time(offset=self.base.ntp_offset)
+                self.action.gen_uuid_sequence(self.base.hostname)
             if self.action.process_timestamp is None:
                 self.manual = True
                 self.base.print_message("Manual Action.", info=True)
@@ -551,7 +600,17 @@ class Base(object):
                 await self.update_act_file()
 
                 if self.manual:
-                    # create and write prg file for manual action
+                    # create and write seq file for manual action
+                    self.manual_seq_file = hcmf.SeqFile(
+                        hlo_version=f"{version.hlo_version}",
+                        sequence_name = self.action.sequence_name,
+                        sequence_label = self.action.sequence_label,
+                        sequence_uuid = self.action.sequence_uuid,
+                        sequence_timestamp = self.action.sequence_timestamp
+                    )
+                    await self.base.write_seq(cleanupdict(self.manual_seq_file.dict()), self.action)
+
+                    # create and write prc file for manual action
                     self.manual_prc_file = hcmf.PrcFile(
                         hlo_version=f"{version.hlo_version}",
                         orchestrator=self.action.orch_name,
@@ -589,6 +648,7 @@ class Base(object):
                         )
 
             await self.add_status()
+
 
         def init_datafile(
             self,
@@ -652,6 +712,7 @@ class Base(object):
                     header += "\n"
 
             return filename, header, file_info
+
 
         def finish_hlo_header(self, realtime: Optional[int] = None):
             # needs to be a sync function
@@ -866,6 +927,7 @@ class Base(object):
             else:
                 return None
 
+
         def write_file_nowait(
             self,
             output_str: str,
@@ -898,12 +960,13 @@ class Base(object):
             else:
                 return None
 
+
         async def write_act(self):
             "Create new prc if it doesn't exist."
             output_path = os.path.join(
                 self.base.save_root,
                 self.action.output_dir,
-                f"{self.action.action_timestamp}.prc",
+                f"{self.action.action_timestamp}.act",
             )
             self.base.print_message(f"writing to prc: {output_path}")
             async with aiofiles.open(output_path, mode="w") as f:

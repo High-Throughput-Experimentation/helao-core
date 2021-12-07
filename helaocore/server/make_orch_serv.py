@@ -5,6 +5,7 @@ import json
 import time
 
 from fastapi import WebSocket
+from typing import Optional, Union, List
 
 from .api import HelaoFastAPI
 from .orch import Orch
@@ -55,7 +56,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
     async def start_action():
         """Begin processing process and action queues."""
         if app.orch.loop_state == "stopped":
-            if app.orch.action_dq or app.orch.process_dq:  # resume actions from a paused run
+            if app.orch.action_dq or app.orch.process_dq or app.orch.sequence_dq:  # resume actions from a paused run
                 await app.orch.start_loop()
             else:
                 app.orch.print_message("process list is empty")
@@ -127,6 +128,26 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         await asyncio.sleep(0.001)
         app.orch.process_dq.clear()
         return {}
+
+
+    @app.post("/append_sequence")
+    async def append_sequence(
+        sequence_uuid: str = None,
+        sequence_timestamp: str = None,
+        sequence_name: str = None,
+        sequence_label: str = None,
+        process_list: List[dict] = [],
+        scratch: Optional[List[None]] = [None], # temp fix so it still works (issue with lists)
+    ):
+        await app.orch.add_sequence(
+            sequence_uuid = sequence_uuid,
+            sequence_timestamp = sequence_timestamp,
+            sequence_name = sequence_name,
+            sequence_label = sequence_label,
+            process_list = process_list
+        )
+        return {}
+
 
     @app.post("/append_process")
     async def append_process(
