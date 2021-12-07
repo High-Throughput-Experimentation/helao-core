@@ -24,7 +24,7 @@ def import_sequences(world_config_dict: dict, sequence_path: str = None, server_
     sys.path.append(sequence_path)
     for prglib in world_config_dict["sequence_libraries"]:
         tempd = import_module(prglib).__dict__
-        sequence_lib.update({func: tempd[func] for func in tempd["PROCESSES"]})
+        sequence_lib.update({func: tempd[func] for func in tempd["SEQUENCES"]})
     print_message(
         world_config_dict,
         server_name,
