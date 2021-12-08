@@ -218,7 +218,9 @@ class Action(Process):
         self.action_uuid = imports.get("action_uuid", None)
         self.action_timestamp = None
         # machine_name # get it from process later
-        self.action_ordering = imports.get("action_ordering", None)
+        self.action_order = imports.get("action_order", 0)
+        self.action_retry = imports.get("action_retry", 0)
+        self.action_actual_order = imports.get("action_actual_order", 0)
 
 
         # other parameters
@@ -313,12 +315,14 @@ class Action(Process):
             process_timestamp=self.process_timestamp,
             action_uuid=self.action_uuid,
             action_timestamp=self.action_timestamp,
-            action_ordering=self.action_ordering,
+            action_order=self.action_order,
+            action_retry=self.action_retry,
+            action_actual_order=self.action_actual_order,
             action_name=self.action_name,
             action_abbr=self.action_abbr,
             action_params=self.action_params,
-            samples_in=self.prc_samples_in,
-            samples_out=self.prc_samples_out,
+            samples_in=[sample.prc_dict() for sample in self.prc_samples_in],
+            samples_out=[sample.prc_dict() for sample in self.prc_samples_out],
             files = self.file_dict
         )
 

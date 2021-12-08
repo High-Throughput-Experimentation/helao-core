@@ -167,7 +167,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
     #     sample_no: A sample number, as int.
     #     process_name: The name of the process for building the action list, as str.
     #     process_params: process parameters, as dict.
-    #     result_dict: action responses dict keyed by action_ordering.
+    #     result_dict: action responses dict.
     #     access: Access control group, as str.
 
     #     Returns:
@@ -202,7 +202,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
     #     sample_no: A sample number, as int.
     #     process_name: The name of the process for building the action list, as str.
     #     process_params: process parameters, as dict.
-    #     result_dict: action responses dict keyed by action_ordering.
+    #     result_dict: action responses dict.
     #     access: Access control group, as str.
 
     #     Returns:
@@ -240,7 +240,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
     #     sample_no: A sample number, as int.
     #     process_name: The name of the process for building the action list, as str.
     #     process_params: process parameters, as dict.
-    #     result_dict: action responses dict keyed by action_ordering.
+    #     result_dict: action responses dict.
     #     access: Access control group, as str.
 
     #     Returns:

@@ -22,7 +22,9 @@ class ActFile(BaseModel):
     process_timestamp: str
     action_uuid: str
     action_timestamp: str
-    action_ordering: Optional[float] = 0.0
+    action_order: Optional[int] = 0
+    action_retry: Optional[int] = 0
+    action_actual_order: Optional[int] = 0
     action_name: str
     action_abbr: Optional[str] = None
     action_params: Union[dict, None] = None

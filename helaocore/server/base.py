@@ -24,6 +24,7 @@ from helaocore.helper import cleanupdict
 from helaocore.helper import print_message
 from helaocore.helper import helao_dirs
 from helaocore.schema import Action
+import helaocore.model.file as hcmf
 
 from .api import HelaoFastAPI
 from .dispatcher import async_private_dispatcher
@@ -587,9 +588,6 @@ class Base(object):
             if "scratch" in self.action.action_params:
                 del self.action.action_params["scratch"]
 
-            if self.action.action_ordering is None:
-                self.action.action_ordering = 0.0
-
             self.act_file = self.action.get_act()
             # write initial temporary prc file
             await self.base.write_act(self.act_file.dict(), self.action)
@@ -601,7 +599,6 @@ class Base(object):
                     os.path.join(self.base.save_root, self.action.output_dir),
                     exist_ok=True,
                 )
-                self.action.action_num = f"{self.action.action_abbr}-{self.action.action_ordering}"
                 await self.update_act_file()
 
                 if self.manual:
@@ -621,8 +618,6 @@ class Base(object):
                             file_sample_label=self.action.file_sample_label.get(file_sample_key, None),
                             filename=None,  # always autogen a filename
                             file_group=self.action.file_group,
-                            action_ordering=self.action.action_ordering,
-                            action_abbr=self.action.action_abbr,
                             filenum=i,
                         )
 
@@ -644,8 +639,6 @@ class Base(object):
             file_sample_label,
             filename,
             file_group,
-            action_ordering,
-            action_abbr,
             filenum: Optional[int] = 0,
         ):
 
@@ -688,10 +681,7 @@ class Base(object):
                 else:  # aux_files
                     pass
 
-                if action_ordering is not None:
-                    filename = f"{action_abbr}-{action_ordering:.1f}__{filenum}.{file_ext}"
-                else:
-                    filename = f"{action_abbr}-0.0__{filenum}.{file_ext}"
+                filename = f"{self.action.action_abbr}-{self.action.action_actual_order}.{self.action.action_order}.{self.action.action_retry}__{filenum}.{file_ext}"
 
             if header:
                 if not header.endswith("\n"):
@@ -900,8 +890,6 @@ class Base(object):
                     file_sample_label=file_sample_label,
                     filename=filename,
                     file_group=file_group,
-                    action_ordering=self.action.action_ordering,
-                    action_abbr=self.action.action_abbr,
                 )
                 output_path = os.path.join(self.base.save_root, self.action.output_dir, filename)
                 self.base.print_message(f"writing non stream data to: {output_path}")
@@ -934,8 +922,6 @@ class Base(object):
                     file_sample_label=file_sample_label,
                     filename=filename,
                     file_group=file_group,
-                    action_ordering=self.action.action_ordering,
-                    action_abbr=self.action.action_abbr,
                 )
                 output_path = os.path.join(self.base.save_root, self.action.output_dir, filename)
                 self.base.print_message(f"writing non stream data to: {output_path}")
@@ -981,18 +967,11 @@ class Base(object):
                     self.base.print_message("sample.status is None. Using 'preserved'.")
                     sample.status = ["preserved"]
 
-                append_dict = sample.prc_dict()
-                if append_dict is not None:
-                    # check if list for safety reasons
-                    if type(self.action.prc_samples_in) is not list:
-                        self.action.prc_samples_in = []
-                    if type(self.action.prc_samples_out) is not list:
-                        self.action.prc_samples_out = []
+                if IO == "in":
+                    self.action.prc_samples_in.append(sample)
+                elif IO == "out":
+                    self.action.prc_samples_out.append(sample)
 
-                    if IO == "in":
-                        self.action.prc_samples_in.append(append_dict)
-                    elif IO == "out":
-                        self.action.prc_samples_out.append(append_dict)
 
         async def finish(self):
             "Close file_conn, finish prc, copy aux, set endpoint status, and move active dict to past."
@@ -1021,7 +1000,7 @@ class Base(object):
             filename = os.path.basename(file_path)
             self.action.file_dict.update({filename: file_info})
             self.base.print_message(
-                f"{filename} added to files_technique__{self.action.action_num} / aux_files list."
+                f"{filename} added to files_technique / aux_files list."
             )
 
 

@@ -286,8 +286,10 @@ class Orch(Base):
 
 
                     for i, act in enumerate(unpacked_acts):
-                        act.action_ordering = float(i)  # f"{i}"
-                        # act.gen_uuid()
+                        act.action_order = int(i)
+                        # actual order should be the same at the beginning
+                        # will be incremented as necessary
+                        act.action_actual_order = int(i)
 
                     # TODO:update process code
                     self.action_dq = deque(unpacked_acts)
@@ -406,9 +408,13 @@ class Orch(Base):
                             f"dispatching action {A.action_name} on server {A.action_server}"
                         )
                         # keep running list of dispatched actions
-                        self.dispatched_actions[A.action_ordering] = copy(A)
+                        # action_actual_order is len of self.dispatched_actions
+                        # action_actual_order starts at 0, len is 0 for empty
+                        # else >=1
+                        A.action_actual_order = len(self.dispatched_actions)
+                        self.dispatched_actions[A.action_actual_order] = copy(A)
                         result = await async_action_dispatcher(self.world_cfg, A)
-                        self.active_process.result_dict[A.action_ordering] = result
+                        self.active_process.result_dict[A.action_actual_order] = result
 
                         self.print_message("copying global vars back to process")
                         # self.print_message(result)
@@ -687,10 +693,13 @@ class Orch(Base):
             if matching_error:
                 _, _, error_uuid = matching_error[0]
                 EA = [A for _, A in self.dispatched_actions.items() if A.action_uuid == error_uuid][0]
-                # up to 99 supplements
-                new_ordering = round(EA.action_ordering + 0.01, 2)
+                # sup_action can be a differnt one, 
+                # but for now we treat it thats a retry of the errored one
                 new_action = sup_action
-                new_action.action_ordering = new_ordering
+                new_action.action_order = EA.action_order
+                 # will be updated again once its dispatched again
+                new_action.actual_order = EA.actual_order
+                new_action.action_retry = EA.action_retry + 1
                 self.action_dq.appendleft(new_action)
             else:
                 self.print_message(f"uuid {check_uuid} not found in list of error statuses:")
@@ -714,21 +723,22 @@ class Orch(Base):
         sup_action: Action,
         by_index: Optional[int] = None,
         by_uuid: Optional[str] = None,
-        by_ordering: Optional[Union[int, float]] = None,
+        by_action_order: Optional[Union[int, float]] = None,
     ):
         """Substitute a queued action."""
         if by_index:
             i = by_index
         elif by_uuid:
             i = [i for i, A in enumerate(list(self.action_dq)) if A.action_uuid == by_uuid][0]
-        elif by_ordering:
-            i = [i for i, A in enumerate(list(self.action_dq)) if A.action_ordering == by_ordering][0]
+        elif by_action_order:
+            i = [i for i, A in enumerate(list(self.action_dq)) if A.action_order == by_action_order][0]
         else:
             self.print_message("No arguments given for locating existing action to replace.")
             return None
-        current_ordering = self.action_dq[i].action_ordering
+        # get action_order of selected action which gets replaced
+        current_action_order = self.action_dq[i].action_order
         new_action = sup_action
-        new_action.action_ordering = current_ordering
+        new_action.action_order = current_action_order
         self.action_dq.insert(i, new_action)
         del self.action_dq[i + 1]
 
@@ -736,12 +746,18 @@ class Orch(Base):
     def append_action(self, sup_action: Action):
         """Add action to end of current action queue."""
         if len(self.action_dq) == 0:
-            last_ordering = floor(max(list(self.dispatched_actions)))
+            # last_ordering = floor(max(list(self.dispatched_actions)))
+            last_action_order = len(self.dispatched_actions) - 1
+
+            if last_action_order < 0:
+                # no action was dispatched yet
+                last_action_order = 0
         else:
-            last_ordering = floor(self.action_dq[-1].action_ordering)
-        new_ordering = int(last_ordering + 1)
+            last_action_order = floor(self.action_dq[-1].action_order)
+
+        new_action_order = int(last_action_order + 1)
         new_action = sup_action
-        new_action.action_ordering = new_ordering
+        new_action.action_order = new_action_order
         self.action_dq.append(new_action)
 
 
