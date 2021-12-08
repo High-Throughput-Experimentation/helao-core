@@ -53,7 +53,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         await app.orch.ws_data(websocket)
 
     @app.post("/start")
-    async def start_action():
+    async def start():
         """Begin processing process and action queues."""
         if app.orch.loop_state == "stopped":
             if app.orch.action_dq or app.orch.process_dq or app.orch.sequence_dq:  # resume actions from a paused run
@@ -65,7 +65,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         return {}
 
     @app.post("/estop")
-    async def estop_action():
+    async def estop():
         """Emergency stop process and action queues, interrupt running actions."""
         if app.orch.loop_state == "started":
             await app.orch.estop_loop()
@@ -76,7 +76,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         return {}
 
     @app.post("/stop")
-    async def stop_action():
+    async def stop():
         """Stop processing process and action queues after current actions finish."""
         if app.orch.loop_state == "started":
             await app.orch.intend_stop()
@@ -149,114 +149,114 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         return {}
 
 
-    @app.post("/append_process")
-    async def append_process(
-        orch_name: str = None,
-        process_label: str = None,
-        process_name: str = None,
-        process_params: dict = {},
-        result_dict: dict = {},
-        access: str = "hte",
-    ):
-        """Add a process object to the end of the process queue.
+    # @app.post("/append_process")
+    # async def append_process(
+    #     orch_name: str = None,
+    #     process_label: str = None,
+    #     process_name: str = None,
+    #     process_params: dict = {},
+    #     result_dict: dict = {},
+    #     access: str = "hte",
+    # ):
+    #     """Add a process object to the end of the process queue.
 
-        Args:
-        process_dict: process parameters (optional), as dict.
-        orch_name: Orchestrator server key (optional), as str.
-        plate_id: The sample's plate id (no checksum), as int.
-        sample_no: A sample number, as int.
-        process_name: The name of the process for building the action list, as str.
-        process_params: process parameters, as dict.
-        result_dict: action responses dict keyed by action_ordering.
-        access: Access control group, as str.
+    #     Args:
+    #     process_dict: process parameters (optional), as dict.
+    #     orch_name: Orchestrator server key (optional), as str.
+    #     plate_id: The sample's plate id (no checksum), as int.
+    #     sample_no: A sample number, as int.
+    #     process_name: The name of the process for building the action list, as str.
+    #     process_params: process parameters, as dict.
+    #     result_dict: action responses dict keyed by action_ordering.
+    #     access: Access control group, as str.
 
-        Returns:
-        Nothing.
-        """
-        await app.orch.add_process(
-            orch_name,
-            process_label,
-            process_name,
-            process_params,
-            result_dict,
-            access,
-            prepend=False,
-        )
-        return {}
+    #     Returns:
+    #     Nothing.
+    #     """
+    #     await app.orch.add_process(
+    #         orch_name,
+    #         process_label,
+    #         process_name,
+    #         process_params,
+    #         result_dict,
+    #         access,
+    #         prepend=False,
+    #     )
+    #     return {}
 
-    @app.post("/prepend_process")
-    async def prepend_process(
-        orch_name: str = None,
-        process_label: str = None,
-        process_name: str = None,
-        process_params: dict = {},
-        result_dict: dict = {},
-        access: str = "hte",
-    ):
-        """Add a process object to the start of the process queue.
+    # @app.post("/prepend_process")
+    # async def prepend_process(
+    #     orch_name: str = None,
+    #     process_label: str = None,
+    #     process_name: str = None,
+    #     process_params: dict = {},
+    #     result_dict: dict = {},
+    #     access: str = "hte",
+    # ):
+    #     """Add a process object to the start of the process queue.
 
-        Args:
-        process_dict: process parameters (optional), as dict.
-        orch_name: Orchestrator server key (optional), as str.
-        plate_id: The sample's plate id (no checksum), as int.
-        sample_no: A sample number, as int.
-        process_name: The name of the process for building the action list, as str.
-        process_params: process parameters, as dict.
-        result_dict: action responses dict keyed by action_ordering.
-        access: Access control group, as str.
+    #     Args:
+    #     process_dict: process parameters (optional), as dict.
+    #     orch_name: Orchestrator server key (optional), as str.
+    #     plate_id: The sample's plate id (no checksum), as int.
+    #     sample_no: A sample number, as int.
+    #     process_name: The name of the process for building the action list, as str.
+    #     process_params: process parameters, as dict.
+    #     result_dict: action responses dict keyed by action_ordering.
+    #     access: Access control group, as str.
 
-        Returns:
-        Nothing.
-        """
-        await app.orch.add_process(
-            orch_name,
-            process_label,
-            process_name,
-            process_params,
-            result_dict,
-            access,
-            prepend=True,
-        )
-        return {}
+    #     Returns:
+    #     Nothing.
+    #     """
+    #     await app.orch.add_process(
+    #         orch_name,
+    #         process_label,
+    #         process_name,
+    #         process_params,
+    #         result_dict,
+    #         access,
+    #         prepend=True,
+    #     )
+    #     return {}
 
-    @app.post("/insert_process")
-    async def insert_process(
-        idx: int,
-        process_dict: dict = None,
-        orch_name: str = None,
-        process_label: str = None,
-        process_name: str = None,
-        process_params: dict = {},
-        result_dict: dict = {},
-        access: str = "hte",
-    ):
-        """Insert a process object at process queue index.
+    # @app.post("/insert_process")
+    # async def insert_process(
+    #     idx: int,
+    #     process_dict: dict = None,
+    #     orch_name: str = None,
+    #     process_label: str = None,
+    #     process_name: str = None,
+    #     process_params: dict = {},
+    #     result_dict: dict = {},
+    #     access: str = "hte",
+    # ):
+    #     """Insert a process object at process queue index.
 
-        Args:
-        idx: index in process queue for insertion, as int
-        process_dict: process parameters (optional), as dict.
-        orch_name: Orchestrator server key (optional), as str.
-        plate_id: The sample's plate id (no checksum), as int.
-        sample_no: A sample number, as int.
-        process_name: The name of the process for building the action list, as str.
-        process_params: process parameters, as dict.
-        result_dict: action responses dict keyed by action_ordering.
-        access: Access control group, as str.
+    #     Args:
+    #     idx: index in process queue for insertion, as int
+    #     process_dict: process parameters (optional), as dict.
+    #     orch_name: Orchestrator server key (optional), as str.
+    #     plate_id: The sample's plate id (no checksum), as int.
+    #     sample_no: A sample number, as int.
+    #     process_name: The name of the process for building the action list, as str.
+    #     process_params: process parameters, as dict.
+    #     result_dict: action responses dict keyed by action_ordering.
+    #     access: Access control group, as str.
 
-        Returns:
-        Nothing.
-        """
-        await app.orch.add_process(
-            process_dict,
-            orch_name,
-            process_label,
-            process_name,
-            process_params,
-            result_dict,
-            access,
-            at_index=idx,
-        )
-        return {}
+    #     Returns:
+    #     Nothing.
+    #     """
+    #     await app.orch.add_process(
+    #         process_dict,
+    #         orch_name,
+    #         process_label,
+    #         process_name,
+    #         process_params,
+    #         result_dict,
+    #         access,
+    #         at_index=idx,
+    #     )
+    #     return {}
 
     @app.post("/list_processes")
     def list_processes():
