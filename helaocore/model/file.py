@@ -6,7 +6,7 @@ __all__ = ["ActFile", "PrcFile", "SeqFile"]
 
 from typing import Optional, Union
 
-import helaocore.server.version as version
+from helaocore.server import version
 from pydantic import BaseModel
 
 

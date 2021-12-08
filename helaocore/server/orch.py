@@ -5,7 +5,6 @@ import sys
 from collections import defaultdict, deque
 from copy import copy
 from math import floor
-from socket import gethostname
 from typing import Optional, Union, List
 
 import aiohttp
@@ -13,7 +12,6 @@ import colorama
 
 import helaocore.model.file as hcmf
 import helaocore.model.returnmodel as hcmr
-import helaocore.server.version as version
 
 from helaocore.helper import MultisubscriberQueue
 from helaocore.schema import Action, Process, Sequence
@@ -92,17 +90,20 @@ class Orch(Base):
         self.status_subscriber = asyncio.create_task(self.subscribe_all())
         self.status_subscriber = asyncio.create_task(self.update_global_state_task())
 
+
     async def check_dispatch_queue(self):
         val = await self.dispatch_q.get()
         while not self.dispatch_q.empty():
             val = await self.dispatch_q.get()
         return val
 
+
     async def check_wait_for_all_actions(self):
         running_states, _ = await self.check_global_state()
         global_free = len(running_states) == 0
         self.print_message(f"check len(running_states): {len(running_states)}")
         return global_free
+
 
     async def subscribe_all(self, retry_limit: int = 5):
         """Subscribe to all fastapi servers in config."""
@@ -146,6 +147,7 @@ class Orch(Base):
                 "Orchestrator cannot action process_dq unless all FastAPI servers in config file are accessible."
             )
 
+
     async def update_status(self, action_serv: str, status_dict: dict):
         """Dict update method for action server to push status messages.
 
@@ -167,6 +169,7 @@ class Orch(Base):
         await self.global_q.put(self.global_state_dict)
         return True
 
+
     async def update_global_state(self, status_dict: dict):
         _running_uuids = []
         for action_serv, act_named in status_dict.items():
@@ -180,6 +183,7 @@ class Orch(Base):
                     else:
                         _running_uuids.append(uuid_tup)
         self.running_uuids = _running_uuids
+
 
     async def update_global_state_task(self):
         """Self-subscribe to global_q and update status dict."""
@@ -196,6 +200,7 @@ class Orch(Base):
                 self.global_state_str = "busy"
                 self.print_message(f"running_states: {running_states}")
 
+
     async def check_global_state(self):
         """Return global state of action servers."""
         running_states = []
@@ -211,8 +216,11 @@ class Orch(Base):
                     running_states.append(f"{action_serv}:{act_name}:{len(act_uuids)}")
             await asyncio.sleep(
                 0.001
-            )  # allows status changes to affect between action_dq, also enforce unique timestamp
+            )
+            # allows status changes to affect between action_dq, 
+            # also enforce unique timestamp
         return running_states, idle_states
+
 
     async def dispatch_loop_task(self):
         """Parse process and action queues, and dispatch action_dq while tracking run state flags."""
@@ -226,20 +234,21 @@ class Orch(Base):
             self.active_sequence.set_sequence_time(offset=self.ntp_offset)
             self.active_sequence.gen_uuid_sequence(self.hostname)
 
+            seq_file = self.active_sequence.get_seq()
+            await self.write_seq(seq_file.dict(), self.active_sequence)
+
+            # add all processes from sequence to process queue
+            # todo: use seq model instead to initialize some parameters
+            # of the process
             for prc in self.active_sequence.process_list:
                     await self.add_process(
+                        seq = seq_file,
                         process_label = prc.process_label,
                         process_name = prc.process_name,
                         process_params = prc.process_params,
-                        sequence_uuid = self.active_sequence.sequence_uuid,
-                        sequence_timestamp = self.active_sequence.sequence_timestamp,
-                        sequence_name = self.active_sequence.sequence_name,
-                        sequence_label = self.active_sequence.sequence_label,
                         )
                 
 
-            seq_file = self.active_sequence.get_seq()
-            await self.write_seq(seq_file.dict(), self.active_sequence)
             
             self.loop_state = "started"
             while self.loop_state == "started" and (self.action_dq or self.process_dq):
@@ -247,10 +256,13 @@ class Orch(Base):
                 self.print_message(f"current content of process_dq: {self.process_dq}")
                 await asyncio.sleep(
                     0.001
-                )  # allows status changes to affect between action_dq, also enforce unique timestamp
+                )  
+                # allows status changes to affect between action_dq, 
+                # also enforce unique timestamp
                 if not self.action_dq:
                     self.print_message("getting action_dq from new process")
-                    # generate uids when populating, generate timestamp when acquring
+                    # generate uids when populating, 
+                    # generate timestamp when acquring
                     self.last_process = copy(self.active_process)
                     self.active_process = self.process_dq.popleft()
                     self.active_process.technique_name = self.technique_name
@@ -259,10 +271,11 @@ class Orch(Base):
                     self.active_process.gen_uuid_process(self.hostname)
                     self.active_process.access = "hte"
 
-                    process_name = self.active_process.process_name
-                    # additional process params should be stored in process.process_params
-                    unpacked_acts = self.process_lib[process_name](self.active_process)
-                    print(unpacked_acts)
+                    # additional process params should be stored 
+                    # in process.process_params
+                    unpacked_acts = self.process_lib[
+                        self.active_process.process_name
+                                                    ](self.active_process)
                     if unpacked_acts is None:
                         self.print_message(
                             "no actions in process",
@@ -289,7 +302,6 @@ class Orch(Base):
                     if self.loop_intent == "stop":
                         self.print_message("stopping orchestrator")
                         # monitor status of running action_dq, then end loop
-                        # async for _ in self.global_q.subscribe():
                         while True:
                             _ = await self.check_dispatch_queue()
                             if self.global_state_str == "idle":
@@ -303,7 +315,8 @@ class Orch(Base):
                         await self.intend_none()
                         self.print_message("skipping to next process")
                     else:
-                        # all action blocking is handled like preempt, check Action requirements
+                        # all action blocking is handled like preempt, 
+                        # check Action requirements
                         A = self.action_dq.popleft()
                         # append previous results to current action
                         A.result_dict = self.active_process.result_dict
@@ -426,6 +439,7 @@ class Orch(Base):
             self.print_message(f"ERROR: {e}", error=True)
             return False
 
+
     async def start_loop(self):
         if self.loop_state == "stopped":
             self.print_message("starting orch loop")
@@ -436,11 +450,13 @@ class Orch(Base):
             self.print_message("loop already started.")
         return self.loop_state
 
+
     async def estop_loop(self):
         self.loop_state = "E-STOP"
         self.loop_task.cancel()
         await self.force_stop_running_action_q()
         await self.intend_none()
+
 
     async def force_stop_running_action_q(self):
         running_uuids = []
@@ -462,17 +478,21 @@ class Orch(Base):
                     response = await resp.text()
                     self.print_message(response)
 
+
     async def intend_skip(self):
         await asyncio.sleep(0.001)
         self.loop_intent = "skip"
+
 
     async def intend_stop(self):
         await asyncio.sleep(0.001)
         self.loop_intent = "stop"
 
+
     async def intend_none(self):
         await asyncio.sleep(0.001)
         self.loop_intent = None
+
 
     async def clear_estate(self, clear_estop=True, clear_error=True):
         if not clear_estop and not clear_error:
@@ -516,33 +536,26 @@ class Orch(Base):
 
     async def add_process(
         self,
+        seq: hcmf.SeqFile,
         orch_name: str = None,
         process_label: str = None,
         process_name: str = None,
         process_params: dict = {},
         result_dict: dict = {},
         access: str = "hte",
-        sequence_uuid: str = None,
-        sequence_timestamp: str = None,
-        sequence_name: str = None,
-        sequence_label: str = None,
         prepend: Optional[bool] = False,
         at_index: Optional[int] = None,
     ):
-        D = Process(
-            {
+        Ddict = {
                 "orch_name": orch_name,
                 "process_label": process_label,
                 "process_name": process_name,
                 "process_params": process_params,
                 "result_dict": result_dict,
-                "sequence_uuid": sequence_uuid,
-                "sequence_timestamp": sequence_timestamp,
-                "sequence_name": sequence_name,
-                "sequence_label": sequence_label,
                 "access": access,
             }
-        )
+        Ddict.update(seq.dict())
+        D = Process(Ddict)
 
         # reminder: process_dict values take precedence over keyword args but we grab
         # active or last process label if process_label is not specified
@@ -575,6 +588,7 @@ class Orch(Base):
             self.process_dq.append(D)
             self.print_message(f"process {D.process_uuid} appended to queue")
 
+
     def list_processes(self):
         """Return the current queue of process_dq."""
 
@@ -591,6 +605,7 @@ class Orch(Base):
         ]
         retval = hcmr.ReturnProcessList(processes=process_list)
         return retval
+
 
     def get_process(self, last=False):
         """Return the active or last process."""
@@ -623,6 +638,7 @@ class Orch(Base):
         retval = hcmr.ReturnProcessList(processes=process_list)
         return retval
 
+
     def list_active_actions(self):
         """Return the current queue running actions."""
         action_list = []
@@ -644,6 +660,7 @@ class Orch(Base):
         retval = hcmr.ReturnActionList(actions=action_list)
         return retval
 
+
     def list_actions(self):
         """Return the current queue of action_dq."""
         action_list = [
@@ -659,6 +676,7 @@ class Orch(Base):
         ]
         retval = hcmr.ReturnActionList(actions=action_list)
         return retval
+
 
     def supplement_error_action(self, check_uuid: str, sup_action: Action):
         """Insert action at front of action queue with subversion of errored action, inherit parameters if desired."""
@@ -678,6 +696,7 @@ class Orch(Base):
                 self.print_message(f"uuid {check_uuid} not found in list of error statuses:")
                 self.print_message(", ".join(self.error_uuids))
 
+
     def remove_process(self, by_index: Optional[int] = None, by_uuid: Optional[str] = None):
         """Remove process in list by enumeration index or uuid."""
         if by_index:
@@ -688,6 +707,7 @@ class Orch(Base):
             self.print_message("No arguments given for locating existing process to remove.")
             return None
         del self.process_dq[i]
+
 
     def replace_action(
         self,
@@ -712,6 +732,7 @@ class Orch(Base):
         self.action_dq.insert(i, new_action)
         del self.action_dq[i + 1]
 
+
     def append_action(self, sup_action: Action):
         """Add action to end of current action queue."""
         if len(self.action_dq) == 0:
@@ -722,6 +743,7 @@ class Orch(Base):
         new_action = sup_action
         new_action.action_ordering = new_ordering
         self.action_dq.append(new_action)
+
 
     async def write_active_process_prc(self):
         if self.prc_file is not None:
