@@ -42,7 +42,6 @@ class PrcFile(BaseModel):
     technique_name: str
     process_name: str
     process_params: Union[dict, None] = None
-    process_model: Union[dict, None] = None
 
 
 class SeqFile(BaseModel):
