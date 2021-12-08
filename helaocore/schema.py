@@ -317,6 +317,9 @@ class Action(Process):
             action_name=self.action_name,
             action_abbr=self.action_abbr,
             action_params=self.action_params,
+            samples_in=self.prc_samples_in,
+            samples_out=self.prc_samples_out,
+            files = self.file_dict
         )
 
 

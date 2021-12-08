@@ -360,6 +360,7 @@ class Base(object):
             real_time = epoch_ns + offset_ns
         return real_time
 
+
     async def sync_ntp_task(self, resync_time: int = 600):
         "Regularly sync with NTP server."
         try:
@@ -391,16 +392,35 @@ class Base(object):
         except asyncio.CancelledError:
             self.print_message("ntp sync task was cancelled", error=True)
 
+
     async def shutdown(self):
         await self.detach_subscribers()
         self.status_logger.cancel()
         self.ntp_syncer.cancel()
 
 
+    async def write_act(self, act_dict: dict, action):
+        "Create new prc if it doesn't exist."
+        act_dict = cleanupdict(act_dict)
+        output_path = os.path.join(self.save_root,action.output_dir)
+        output_file = os.path.join(output_path, f"{action.action_timestamp}.act")
+
+        self.print_message(f"writing to prc: {output_path}")
+
+        if not os.path.exists(output_path):
+            os.makedirs(output_path, exist_ok=True)
+
+        async with aiofiles.open(output_file, mode="w") as f:
+            await f.write(pyaml.dump(act_dict, 
+                                      sort_dicts=False))
+    
+
     async def write_prc(self, prc_dict: dict, process):
         prc_dict = cleanupdict(prc_dict)
-        process_dir = self.get_process_dir(process)
-        output_path = os.path.join(self.save_root, process_dir)
+        output_path = os.path.join(
+                                   self.save_root, 
+                                   self.get_process_dir(process)
+                                  )
         output_file = os.path.join(output_path, f"{process.process_timestamp}.prc")
 
         self.print_message(f"writing to prc: {output_file}")
@@ -572,7 +592,7 @@ class Base(object):
 
             self.act_file = self.action.get_act()
             # write initial temporary prc file
-            await self.write_act()
+            await self.base.write_act(self.act_file.dict(), self.action)
 
 
         async def myinit(self):
@@ -927,19 +947,6 @@ class Base(object):
                 return None
 
 
-        async def write_act(self):
-            "Create new prc if it doesn't exist."
-            output_path = os.path.join(
-                self.base.save_root,
-                self.action.output_dir,
-                f"{self.action.action_timestamp}.act",
-            )
-            self.base.print_message(f"writing to prc: {output_path}")
-            async with aiofiles.open(output_path, mode="w") as f:
-                await f.write(pyaml.dump(cleanupdict(self.act_file.dict()), 
-                                         sort_dicts=False))
-
-
         async def append_sample(self, samples, IO: str):
             "Add sample to samples_out and samples_in dict"
 
@@ -995,22 +1002,16 @@ class Base(object):
                 if self.file_conn[filekey]:
                     await self.file_conn[filekey].close()
             self.file_conn = dict()
-            # (1) update sample_in and sample_out
-            if self.action.prc_samples_in:
-                self.act_file.samples_in = self.action.prc_samples_in
-            if self.action.prc_samples_out:
-                self.act_file.samples_out = self.action.prc_samples_out
-            # (2) update file dict in prc header
-            if self.action.file_dict:
-                self.act_file.files = self.action.file_dict
 
+            self.act_file = self.action.get_act()
             # write full prc header to file
-            await self.write_act()
+            await self.base.write_act(self.act_file.dict(), self.action)
 
             await self.clear_status()
             self.data_logger.cancel()
             _ = self.base.actives.pop(self.action.action_uuid, None)
             return self.action
+
 
         async def track_file(self, file_type: str, file_path: str, sample_no: str):
             "Add auxiliary files to file dictionary."
@@ -1022,6 +1023,7 @@ class Base(object):
             self.base.print_message(
                 f"{filename} added to files_technique__{self.action.action_num} / aux_files list."
             )
+
 
         async def relocate_files(self):
             "Copy auxiliary files from folder path to prc directory."

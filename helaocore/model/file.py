@@ -4,7 +4,7 @@ File models for writing/organizing .prc and .prg metadata contents.
 """
 __all__ = ["ActFile", "PrcFile", "SeqFile"]
 
-from typing import Optional, Union
+from typing import Optional, Union, List
 
 from helaocore.server import version
 from pydantic import BaseModel
@@ -26,8 +26,8 @@ class ActFile(BaseModel):
     action_name: str
     action_abbr: Optional[str] = None
     action_params: Union[dict, None] = None
-    samples_in: Optional[Union[dict, None]] = None
-    samples_out: Optional[Union[dict, None]] = None
+    samples_in: Optional[Union[List[dict], None]] = None
+    samples_out: Optional[Union[List[dict], None]] = None
     files: Optional[Union[dict, None]] = None
 
 
