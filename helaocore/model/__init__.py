@@ -5,7 +5,5 @@ from .returnmodel import (
     ReturnProcessList,
     ReturnAction,
     ReturnActionList,
-    ReturnRunningAction,
-    ReturnFinishedAction,
 )
 from .sample import AssemblySample, GasSample, LiquidSample, SampleList, SolidSample
