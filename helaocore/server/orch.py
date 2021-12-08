@@ -15,7 +15,7 @@ import helaocore.model.file as hcmf
 import helaocore.model.returnmodel as hcmr
 import helaocore.server.version as version
 
-from helaocore.helper import MultisubscriberQueue, cleanupdict
+from helaocore.helper import MultisubscriberQueue
 from helaocore.schema import Action, Process, Sequence
 
 from .api import HelaoFastAPI
@@ -65,7 +65,6 @@ class Orch(Base):
         self.active_sequence = None
         self.last_sequence = None
         self.prc_file = None
-        self.prg_file = None
 
         # compilation of action server status dicts
         self.global_state_dict = defaultdict(lambda: defaultdict(list))
@@ -239,17 +238,8 @@ class Orch(Base):
                         )
                 
 
-            self.seq_file = hcmf.SeqFile(
-                hlo_version=f"{version.hlo_version}",
-                sequence_name = self.active_sequence.sequence_name,
-                sequence_label = self.active_sequence.sequence_label,
-                sequence_uuid = self.active_sequence.sequence_uuid,
-                sequence_timestamp = self.active_sequence.sequence_timestamp
-            )
-            await self.write_seq(cleanupdict(self.seq_file.dict()), self.active_sequence)
-               
-
-
+            seq_file = self.active_sequence.get_seq()
+            await self.write_seq(seq_file.dict(), self.active_sequence)
             
             self.loop_state = "started"
             while self.loop_state == "started" and (self.action_dq or self.process_dq):
@@ -267,6 +257,7 @@ class Orch(Base):
                     self.active_process.machine_name = self.hostname
                     self.active_process.set_dtime(offset=self.ntp_offset)
                     self.active_process.gen_uuid_process(self.hostname)
+                    self.active_process.access = "hte"
 
                     process_name = self.active_process.process_name
                     # additional process params should be stored in process.process_params
@@ -291,19 +282,7 @@ class Orch(Base):
                     self.print_message(f"got: {self.action_dq}")
                     self.print_message(f"optional params: {self.active_process.process_params}")
 
-                    self.prc_file = hcmf.PrcFile(
-                        hlo_version=f"{version.hlo_version}",
-                        orchestrator=self.active_process.orch_name,
-                        machine_name=gethostname(),
-                        access="hte",
-                        process_uuid=self.active_process.process_uuid,
-                        process_timestamp=self.active_process.process_timestamp,
-                        process_label=self.active_process.process_label,
-                        technique_name=self.active_process.technique_name,
-                        process_name=self.active_process.process_name,
-                        process_params=self.active_process.process_params,
-                        process_model=None,
-                    )
+                    self.prc_file = self.active_process.get_prc()
                     await self.write_active_process_prc()
 
                 else:
@@ -746,8 +725,9 @@ class Orch(Base):
 
     async def write_active_process_prc(self):
         if self.prc_file is not None:
-            await self.write_prc(cleanupdict(self.prc_file.dict()), self.active_process)
+            await self.write_prc(self.prc_file.dict(), self.active_process)
         self.prc_file = None
+
 
     async def shutdown(self):
         await self.detach_subscribers()

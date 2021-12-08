@@ -12,13 +12,15 @@ from datetime import datetime
 
 import aiofiles
 import colorama
-import helaocore.model.file as hcmf
-import helaocore.server.version as version
 import ntplib
 import numpy as np
 import pyaml
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.openapi.utils import get_flat_params
+
+import helaocore.model.file as hcmf
+import helaocore.server.version as version
 from helaocore.helper import MultisubscriberQueue
 from helaocore.helper import async_copy
 from helaocore.helper import cleanupdict
@@ -124,10 +126,6 @@ class Base(object):
     def print_message(self, *args, **kwargs):
         print_message(self.server_cfg, self.server_name, log_dir = self.log_root, *args, **kwargs)
 
-        # style = self.server_cfg.get("msg_color","")
-        # for arg in args:
-        #     # print(f"{Style.BRIGHT}{Fore.GREEN}{arg}{Style.RESET_ALL}")
-        #     print(f"[{strftime('%H:%M:%S')}_{self.server_name}]: {style}{arg}{Style.RESET_ALL}")
 
     def init_endpoint_status(self, app: FastAPI):
         "Populate status dict with FastAPI server endpoints for monitoring."
@@ -404,6 +402,7 @@ class Base(object):
 
 
     async def write_prc(self, prc_dict: dict, process):
+        prc_dict = cleanupdict(prc_dict)
         process_dir = self.get_process_dir(process)
         output_path = os.path.join(self.save_root, process_dir)
         output_file = os.path.join(output_path, f"{process.process_timestamp}.prc")
@@ -421,6 +420,7 @@ class Base(object):
 
 
     async def write_seq(self, seq_dict: dict, sequence):
+        seq_dict = cleanupdict(seq_dict)
         sequence_dir = self.get_sequence_dir(
                          sequence_timestamp = sequence.sequence_timestamp,
                          sequence_name = sequence.sequence_name,
@@ -519,13 +519,17 @@ class Base(object):
                         f"{file_sample_key}": None for file_sample_key in self.action.file_sample_keys
                     }
 
+
             self.action.set_atime(offset=self.base.ntp_offset)
             self.action.gen_uuid_action(self.base.hostname)
+            self.action.server_name = self.base.server_name
             # signals the data logger that it got data and hlo header was written or not
             # active.finish_hlo_header should be called within the driver before
             # any data is pushed to avoid a forced header end write
             self.finished_hlo_header = dict()
             self.file_conn = dict()
+
+            # check if its swagger submission
             if self.action.sequence_timestamp is None:
                 self.manual = True
                 self.base.print_message("Manual Sequence.", info=True)
@@ -535,6 +539,7 @@ class Base(object):
             if self.action.process_timestamp is None:
                 self.manual = True
                 self.base.print_message("Manual Action.", info=True)
+                self.action.process_name="MANUAL"
                 self.action.set_dtime(offset=self.base.ntp_offset)
                 self.action.gen_uuid_process(self.base.hostname)
 
@@ -569,23 +574,7 @@ class Base(object):
             if self.action.action_ordering is None:
                 self.action.action_ordering = 0.0
 
-            self.act_file = hcmf.ActFile(
-                hlo_version=f"{version.hlo_version}",
-                technique_name=self.action.technique_name,
-                server_name=self.base.server_name,
-                orchestrator=self.action.orch_name,
-                machine_name=self.action.machine_name,
-                access=self.action.access,
-                output_dir=Path(self.action.output_dir).as_posix(),
-                process_uuid=self.action.process_uuid,
-                process_timestamp=self.action.process_timestamp,
-                action_uuid=self.action.action_uuid,
-                action_timestamp=self.action.action_timestamp,
-                action_ordering=self.action.action_ordering,
-                action_name=self.action.action_name,
-                action_abbr=self.action.action_abbr,
-                action_params=self.action.action_params,
-            )
+            self.act_file = self.action.get_act()
             # write initial temporary prc file
             await self.write_act()
 
@@ -601,30 +590,11 @@ class Base(object):
 
                 if self.manual:
                     # create and write seq file for manual action
-                    self.manual_seq_file = hcmf.SeqFile(
-                        hlo_version=f"{version.hlo_version}",
-                        sequence_name = self.action.sequence_name,
-                        sequence_label = self.action.sequence_label,
-                        sequence_uuid = self.action.sequence_uuid,
-                        sequence_timestamp = self.action.sequence_timestamp
-                    )
-                    await self.base.write_seq(cleanupdict(self.manual_seq_file.dict()), self.action)
-
+                    self.manual_seq_file = self.action.get_seq()
+                    await self.base.write_seq(self.manual_seq_file.dict(), self.action)
                     # create and write prc file for manual action
-                    self.manual_prc_file = hcmf.PrcFile(
-                        hlo_version=f"{version.hlo_version}",
-                        orchestrator=self.action.orch_name,
-                        machine_name=gethostname(),
-                        access=self.action.access,
-                        process_uuid=self.action.process_uuid,
-                        process_timestamp=self.action.process_timestamp,
-                        process_label=self.action.process_label,
-                        technique_name=self.action.technique_name,
-                        process_name="MANUAL",
-                        process_params=None,
-                        process_model=None,
-                    )
-                    await self.base.write_prc(cleanupdict(self.manual_prc_file.dict()), self.action)
+                    self.manual_prc_file = self.action.get_prc()
+                    await self.base.write_prc(self.manual_prc_file.dict(), self.action)
 
                 if self.action.save_data:
                     for i, file_sample_key in enumerate(self.action.file_sample_keys):
