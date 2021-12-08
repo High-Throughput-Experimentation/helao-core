@@ -11,10 +11,13 @@ import types
 from collections import defaultdict
 from datetime import datetime
 import copy
+from pathlib import Path
+from socket import gethostname
 
 import helaocore.model.sample as hcms
 from helaocore.helper import gen_uuid, print_message
-
+import helaocore.model.file as hcmf
+import helaocore.server.version as version
 
 
 class Sequence(object):
@@ -105,6 +108,15 @@ class Sequence(object):
         dtime = datetime.fromtimestamp(dtime.timestamp() + offset)
         self.sequence_timestamp = dtime.strftime("%Y%m%d.%H%M%S%f")
 
+    def get_seq(self):
+        return hcmf.SeqFile(
+            hlo_version=f"{version.hlo_version}",
+            sequence_name = self.sequence_name,
+            sequence_label = self.sequence_label,
+            sequence_uuid = self.sequence_uuid,
+            sequence_timestamp = self.sequence_timestamp
+        )
+
 
 class Process(Sequence):
     "Sample-action grouping class."
@@ -176,6 +188,21 @@ class Process(Sequence):
         self.process_timestamp = dtime.strftime("%Y%m%d.%H%M%S%f")
 
 
+    def get_prc(self):
+        return hcmf.PrcFile(
+            hlo_version=f"{version.hlo_version}",
+            orchestrator=self.orch_name,
+            machine_name=gethostname(),
+            access=self.access,
+            process_uuid=self.process_uuid,
+            process_timestamp=self.process_timestamp,
+            process_label=self.process_label,
+            technique_name=self.technique_name,
+            process_name=self.process_name,
+            process_params=self.process_params,
+        )
+
+
 class Action(Process):
     "Sample-action identifier class."
 
@@ -204,6 +231,9 @@ class Action(Process):
         # holds samples basemodel for parsing between actions etc
         self.samples_in: hcms.SampleList = []
         self.samples_out: hcms.SampleList = []
+
+        # name of the action server
+        self.server_name = imports.get("server_name", None)
 
         # the following attributes are set during action dispatch but can be imported
         self.file_dict = defaultdict(lambda: defaultdict(dict))  # TODO: replace with model
@@ -269,6 +299,25 @@ class Action(Process):
         if offset is not None:
             atime = datetime.fromtimestamp(atime.timestamp() + offset)
         self.action_timestamp = atime.strftime("%Y%m%d.%H%M%S%f")
+
+    def get_act(self):
+        return hcmf.ActFile(
+            hlo_version=f"{version.hlo_version}",
+            technique_name=self.technique_name,
+            server_name=self.server_name,
+            orchestrator=self.orch_name,
+            machine_name=self.machine_name,
+            access=self.access,
+            output_dir=Path(self.output_dir).as_posix(),
+            process_uuid=self.process_uuid,
+            process_timestamp=self.process_timestamp,
+            action_uuid=self.action_uuid,
+            action_timestamp=self.action_timestamp,
+            action_ordering=self.action_ordering,
+            action_name=self.action_name,
+            action_abbr=self.action_abbr,
+            action_params=self.action_params,
+        )
 
 
 class Sequencer(object):
