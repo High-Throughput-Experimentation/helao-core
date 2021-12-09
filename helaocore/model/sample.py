@@ -8,9 +8,10 @@ from datetime import datetime
 from socket import gethostname
 from typing import List, Optional, Union
 
-from helaocore.helper import print_message
 from pydantic import BaseModel, validator, root_validator
 
+from helaocore.helper import print_message
+from helaocore.server import version
 
 
 def _sample_model_list_validator(model_list, values, **kwargs):
@@ -66,16 +67,17 @@ def _sample_model_list_validator(model_list, values, **kwargs):
     return model_list
 
 
-class _BaseSample(BaseModel):
-
+class Sample(BaseModel):
     # Main base parameter which are fixed.
     # A Sample ref would have no global label 
     # only a sample_type.
     # 
+    hlo_version: Union[str, None] = version.hlo_version
     global_label: Optional[str] = None # is None for a ref sample
     sample_type: Optional[str] = None
 
 
+class _BaseSample(Sample):
     # additional parameters
     sample_no: Optional[int] = None
     machine_name: Optional[str] = None
