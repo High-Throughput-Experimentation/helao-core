@@ -32,7 +32,8 @@ class Sequence(object):
         self.sequence_timestamp = imports.get("sequence_timestamp", None)
         self.sequence_name = imports.get("sequence_name", None)
         self.sequence_label = imports.get("sequence_label", "noLabel")
-        self.process_list = []
+        self.sequence_params = imports.get("sequence_params", None)
+        self.process_list = imports.get("process_list", [])
 
 
     def __repr__(self):
@@ -112,9 +113,11 @@ class Sequence(object):
         return hcmf.SeqFile(
             hlo_version=f"{version.hlo_version}",
             sequence_name = self.sequence_name,
+            sequence_params = self.sequence_params,
             sequence_label = self.sequence_label,
             sequence_uuid = self.sequence_uuid,
-            sequence_timestamp = self.sequence_timestamp
+            sequence_timestamp = self.sequence_timestamp,
+            process_list = [process.process_name for process in self.process_list]
         )
 
 

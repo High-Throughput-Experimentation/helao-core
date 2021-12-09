@@ -135,6 +135,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         sequence_uuid: str = None,
         sequence_timestamp: str = None,
         sequence_name: str = None,
+        sequence_params: dict = None,
         sequence_label: str = None,
         process_list: List[dict] = [],
         scratch: Optional[List[None]] = [None], # temp fix so it still works (issue with lists)
@@ -143,6 +144,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
             sequence_uuid = sequence_uuid,
             sequence_timestamp = sequence_timestamp,
             sequence_name = sequence_name,
+            sequence_params = sequence_params,
             sequence_label = sequence_label,
             process_list = process_list
         )

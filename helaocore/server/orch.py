@@ -524,14 +524,15 @@ class Orch(Base):
                            sequence_uuid: str = None,
                            sequence_timestamp: str = None,
                            sequence_name: str = None,
+                           sequence_params: dict = None,
                            sequence_label: str = None,
                            process_list: List[dict] = []
                            ):
-
         seq = Sequence()
         seq.sequence_uuid = sequence_uuid
         seq.sequence_timestamp = sequence_timestamp
         seq.sequence_name = sequence_name
+        seq.sequence_params = sequence_params
         seq.sequence_label = sequence_label
         for D_dict in process_list:
             D = Process(D_dict)
