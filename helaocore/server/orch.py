@@ -11,7 +11,6 @@ import aiohttp
 import colorama
 
 import helaocore.model.file as hcmf
-import helaocore.model.returnmodel as hcmr
 
 from helaocore.helper import MultisubscriberQueue
 from helaocore.schema import Action, Process, Sequence
@@ -597,52 +596,19 @@ class Orch(Base):
 
     def list_processes(self):
         """Return the current queue of process_dq."""
-
-        process_list = [
-            hcmr.ReturnProcess(
-                index=i,
-                process_uuid=process.process_uuid,
-                process_label=process.process_label,
-                process_name=process.process_name,
-                process_params=process.process_params,
-                access=process.access,
-            )
-            for i, process in enumerate(self.process_dq)
-        ]
-        retval = hcmr.ReturnProcessList(processes=process_list)
-        return retval
+        return [process.get_prc() for process in self.process_dq]
 
 
     def get_process(self, last=False):
         """Return the active or last process."""
+        process_list = []
         if last:
             process = self.last_process
         else:
             process = self.active_process
         if process is not None:
-            process_list = [
-                hcmr.ReturnProcess(
-                    index=-1,
-                    process_uuid=process.process_uuid,
-                    process_label=process.process_label,
-                    process_name=process.process_name,
-                    process_params=process.process_params,
-                    access=process.access,
-                )
-            ]
-        else:
-            process_list = [
-                hcmr.ReturnProcess(
-                    index=-1,
-                    process_uuid=None,
-                    process_label=None,
-                    process_name=None,
-                    process_paras=None,
-                    access=None,
-                )
-            ]
-        retval = hcmr.ReturnProcessList(processes=process_list)
-        return retval
+            process_list.append(process.get_prc())
+        return process_list
 
 
     def list_active_actions(self):
@@ -653,35 +619,18 @@ class Orch(Base):
             for action_name, action_uuids in action_dict.items():
                 for action_uuid in action_uuids:
                     action_list.append(
-                        hcmr.ReturnAction(
-                            index=index,
-                            action_uuid=action_uuid,
-                            server=action_serv,
-                            action_name=action_name,
-                            action_params=dict(),
-                            preempt=-1,
-                        )
+                        {"index":index,
+                         "action_uuid":action_uuid,
+                         "server":action_serv,
+                         "action_name":action_name,                         
+                        }
                     )
-                    index = index + 1
-        retval = hcmr.ReturnActionList(actions=action_list)
-        return retval
+        return action_list
 
 
     def list_actions(self):
         """Return the current queue of action_dq."""
-        action_list = [
-            hcmr.ReturnAction(
-                index=i,
-                action_uuid=action.action_uuid,
-                server=action.action_server,
-                action_name=action.action_name,
-                action_params=action.action_params,
-                preempt=action.start_condition,
-            )
-            for i, action in enumerate(self.action_dq)
-        ]
-        retval = hcmr.ReturnActionList(actions=action_list)
-        return retval
+        return [action.get_act() for action in self.action_dq]
 
 
     def supplement_error_action(self, check_uuid: str, sup_action: Action):
