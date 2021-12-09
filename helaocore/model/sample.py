@@ -2,7 +2,15 @@
 Liquid, Gas, Assembly, and Solid sample type models.
 
 """
-__all__ = ["LiquidSample", "GasSample", "SolidSample", "AssemblySample", "SampleList"]
+__all__ = [
+           "SampleModel",
+           "LiquidSample", 
+           "GasSample", 
+           "SolidSample", 
+           "AssemblySample", 
+           "SampleList",
+           "SampleUnion"
+          ]
 
 from datetime import datetime
 from socket import gethostname
@@ -67,6 +75,13 @@ def _sample_model_list_validator(model_list, values, **kwargs):
     return model_list
 
 
+
+class SampleModel(BaseModel):
+    hlo_version: Optional[str] = version.hlo_version
+    global_label: Optional[str]  # is None for a ref sample
+    sample_type: Optional[str]
+
+
 class Sample(BaseModel):
     # Main base parameter which are fixed.
     # A Sample ref would have no global label 
@@ -77,7 +92,7 @@ class Sample(BaseModel):
     sample_type: Optional[str] = None
 
 
-class _BaseSample(Sample):
+class _BaseSample(SampleModel):
     # additional parameters
     sample_no: Optional[int] = None
     machine_name: Optional[str] = None
@@ -347,3 +362,6 @@ class SampleList(BaseModel):
     @validator("samples")
     def validate_samples(cls, value, values, **kwargs):
         return _sample_model_list_validator(value, values, **kwargs)
+
+
+SampleUnion = Union[AssemblySample, SolidSample, LiquidSample, GasSample]
