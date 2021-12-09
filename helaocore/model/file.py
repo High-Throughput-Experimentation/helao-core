@@ -11,21 +11,21 @@ from pydantic import BaseModel
 
 
 class ActFile(BaseModel):
-    hlo_version: str = version.hlo_version
-    technique_name: str
-    server_name: str
-    orchestrator: str
-    machine_name: str
-    access: str
-    output_dir: str
-    process_uuid: str
-    process_timestamp: str
-    action_uuid: str
-    action_timestamp: str
+    hlo_version: Union[str, None] = version.hlo_version
+    technique_name: Union[str, None]
+    server_name: Union[str, None]
+    orchestrator: Union[str, None]
+    machine_name: Union[str, None]
+    access: Union[str, None]
+    output_dir: Union[str, None]
+    process_uuid: Union[str, None]
+    process_timestamp: Union[str, None]
+    action_uuid: Union[str, None]
+    action_timestamp: Union[str, None]
     action_order: Optional[int] = 0
     action_retry: Optional[int] = 0
     action_actual_order: Optional[int] = 0
-    action_name: str
+    action_name: Union[str, None]
     action_abbr: Optional[str] = None
     action_params: Union[dict, None] = None
     samples_in: Optional[Union[List[dict], None]] = None
@@ -34,22 +34,22 @@ class ActFile(BaseModel):
 
 
 class PrcFile(BaseModel):
-    hlo_version: str = version.hlo_version
-    orchestrator: str
-    machine_name: str
-    access: str
-    process_uuid: str
-    process_timestamp: str
-    process_label: str
-    technique_name: str
-    process_name: str
+    hlo_version: Union[str, None] = version.hlo_version
+    orchestrator: Union[str, None]
+    machine_name: Union[str, None]
+    access: Union[str, None]
+    process_uuid: Union[str, None]
+    process_timestamp: Union[str, None]
+    process_label: Union[str, None]
+    technique_name: Union[str, None]
+    process_name: Union[str, None]
     process_params: Union[dict, None] = None
 
 
 class SeqFile(BaseModel):
-    hlo_version: str = version.hlo_version
-    sequence_name: str
-    sequence_label: str
-    sequence_uuid: str
-    sequence_timestamp: str
+    hlo_version: Union[str, None] = version.hlo_version
+    sequence_name: Union[str, None]
+    sequence_label: Union[str, None]
+    sequence_uuid: Union[str, None]
+    sequence_timestamp: Union[str, None]
     # process_list: Optional[]
