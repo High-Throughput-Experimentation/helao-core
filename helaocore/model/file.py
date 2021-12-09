@@ -49,7 +49,8 @@ class PrcFile(BaseModel):
 class SeqFile(BaseModel):
     hlo_version: Union[str, None] = version.hlo_version
     sequence_name: Union[str, None]
+    sequence_params: Union[dict, None] = None
     sequence_label: Union[str, None]
     sequence_uuid: Union[str, None]
     sequence_timestamp: Union[str, None]
-    # process_list: Optional[]
+    process_list: Union[List[str], None] = None
