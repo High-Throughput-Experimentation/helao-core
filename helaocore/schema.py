@@ -310,7 +310,8 @@ class Action(Process):
             orchestrator=self.orch_name,
             machine_name=self.machine_name,
             access=self.access,
-            output_dir=Path(self.output_dir).as_posix(),
+            output_dir=Path(self.output_dir).as_posix() \
+                if self.output_dir is not None else None,
             process_uuid=self.process_uuid,
             process_timestamp=self.process_timestamp,
             action_uuid=self.action_uuid,
