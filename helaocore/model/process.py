@@ -49,6 +49,7 @@ class ProcessModel(ProcessTemplate):
     action_uuid_list: Optional[List[UUID]]
     samples_in: Optional[List[SampleUnion]]
     samples_out: Optional[List[SampleUnion]]
+    files: Optional[dict]
     _action_list: Optional[List[ActionModel]]
 
     def get_samples_out(self):
