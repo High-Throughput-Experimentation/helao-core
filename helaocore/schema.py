@@ -7,34 +7,46 @@ __all__ = ["Sequence", "Process", "Action", "Sequencer"]
 
 
 import inspect
-import types
-from collections import defaultdict
-from datetime import datetime
 import copy
 from pathlib import Path
-from socket import gethostname
-
-import helaocore.model.sample as hcms
-from helaocore.helper import gen_uuid, print_message
-import helaocore.model.file as hcmf
-import helaocore.server.version as version
+from typing import Optional
+from datetime import datetime
+from pydantic import BaseModel
 
 
-class Sequence(object):
+from .helper.print_message import print_message
+from .helper.gen_uuid import gen_uuid
+from .helper.set_time import set_time
+from .helper.helaodict import HelaoDict
+from .server import version
+from .model.action import ActionModel
+from .model.process import ProcessModel
+from .model.process_sequence import ProcessSequenceModel
+
+
+class _to_datetime(BaseModel):
+    time: Optional[datetime]
+
+
+class Sequence(HelaoDict, object):
     def __init__(
         self,
         inputdict: dict = {},
     ):
         imports = {}
         imports.update(inputdict)
-
         self.sequence_uuid = imports.get("sequence_uuid", None)
-        self.sequence_timestamp = imports.get("sequence_timestamp", None)
+        self.sequence_timestamp = _to_datetime(time = imports.get("sequence_timestamp", None)).time
+        self.sequence_status = imports.get("sequence_status", None)
         self.sequence_name = imports.get("sequence_name", None)
         self.sequence_label = imports.get("sequence_label", "noLabel")
-        self.sequence_params = imports.get("sequence_params", None)
+        self.sequence_params = imports.get("sequence_params", {})
+        if self.sequence_params is None:
+            self.sequence_params = {}
         self.process_list = imports.get("process_list", [])
 
+        def _to_time(Basemodel):
+            time: datetime
 
     def __repr__(self):
         return f"<sequence_name:{self.sequence_name}>" 
@@ -42,47 +54,6 @@ class Sequence(object):
 
     def __str__(self):
         return f"sequence_name:{self.sequence_name}" 
-
-
-    def as_dict(self):
-        d = vars(self)
-        attr_only = {k: v for k, v in d.items() if not isinstance(v,types.FunctionType) and not k.startswith("__")}
-        return attr_only
-
-
-    def fastdict(self):
-        json_list_keys = ["process_list"]
-        # json_keys = []
-        d = vars(self)
-        params_dict = {
-            k: int(v) if isinstance(v, bool) else v
-            for k, v in d.items()
-            if not isinstance(v,types.FunctionType)
-            and not k.startswith("__")
-            and k not in json_list_keys
-            and (v is not None)
-            and not isinstance(v,dict)
-            and not isinstance(v,list)
-            and (v != {})
-        }
-        
-        
-        json_dict = {
-            k: v
-            for k, v in d.items()
-            if not isinstance(v,types.FunctionType)
-            and not k.startswith("__")
-            and k not in json_list_keys
-            and (v is not None)
-            and isinstance(v,dict)
-        }
-        for key in json_list_keys:
-            if key in d:
-                json_dict.update({key:[val.as_dict() for val in d[key]]})
-        #         json_dict.update({key:[]})
-
-
-        return params_dict, json_dict
 
 
     def gen_uuid_sequence(self, machine_name: str):
@@ -105,20 +76,29 @@ class Sequence(object):
 
 
     def set_sequence_time(self, offset: float = 0):
-        dtime = datetime.now()
-        dtime = datetime.fromtimestamp(dtime.timestamp() + offset)
-        self.sequence_timestamp = dtime.strftime("%Y%m%d.%H%M%S%f")
+        self.sequence_timestamp = set_time(offset)
+
 
     def get_seq(self):
-        return hcmf.SeqFile(
+        return ProcessSequenceModel(
             hlo_version=f"{version.hlo_version}",
             sequence_name = self.sequence_name,
             sequence_params = self.sequence_params,
             sequence_label = self.sequence_label,
             sequence_uuid = self.sequence_uuid,
             sequence_timestamp = self.sequence_timestamp,
-            process_list = [process.process_name for process in self.process_list]
+            sequence_status = self.sequence_status,
+            process_plan_list = [process.process_name for process in self.process_list],
+            # process_list = [process.process_uuid for process in self.process_list]
         )
+
+    
+    def init_seq(self, machine_name: str, time_offset: float = 0):
+        if self.sequence_timestamp is None:
+            self.set_sequence_time(offset=time_offset)
+        if self.sequence_uuid is None:
+            self.gen_uuid_sequence(machine_name)
+
 
 
 class Process(Sequence):
@@ -135,19 +115,21 @@ class Process(Sequence):
 
         # main process parameters
         self.process_uuid = imports.get("process_uuid", None) #
-
+        self.process_status = imports.get("process_status", None)
         # main parametes for Action, need to put it into 
         # the new Basemodel in the future
         self.machine_name = imports.get("machine_name", None)
         
 
         # others parameter
-        self.orch_name = imports.get("orch_name", "orchestrator")
-        self.process_timestamp = imports.get("process_timestamp", None)
-        self.process_label = imports.get("process_label", "noLabel")
+        self.orchestrator = imports.get("orchestrator", "orchestrator")
+        self.process_timestamp = _to_datetime(time = imports.get("process_timestamp", None)).time
         self.access = imports.get("access", "hte")
         self.process_name = imports.get("process_name", None)
         self.process_params = imports.get("process_params", {})
+        if self.process_params is None:
+            self.process_params = {}
+
         # name of "instrument": sdc, anec, adss etc. defined in world config
         self.technique_name = imports.get("technique_name", None)
 
@@ -155,8 +137,8 @@ class Process(Sequence):
         self.result_dict = {}  # imports.get("result_dict", {})# this gets big really fast, bad for debugging
         self.global_params = {}  # TODO: reserved for internal use, do not write to .prg
 
-
-
+        self.action_uuid_list = imports.get("action_uuid_list", None)
+        self.action_file_list = imports.get("action_file_list", None)
         # sequence parameters which should go in its own class later
 
     def __repr__(self):
@@ -186,24 +168,30 @@ class Process(Sequence):
             )
 
     def set_dtime(self, offset: float = 0):
-        dtime = datetime.now()
-        dtime = datetime.fromtimestamp(dtime.timestamp() + offset)
-        self.process_timestamp = dtime.strftime("%Y%m%d.%H%M%S%f")
+        self.process_timestamp = set_time(offset)
 
 
     def get_prc(self):
-        return hcmf.PrcFile(
+        
+        prc = ProcessModel(
             hlo_version=f"{version.hlo_version}",
-            orchestrator=self.orch_name,
-            machine_name=gethostname(),
+            orchestrator=self.orchestrator,
+            machine_name=self.machine_name,#gethostname(),
+            sequence_uuid=self.sequence_uuid,
             access=self.access,
             process_uuid=self.process_uuid,
             process_timestamp=self.process_timestamp,
-            process_label=self.process_label,
+            process_status = self.process_status,
             technique_name=self.technique_name,
             process_name=self.process_name,
             process_params=self.process_params,
+            # action_uuid_list=self.action_uuid_list,
+            # samples_in: Optional[List[sample.SampleUnion]]
+            # samples_out: Optional[List[sample.SampleUnion]]
+            # files = self.action_file_list
         )
+        prc.update_from_actlist()
+        return prc
 
 
 class Action(Process):
@@ -212,47 +200,59 @@ class Action(Process):
     def __init__(
         self,
         inputdict: dict = {},
+        act: ActionModel = None,
     ):
         super().__init__(inputdict)  # grab process keys
         imports = {}
         imports.update(inputdict)
         
+        
+        # overwrite some other params from seq, prc
+        # usually also in dict (but we want to remove that in the future)
+        self.technique_name = act.technique_name
+        self.orchestrator = act.orchestrator
+        self.machine_name = act.machine_name
+        self.process_uuid = act.process_uuid
+        self.process_timestamp = act.process_timestamp
+        self.access = act.access
+        
+        
         # main fixed parameters for Action
-        self.action_uuid = imports.get("action_uuid", None)
-        self.action_timestamp = None
+        self.action_uuid = act.action_uuid
+        self.action_timestamp = act.action_timestamp
+        self.action_status = act.action_status
         # machine_name # get it from process later
-        self.action_order = imports.get("action_order", 0)
-        self.action_retry = imports.get("action_retry", 0)
-        self.action_actual_order = imports.get("action_actual_order", 0)
-
-
-        # other parameters
-        self.action_server = imports.get("action_server", None)
-        self.action_name = imports.get("action_name", None)
-        self.action_params = imports.get("action_params", {})
-        self.action_abbr = imports.get("action_abbr", None)
-        self.start_condition = imports.get("start_condition", 3)
-
-        # holds samples basemodel for parsing between actions etc
-        self.samples_in: hcms.SampleList = []
-        self.samples_out: hcms.SampleList = []
+        self.action_order = act.action_order
+        self.action_retry = act.action_retry
+        self.action_actual_order = act.action_actual_order
 
         # name of the action server
-        self.server_name = imports.get("server_name", None)
+        self.action_server_name = act.action_server_name
+
+        # other parameters
+        self.action_name = act.action_name
+        self.action_params = act.action_params
+        self.action_abbr = act.action_abbr
+        self.output_dir = act.output_dir
+
+        # holds samples basemodel for parsing between actions etc
+        self.samples_in = act.samples_in
+        self.samples_out = act.samples_out
+
+        # other params which are not in ActionModel
+        self.start_condition = imports.get("start_condition", 3)
 
         # the following attributes are set during action dispatch but can be imported
-        self.file_dict = defaultdict(lambda: defaultdict(dict))  # TODO: replace with model
-        self.file_dict.update(imports.get("file_dict", {}))
+
+        self.file_dict = imports.get("file_dict", [])
+        if self.file_dict is None:
+            self.file_dict = []
 
         # TODO: make the following attributes private
-        self.save_prc = imports.get("save_prc", True) # default should be true
+        self.save_act = imports.get("save_act", True) # default should be true
         self.save_data = imports.get("save_data", True) # default should be true
-        # self.plate_id = imports.get("plate_id", None) # not needed anymore
-        self.prc_samples_in = []  # holds sample list of dict for prc writing
-        self.prc_samples_out = []
         self.file_paths = imports.get("file_paths", [])
         self.data = imports.get("data", [])  # will be written to .hlo file
-        self.output_dir = imports.get("output_dir", None)
         self.column_names = imports.get("column_names", None)  # deprecated in .hlo file format
         self.header = imports.get("header", None)  # deprecated in .hlo file format
         self.file_type = imports.get("file_type", None)
@@ -264,16 +264,6 @@ class Action(Process):
         self.error_code = imports.get("error_code", "0")
         self.from_global_params = imports.get("from_global_params", {})
         self.to_global_params = imports.get("to_global_params", [])
-
-        check_args = {"server": self.action_server, "name": self.action_name}
-        missing_args = [k for k, v in check_args.items() if v is None]
-        if missing_args:
-            print_message(
-                {},
-                "action",
-                f'action {" and ".join(missing_args)} not specified. Placeholder actions will only affect the action queue enumeration.',
-                info=True,
-            )
 
 
     def __repr__(self):
@@ -300,23 +290,22 @@ class Action(Process):
             print_message({}, "action", f"action_uuid: {self.action_uuid} assigned", info=True)
 
     def set_atime(self, offset: float = 0.0):
-        atime = datetime.now()
-        if offset is not None:
-            atime = datetime.fromtimestamp(atime.timestamp() + offset)
-        self.action_timestamp = atime.strftime("%Y%m%d.%H%M%S%f")
+        self.action_timestamp = set_time(offset)
+
 
     def get_act(self):
-        return hcmf.ActFile(
+        return ActionModel(
             hlo_version=f"{version.hlo_version}",
             technique_name=self.technique_name,
-            server_name=self.server_name,
-            orchestrator=self.orch_name,
+            action_server_name=self.action_server_name,
+            orchestrator=self.orchestrator,
             machine_name=self.machine_name,
             access=self.access,
             output_dir=Path(self.output_dir).as_posix() \
                 if self.output_dir is not None else None,
             process_uuid=self.process_uuid,
             process_timestamp=self.process_timestamp,
+            action_status=self.action_status,
             action_uuid=self.action_uuid,
             action_timestamp=self.action_timestamp,
             action_order=self.action_order,
@@ -325,10 +314,17 @@ class Action(Process):
             action_name=self.action_name,
             action_abbr=self.action_abbr,
             action_params=self.action_params,
-            samples_in=[sample.prc_dict() for sample in self.prc_samples_in],
-            samples_out=[sample.prc_dict() for sample in self.prc_samples_out],
+            samples_in = self.samples_in,
+            samples_out = self.samples_out,
             files = self.file_dict
         )
+
+    def init_act(self, machine_name: str, time_offset: float = 0):
+        if self.action_timestamp is None:
+            self.set_atime(offset=time_offset)
+        if self.action_uuid is None:
+            self.gen_uuid_action(machine_name)
+
 
 
 class Sequencer(object):
@@ -341,8 +337,9 @@ class Sequencer(object):
         self._pg = copy.deepcopy(pg)
         self.action_list = []
         self.pars = self._C()
-        for key, val in self._pg.process_params.items():
-            setattr(self.pars, key, val)  # we could also add it direcly to the class root by just using self
+        if self._pg.process_params is not None:
+            for key, val in self._pg.process_params.items():
+                setattr(self.pars, key, val)  # we could also add it direcly to the class root by just using self
 
         for key, val in _locals.items():
             if key != "pg_Obj" and key not in self._pg.process_params.keys():
@@ -362,7 +359,10 @@ class Sequencer(object):
     def add_action(self, action_dict: dict):
         new_action_dict = self._pg.as_dict()
         new_action_dict.update(action_dict)
-        self.action_list.append(Action(inputdict=new_action_dict))
+        self.action_list.append(Action(
+                                       inputdict=new_action_dict,
+                                       act=ActionModel(**new_action_dict)
+                                      ))
 
 
     def add_action_list(self, action_list: list):
@@ -378,12 +378,7 @@ class SequenceListMaker(object):
 
 
     def add_process(self, selected_process, process_params):
-        
-        # process_params = {paraminput.title: to_json(paraminput.value) for paraminput in self.param_input}
         D = Process(inputdict={
-            # "orch_name":orch_name,
-            "process_label":selected_process,
-            # "process_label":sellabel,
             "process_name":selected_process,
             "process_params":process_params,
         })
