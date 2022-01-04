@@ -1,6 +1,7 @@
 __all__ = ["cleanupdict"]
 
 from enum import Enum
+from uuid import UUID
 
 def cleanupdict(d):
     clean = {}
@@ -14,6 +15,8 @@ def cleanupdict(d):
         elif v is not None:
             if isinstance(v, Enum):
                 clean[k] = v.name
+            elif isinstance(v, UUID):
+                clean[k] = str(v)
             elif isinstance(v, list):
                 if len(v) !=0:
                     clean[k] = _cleanuplist(v)
@@ -30,6 +33,8 @@ def _cleanuplist(input_list):
     for list_item in input_list:
         if isinstance(list_item, dict):
             clean_list.append(cleanupdict(list_item))
+        elif isinstance(list_item, UUID):
+            clean_list.append(str(list_item))
         else:
             clean_list.append(list_item)
     return clean_list
