@@ -7,15 +7,16 @@ from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel
-from helaocore.model.sample import SampleUnion
-from helaocore.model.action import ActionModel
+from pydantic import BaseModel, Field
 
-from helaocore.server import version
+from .sample import SampleUnion
+from .action import ActionModel, ShortActionModel
+from .fileinfo import FileInfo
+from ..server import version
+from ..helper.helaodict import HelaoDict
 
 
-
-class ProcessTemplate(BaseModel):
+class ProcessTemplate(BaseModel, HelaoDict):
     access: Optional[str]
     technique_name: Optional[str]
     process_name: Optional[str]
@@ -46,15 +47,33 @@ class ProcessModel(ProcessTemplate):
     sequence_uuid: Optional[UUID]
     process_uuid: Optional[UUID]
     process_timestamp: Optional[datetime]
-    action_uuid_list: Optional[List[UUID]]
-    samples_in: Optional[List[SampleUnion]]
-    samples_out: Optional[List[SampleUnion]]
-    files: Optional[dict]
-    _action_list: Optional[List[ActionModel]]
+    process_status: Optional[str]
+    action_list: List[ShortActionModel] = Field(default_factory=list)
+    samples_in: List[SampleUnion] = Field(default_factory=list)
+    samples_out: List[SampleUnion] = Field(default_factory=list)
+    files: List[FileInfo] = Field(default_factory=list)
+    _action_list: List[ActionModel] = []
 
-    def get_samples_out(self):
-        samples_out = set()
-        for action in self._action_list:
-            samples_out.update(action.samples_in)
-            samples_out.update(action.samples_out)
-        return samples_out
+
+    def add_action(self, act: ActionModel):
+        self._action_list.append(act)
+
+
+    def update_from_actlist(self):
+        for actm in self._action_list:
+            self.action_list.append(ShortActionModel(**actm.dict()))
+
+            for file in actm.files:
+                if file.action_uuid is None:
+                    file.action_uuid = actm.action_uuid
+                self.files.append(file)
+
+            for _sample in actm.samples_in:
+                if _sample.action_uuid is None:
+                    _sample.action_uuid = actm.action_uuid
+                self.samples_in.append(_sample)
+
+            for _sample in actm.samples_in:
+                if _sample.action_uuid is None:
+                    _sample.action_uuid = actm.action_uuid
+                self.samples_out.append(_sample)
