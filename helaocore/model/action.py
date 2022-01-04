@@ -1,32 +1,39 @@
-__all__ = ["ActionModel"]
+__all__ = ["ActionModel", "ShortActionModel"]
 
 from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
+from pydantic import BaseModel, Field
 
-from pydantic import BaseModel
-from helaocore.model.sample import SampleUnion
 
-from helaocore.server import version
+from .sample import SampleUnion
+from .fileinfo import FileInfo
+from ..server import version
+from ..helper.helaodict import HelaoDict
 
-class ActionModel(BaseModel):
+
+class ShortActionModel(BaseModel, HelaoDict):
+    action_uuid: Optional[UUID]
+    output_dir: Optional[str]
+    action_actual_order: Optional[int] = 0
+
+
+class ActionModel(ShortActionModel):
     hlo_version: Optional[str] = version.hlo_version
     technique_name: Optional[str]
-    server_name: Optional[str]
+    action_server_name: Optional[str]
     orchestrator: Optional[str]
     machine_name: Optional[str]
     access: Optional[str]
-    output_dir: Optional[str]
-    process_uuid: Optional[str]
+    process_uuid: Optional[UUID]
     process_timestamp: Optional[datetime]
-    action_uuid: Optional[UUID]
     action_timestamp: Optional[datetime]
+    action_status: Optional[str]
     action_order: Optional[int] = 0
     action_retry: Optional[int] = 0
-    action_actual_order: Optional[int] = 0
     action_name: Optional[str]
     action_abbr: Optional[str]
     action_params: Optional[dict]
-    samples_in: Optional[List[SampleUnion]]
-    samples_out: Optional[List[SampleUnion]]
-    files: Optional[dict]
+    samples_in: List[SampleUnion] = Field(default_factory=list)
+    samples_out: List[SampleUnion] = Field(default_factory=list)
+    files: List[FileInfo] = Field(default_factory=list)
