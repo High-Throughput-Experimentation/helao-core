@@ -5,10 +5,11 @@ import sys
 from socket import gethostname
 
 import colorama
-from helaocore.helper import print_message
-from helaocore.helper import helao_dirs
+
 
 from .api import HelaoBokehAPI
+from ..helper.helao_dirs import helao_dirs
+from ..helper.print_message import print_message
 
 # ANSI color codes converted to the Windows versions
 colorama.init(strip=not sys.stdout.isatty())  # strip colors if stdout is redirected
