@@ -33,7 +33,7 @@ class ActionModel(ShortActionModel):
     action_retry: Optional[int] = 0
     action_name: Optional[str]
     action_abbr: Optional[str]
-    action_params: Optional[dict]
+    action_params: dict = Field(default_factory=dict)
     samples_in: List[SampleUnion] = Field(default_factory=list)
     samples_out: List[SampleUnion] = Field(default_factory=list)
     files: List[FileInfo] = Field(default_factory=list)
