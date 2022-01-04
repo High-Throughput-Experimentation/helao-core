@@ -9,15 +9,15 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from ..server import version
+from ..helper.helaodict import HelaoDict
 
-from helaocore.server import version
 
-
-class ProcessSequenceTemplate(BaseModel):
+class ProcessSequenceTemplate(BaseModel, HelaoDict):
     sequence_name: Optional[str]
     sequence_params: Optional[dict]
     sequence_label: Optional[str]
-    process_plan_list: Optional[List[str]]
+    process_plan_list: List[str] = Field(default_factory=list)
 
     def make_sequence(
                       self, 
@@ -33,6 +33,7 @@ class ProcessSequenceTemplate(BaseModel):
 
 class ProcessSequenceModel(ProcessSequenceTemplate):
     hlo_version: Optional[str] = version.hlo_version
-    sequence_uuid: UUID
-    sequence_timestamp: datetime
+    sequence_uuid: Optional[UUID]
+    sequence_timestamp: Optional[datetime]
+    sequence_status: Optional[str]
     process_list: List[UUID] = Field(default_factory=list)
