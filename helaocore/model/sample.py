@@ -3,131 +3,70 @@ Liquid, Gas, Assembly, and Solid sample type models.
 
 """
 __all__ = [
+           "NoneSample",
            "SampleModel",
            "LiquidSample", 
            "GasSample", 
            "SolidSample", 
            "AssemblySample", 
            "SampleList",
-           "SampleUnion"
+           "SampleUnion",
+           "object_to_sample"
           ]
 
-from datetime import datetime
 from socket import gethostname
-from typing import List, Optional, Union
+from uuid import UUID
 
-from pydantic import BaseModel, validator, root_validator
+from pydantic import BaseModel, validator, root_validator, Field
+from pydantic.tools import parse_obj_as
 
-from helaocore.helper import print_message
-from helaocore.server import version
+from typing import List, Optional, Union, Literal
 
-
-def _sample_model_list_validator(model_list, values, **kwargs):
-    """validates samples models in a list"""
-
-    def dict_to_model(model_dict):
-        sample_type = model_dict.get("sample_type", None)
-        if sample_type is None:
-            return None
-        elif sample_type == "liquid":
-            return LiquidSample(**model_dict)
-        elif sample_type == "gas":
-            return GasSample(**model_dict)
-        elif sample_type == "solid":
-            return SolidSample(**model_dict)
-        elif sample_type == "assembly":
-            return AssemblySample(**model_dict)
-        else:
-            print_message({}, "model", f"unsupported sample_type '{sample_type}'", error=True)
-            raise ValueError("model", f"unsupported sample_type '{sample_type}'")
-
-    if model_list is None or not isinstance(model_list, list):
-        print_message(
-            {},
-            "model",
-            f"validation error, type '{type(model_list)}' is not a valid sample model list",
-            error=True,
-        )
-        raise ValueError("must be valid sample model list")
-
-    for i, model in enumerate(model_list):
-        if isinstance(model, dict):
-            model_list[i] = dict_to_model(model)
-        elif isinstance(model, LiquidSample):
-            continue
-        elif isinstance(model, SolidSample):
-            continue
-        elif isinstance(model, GasSample):
-            continue
-        elif isinstance(model, AssemblySample):
-            continue
-        elif model is None:
-            continue
-        else:
-            print_message(
-                {},
-                "model",
-                f"validation error, type '{type(model)}' is not a valid sample model",
-                error=True,
-            )
-            raise ValueError("must be valid sample model")
-
-    return model_list
+from ..helper.print_message import print_message
+from ..server import version
+from ..helper.helaodict import HelaoDict
 
 
+class SampleModel(BaseModel, HelaoDict):
+    """Bare bones sample with only the key identifying information of a sample in the database."""
 
-class SampleModel(BaseModel):
+    _hashinclude_ = {"global_label", "sample_type"}
+
     hlo_version: Optional[str] = version.hlo_version
     global_label: Optional[str]  # is None for a ref sample
     sample_type: Optional[str]
-
-
-class Sample(BaseModel):
-    # Main base parameter which are fixed.
-    # A Sample ref would have no global label 
-    # only a sample_type.
-    # 
-    hlo_version: Union[str, None] = version.hlo_version
-    global_label: Optional[str] = None # is None for a ref sample
-    sample_type: Optional[str] = None
-
+  
 
 class _BaseSample(SampleModel):
-    # additional parameters
-    sample_no: Optional[int] = None
-    machine_name: Optional[str] = None
-    sample_creation_timecode: Optional[int] = None  # epoch in ns
-    sample_position: Optional[str] = None
-    sample_hash: Optional[str] = None
-    last_update: Optional[int] = None  # epoch in ns
-    inheritance: Optional[str] = None  # only for internal use
-    status: Union[List[str], str] = None  # only for internal use
-    process_uuid: Optional[str] = None
-    action_uuid: Optional[str] = None
-    action_timestamp: Optional[str] = None  # "%Y%m%d.%H%M%S%f"
-    server_name: Optional[str] = None
-    chemical: Optional[List[str]] = []
-    mass: Optional[List[str]] = []
-    supplier: Optional[List[str]] = []
-    lot_number: Optional[List[str]] = []
-    source: Union[List[str], str] = None
-    comment: Optional[str] = None
+    """Full Sample with all helao-async relevant attributes."""
 
+    # time related fields
+    sample_creation_timecode: Optional[int]  # epoch in ns
+    last_update: Optional[int]  # epoch in ns
+    # action_timestamp: Optional[str]  # "%Y%m%d.%H%M%S%f"
 
-    @validator("action_timestamp")
-    def validate_action_timestamp(cls, v):
-        if v is not None:
-            if v != "00000000.000000000000":
-                try:
-                    atime = datetime.strptime(v, "%Y%m%d.%H%M%S%f")
-                except ValueError:
-                    print_message({}, "model", f"invalid 'action_timestamp': {v}", error=True)
-                    raise ValueError("invalid 'action_timestamp'")
-                return atime.strftime("%Y%m%d.%H%M%S%f")
-            else:
-                return v
-        else:
-            return None
+    # labels
+    sample_no: Optional[int]
+    machine_name: Optional[str]
+    sample_hash: Optional[str]
+    server_name: Optional[str]
+
+    # action related
+    action_uuid: Optional[UUID]
+    sample_creation_action_uuid: Optional[UUID]
+    sample_creation_process_uuid: Optional[UUID]
+
+    # metadata
+    sample_position: Optional[str]
+    inheritance: Optional[str]  # only for internal use
+    status: Optional[Union[List[str], str]]  # only for internal use
+    chemical: Optional[List[str]] = Field(default_factory=list)
+    mass: Optional[List[str]] = Field(default_factory=list)
+    supplier: Optional[List[str]] = Field(default_factory=list)
+    lot_number: Optional[List[str]] = Field(default_factory=list)
+    source: Optional[Union[List[str], str]]
+    comment: Optional[str]
+
 
     def create_initial_prc_dict(self):
         if not isinstance(self.status, list):
@@ -183,12 +122,23 @@ class _BaseSample(SampleModel):
         else:
             return 1.0
     
+class NoneSample(SampleModel):
+    sample_type: Literal[None] = None
+    global_label: Literal[None] = None
+    inheritance: Optional[str]  # only for internal use
+    status: Optional[Union[List[str], str]]  # only for internal use
+
+    def get_global_label(self):
+        return None
+
+    def get_vol_ml(self):
+        return None
 
 
 class LiquidSample(_BaseSample):
     """base class for liquid samples"""
 
-    sample_type: Optional[str] = "liquid"
+    sample_type: Literal["liquid"] = "liquid"
     volume_ml: Optional[float] = 0.0
     ph: Optional[float] = None
     dilution_factor: Optional[float] = 1.0
@@ -209,24 +159,11 @@ class LiquidSample(_BaseSample):
         else:
             return self.global_label
 
-    @validator("sample_type")
-    def validate_sample_type(cls, v):
-        if v != "liquid":
-            print_message(
-                {},
-                "model",
-                f"validation liquid in solid_sample, got type '{v}'",
-                error=True,
-            )
-            # return "liquid"
-            raise ValueError("must be liquid")
-        return "liquid"
-
 
 class SolidSample(_BaseSample):
     """base class for solid samples"""
 
-    sample_type: Optional[str] = "solid"
+    sample_type: Literal["solid"] = "solid"
     machine_name: Optional[str] = "legacy"
     plate_id: Optional[int] = None
 
@@ -244,18 +181,6 @@ class SolidSample(_BaseSample):
         else:
             return self.global_label
 
-    @validator("sample_type")
-    def validate_sample_type(cls, v):
-        if v != "solid":
-            print_message(
-                {},
-                "model",
-                f"validation error in solid_sample, got type '{v}'",
-                error=True,
-            )
-            # return "solid"
-            raise ValueError("must be solid")
-        return "solid"
 
     @root_validator(pre=False, skip_on_failure=True)
     def validate_global_label(cls, values):
@@ -268,10 +193,11 @@ class SolidSample(_BaseSample):
         else:
             raise ValueError("Only legacy solid sample supported for now.")
 
+
 class GasSample(_BaseSample):
     """base class for gas samples"""
 
-    sample_type: Optional[str] = "gas"
+    sample_type: Literal["gas"] = "gas"
     volume_ml: Optional[float] = 0.0
     dilution_factor: Optional[float] = 1.0
 
@@ -290,23 +216,10 @@ class GasSample(_BaseSample):
         else:
             return self.global_label
 
-    @validator("sample_type")
-    def validate_sample_type(cls, v):
-        if v != "gas":
-            print_message(
-                {},
-                "model",
-                f"validation error in gas_sample, got type '{v}'",
-                error=True,
-            )
-            # return "gas"
-            raise ValueError("must be gas")
-        return "gas"
-
 
 class AssemblySample(_BaseSample):
-    sample_type: Optional[str] = "assembly"
-    parts: Optional[Union[list, None]] = []
+    sample_type: Literal['assembly'] = "assembly"
+    parts: List['SampleUnion'] = Field(default_factory=list)
     sample_position: Optional[str] = "cell1_we"  # usual default assembly position
 
     def get_global_label(self):
@@ -318,20 +231,13 @@ class AssemblySample(_BaseSample):
         else:
             return self.global_label
 
-    @validator("parts")
-    def validate_parts(cls, value, values, **kwargs):
+
+    @validator("parts", pre=True)
+    def validate_parts(cls, value):
         if value is None:
             return []
-        else:
-            return _sample_model_list_validator(value, values, **kwargs)
+        return value
 
-    @validator("sample_type")
-    def validate_sample_type(cls, v):
-        if v != "assembly":
-            print_message({}, "model", f"validation error in assembly, got type '{v}'", error=True)
-            # return "assembly"
-            raise ValueError("must be assembly")
-        return "assembly"
 
     def prc_dict(self):
         prc_dict = self.create_initial_prc_dict()
@@ -348,20 +254,31 @@ class AssemblySample(_BaseSample):
                 # return only the label (preferred)
                 part_dict_list.append(part.get_global_label())
             else:
-                # part_dict_list.append(None)
                 pass
         return part_dict_list
 
 
+# TODO: this needs to be removed in the near future
+# and all calls to SampleList replaced by SampleUnion
 class SampleList(BaseModel):
     """a combi basemodel which can contain all possible samples
     Its also a list and we should enforce samples as being a list"""
 
-    samples: Optional[list] = []  # don't use union of models, that does not work here
-
-    @validator("samples")
-    def validate_samples(cls, value, values, **kwargs):
-        return _sample_model_list_validator(value, values, **kwargs)
+    samples: Optional[List['SampleUnion']] = Field(default_factory=list)
 
 
-SampleUnion = Union[AssemblySample, SolidSample, LiquidSample, GasSample]
+SampleUnion = Union[
+                    NoneSample,
+                    LiquidSample,
+                    GasSample,
+                    SolidSample,
+                    AssemblySample,
+                    ]
+
+
+def object_to_sample(data):
+    return parse_obj_as(SampleUnion, data)
+
+
+AssemblySample.update_forward_refs()
+SampleList.update_forward_refs()
