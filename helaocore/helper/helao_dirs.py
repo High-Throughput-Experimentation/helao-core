@@ -1,8 +1,8 @@
 __all__ = ["helao_dirs"]
 
 import os
-from helaocore.helper import print_message
 
+from .print_message import print_message
 
 def helao_dirs(world_cfg: dict):
     def check_dir(path):
