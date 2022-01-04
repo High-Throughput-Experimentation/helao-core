@@ -9,7 +9,7 @@ from typing import Optional, Union, List
 
 from .api import HelaoFastAPI
 from .orch import Orch
-
+from ..model.action import ActionModel
 
 def makeOrchServ(config, server_key, server_title, description, version, driver_class=None):
     app = HelaoFastAPI(config, server_key, title=server_title, description=description, version=version)
@@ -28,6 +28,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
 
     @app.post("/update_status")
     async def update_status(server: str, status: str):
+        app.orch.print_message(f"got status from {server}: {status}")
         return await app.orch.update_status(action_serv=server, status_dict=json.loads(status))
 
     @app.post("/attach_client")
@@ -153,8 +154,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
 
     # @app.post("/append_process")
     # async def append_process(
-    #     orch_name: str = None,
-    #     process_label: str = None,
+    #     orchestrator: str = None,
     #     process_name: str = None,
     #     process_params: dict = {},
     #     result_dict: dict = {},
@@ -164,7 +164,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
 
     #     Args:
     #     process_dict: process parameters (optional), as dict.
-    #     orch_name: Orchestrator server key (optional), as str.
+    #     orchestrator: Orchestrator server key (optional), as str.
     #     plate_id: The sample's plate id (no checksum), as int.
     #     sample_no: A sample number, as int.
     #     process_name: The name of the process for building the action list, as str.
@@ -176,8 +176,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
     #     Nothing.
     #     """
     #     await app.orch.add_process(
-    #         orch_name,
-    #         process_label,
+    #         orchestrator,
     #         process_name,
     #         process_params,
     #         result_dict,
@@ -188,8 +187,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
 
     # @app.post("/prepend_process")
     # async def prepend_process(
-    #     orch_name: str = None,
-    #     process_label: str = None,
+    #     orchestrator: str = None,
     #     process_name: str = None,
     #     process_params: dict = {},
     #     result_dict: dict = {},
@@ -199,7 +197,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
 
     #     Args:
     #     process_dict: process parameters (optional), as dict.
-    #     orch_name: Orchestrator server key (optional), as str.
+    #     orchestrator: Orchestrator server key (optional), as str.
     #     plate_id: The sample's plate id (no checksum), as int.
     #     sample_no: A sample number, as int.
     #     process_name: The name of the process for building the action list, as str.
@@ -211,8 +209,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
     #     Nothing.
     #     """
     #     await app.orch.add_process(
-    #         orch_name,
-    #         process_label,
+    #         orchestrator,
     #         process_name,
     #         process_params,
     #         result_dict,
@@ -225,8 +222,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
     # async def insert_process(
     #     idx: int,
     #     process_dict: dict = None,
-    #     orch_name: str = None,
-    #     process_label: str = None,
+    #     orchestrator: str = None,
     #     process_name: str = None,
     #     process_params: dict = {},
     #     result_dict: dict = {},
@@ -237,7 +233,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
     #     Args:
     #     idx: index in process queue for insertion, as int
     #     process_dict: process parameters (optional), as dict.
-    #     orch_name: Orchestrator server key (optional), as str.
+    #     orchestrator: Orchestrator server key (optional), as str.
     #     plate_id: The sample's plate id (no checksum), as int.
     #     sample_no: A sample number, as int.
     #     process_name: The name of the process for building the action list, as str.
@@ -250,8 +246,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
     #     """
     #     await app.orch.add_process(
     #         process_dict,
-    #         orch_name,
-    #         process_label,
+    #         orchestrator,
     #         process_name,
     #         process_params,
     #         result_dict,
