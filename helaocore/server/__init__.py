@@ -11,5 +11,4 @@ from .make_vis_serv import makeVisServ
 from .orch import Orch
 from .action_start_condition import action_start_condition
 from .setup_action import setup_action
-from .version import hlo_version
 from .vis import Vis

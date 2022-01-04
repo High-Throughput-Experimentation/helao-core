@@ -23,7 +23,7 @@ from pydantic.tools import parse_obj_as
 from typing import List, Optional, Union, Literal
 
 from ..helper.print_message import print_message
-from ..server import version
+from ..version import get_hlo_version
 from ..helper.helaodict import HelaoDict
 
 
@@ -32,7 +32,7 @@ class SampleModel(BaseModel, HelaoDict):
 
     _hashinclude_ = {"global_label", "sample_type"}
 
-    hlo_version: Optional[str] = version.hlo_version
+    hlo_version: Optional[str] = get_hlo_version()
     global_label: Optional[str]  # is None for a ref sample
     sample_type: Optional[str]
   
@@ -52,7 +52,7 @@ class _BaseSample(SampleModel):
     server_name: Optional[str]
 
     # action related
-    action_uuid: Optional[UUID]
+    action_uuid: List[UUID] = Field(default_factory=list)
     sample_creation_action_uuid: Optional[UUID]
     sample_creation_process_uuid: Optional[UUID]
 

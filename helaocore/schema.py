@@ -18,10 +18,10 @@ from .helper.print_message import print_message
 from .helper.gen_uuid import gen_uuid
 from .helper.set_time import set_time
 from .helper.helaodict import HelaoDict
-from .server import version
 from .model.action import ActionModel
 from .model.process import ProcessModel
 from .model.process_sequence import ProcessSequenceModel
+from .version import get_hlo_version
 
 
 class _to_datetime(BaseModel):
@@ -81,7 +81,7 @@ class Sequence(HelaoDict, object):
 
     def get_seq(self):
         return ProcessSequenceModel(
-            hlo_version=f"{version.hlo_version}",
+            hlo_version=f"{get_hlo_version()}",
             sequence_name = self.sequence_name,
             sequence_params = self.sequence_params,
             sequence_label = self.sequence_label,
@@ -174,7 +174,7 @@ class Process(Sequence):
     def get_prc(self):
         
         prc = ProcessModel(
-            hlo_version=f"{version.hlo_version}",
+            hlo_version=f"{get_hlo_version()}",
             orchestrator=self.orchestrator,
             machine_name=self.machine_name,#gethostname(),
             sequence_uuid=self.sequence_uuid,
@@ -295,7 +295,7 @@ class Action(Process):
 
     def get_act(self):
         return ActionModel(
-            hlo_version=f"{version.hlo_version}",
+            hlo_version=f"{get_hlo_version()}",
             technique_name=self.technique_name,
             action_server_name=self.action_server_name,
             orchestrator=self.orchestrator,

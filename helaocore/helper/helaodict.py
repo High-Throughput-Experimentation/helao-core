@@ -43,14 +43,12 @@ class HelaoDict():
 
     def as_dict(self):
         d = vars(self)
-        attr_only = self._serialize_dict(dict_in = d)#dict()
+        attr_only = self._serialize_dict(dict_in = d)
         return attr_only
 
-    
 
     def fastdict(self):
         json_list_keys = ["process_list"]
-        # json_keys = []
         d = vars(self)
         params_dict = {
             k: int(v) if isinstance(v, bool) else v
@@ -86,7 +84,6 @@ class HelaoDict():
         for key in json_list_keys:
             if key in d:
                 json_dict.update({key:[val.as_dict() for val in d[key]]})
-        #         json_dict.update({key:[]})
 
 
         return params_dict, json_dict

@@ -6,13 +6,14 @@ __all__ = [
 from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
+from copy import copy
 
 from pydantic import BaseModel, Field
 
 from .sample import SampleUnion
 from .action import ActionModel, ShortActionModel
 from .fileinfo import FileInfo
-from ..server import version
+from ..version import get_hlo_version
 from ..helper.helaodict import HelaoDict
 
 
@@ -41,7 +42,7 @@ class ProcessTemplate(BaseModel, HelaoDict):
 
 
 class ProcessModel(ProcessTemplate):
-    hlo_version: Optional[str] = version.hlo_version
+    hlo_version: Optional[str] = get_hlo_version()
     orchestrator: Optional[str]
     machine_name: Optional[str]
     sequence_uuid: Optional[UUID]
@@ -69,11 +70,17 @@ class ProcessModel(ProcessTemplate):
                 self.files.append(file)
 
             for _sample in actm.samples_in:
-                if _sample.action_uuid is None:
-                    _sample.action_uuid = actm.action_uuid
+                if not _sample.action_uuid:
+                    _sample.action_uuid.append(actm.action_uuid)
                 self.samples_in.append(_sample)
 
             for _sample in actm.samples_in:
                 if _sample.action_uuid is None:
                     _sample.action_uuid = actm.action_uuid
                 self.samples_out.append(_sample)
+
+
+    def _check_sample(self, new_sample, sample_list):
+        for sample in sample_list:
+            tmp_sample = copy.deepcopy(sample)
+            tmp_sample.action_uuid = []

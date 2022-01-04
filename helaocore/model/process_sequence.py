@@ -9,7 +9,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from ..server import version
+from ..version import get_hlo_version
 from ..helper.helaodict import HelaoDict
 
 
@@ -32,7 +32,7 @@ class ProcessSequenceTemplate(BaseModel, HelaoDict):
 
 
 class ProcessSequenceModel(ProcessSequenceTemplate):
-    hlo_version: Optional[str] = version.hlo_version
+    hlo_version: Optional[str] = get_hlo_version()
     sequence_uuid: Optional[UUID]
     sequence_timestamp: Optional[datetime]
     sequence_status: Optional[str]

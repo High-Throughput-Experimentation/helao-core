@@ -20,7 +20,6 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.openapi.utils import get_flat_params
 
 
-from . import version
 from .api import HelaoFastAPI
 from .dispatcher import async_private_dispatcher
 
@@ -33,6 +32,7 @@ from ..schema import Action
 from ..model.sample import SampleUnion, NoneSample
 from ..model.fileinfo import FileInfo
 from ..helper.file_in_use import file_in_use
+from ..version import get_hlo_version
 
 # ANSI color codes converted to the Windows versions
 colorama.init(strip=not sys.stdout.isatty())  # strip colors if stdout is redirected
@@ -724,7 +724,7 @@ class Base(object):
                     file_ext = "hlo"
 
                     header_dict = {
-                        "hlo_version": version.hlo_version,
+                        "hlo_version": get_hlo_version(),
                         "action_name": self.action.action_abbr
                         if self.action.action_abbr is not None
                         else self.action.action_name,
