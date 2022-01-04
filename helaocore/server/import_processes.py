@@ -4,7 +4,7 @@ import os
 import sys
 from importlib import import_module
 
-from helaocore.helper import print_message
+from ..helper.print_message import print_message
 
 
 def import_processes(world_config_dict: dict, process_path: str = None, server_name: str = ""):
