@@ -3,9 +3,12 @@ __all__ = ["setup_action"]
 import json
 from socket import gethostname
 
-import helaocore.model.sample as hcms
 from fastapi import Request
-from helaocore.schema import Action
+
+
+from ..schema import Action
+from ..model.sample import object_to_sample
+from ..model.action import ActionModel
 
 
 async def setup_action(request: Request):
@@ -34,17 +37,20 @@ async def setup_action(request: Request):
                 val = v
             action_dict["action_params"][k] = val
 
-    action_dict["action_server"] = servKey
+    action_dict["action_server_name"] = servKey
     action_dict["action_name"] = action_name
-    A = Action(action_dict)
+    A = Action(
+               inputdict=action_dict,
+               act=ActionModel(**action_dict)
+              )
 
-    if "fast_samples_in" in A.action_params:
-        tmp_fast_samples_in = A.action_params.get("fast_samples_in", [])
-        del A.action_params["fast_samples_in"]
-        if isinstance(tmp_fast_samples_in,dict):
-            A.samples_in = hcms.SampleList(**tmp_fast_samples_in)
-        elif isinstance(tmp_fast_samples_in, list):
-            A.samples_in = hcms.SampleList(samples=tmp_fast_samples_in)
+    if A.action_params is not None:
+        if "fast_samples_in" in A.action_params:
+            tmp_fast_samples_in = A.action_params.get("fast_samples_in", [])
+            del A.action_params["fast_samples_in"]
+    
+            for sample in tmp_fast_samples_in:
+                A.samples_in.append(object_to_sample(sample))
 
     if A.action_abbr is None:
         A.action_abbr = A.action_name
@@ -54,12 +60,6 @@ async def setup_action(request: Request):
         A.machine_name = gethostname()
     if A.technique_name is None:
         A.technique_name = "MANUAL"
-        A.orch_name = "MANUAL"
-        A.process_label = "MANUAL"
-    # sample_list cannot be serialized so needs to be updated here
-    if A.samples_in == []:
-        A.samples_in = hcms.SampleList()
-    if A.samples_out == []:
-        A.samples_out = hcms.SampleList()
+        A.orchestrator = "MANUAL"
 
     return A
