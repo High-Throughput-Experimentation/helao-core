@@ -6,12 +6,11 @@ __all__ = [
 from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
-from copy import copy
 
 from pydantic import BaseModel, Field
 
 from .sample import SampleUnion
-from .action import ActionModel, ShortActionModel
+from .action import ShortActionModel
 from .fileinfo import FileInfo
 from ..version import get_hlo_version
 from ..helper.helaodict import HelaoDict
@@ -53,34 +52,4 @@ class ProcessModel(ProcessTemplate):
     samples_in: List[SampleUnion] = Field(default_factory=list)
     samples_out: List[SampleUnion] = Field(default_factory=list)
     files: List[FileInfo] = Field(default_factory=list)
-    _action_list: List[ActionModel] = []
 
-
-    def add_action(self, act: ActionModel):
-        self._action_list.append(act)
-
-
-    def update_from_actlist(self):
-        for actm in self._action_list:
-            self.action_list.append(ShortActionModel(**actm.dict()))
-
-            for file in actm.files:
-                if file.action_uuid is None:
-                    file.action_uuid = actm.action_uuid
-                self.files.append(file)
-
-            for _sample in actm.samples_in:
-                if not _sample.action_uuid:
-                    _sample.action_uuid.append(actm.action_uuid)
-                self.samples_in.append(_sample)
-
-            for _sample in actm.samples_in:
-                if _sample.action_uuid is None:
-                    _sample.action_uuid = actm.action_uuid
-                self.samples_out.append(_sample)
-
-
-    def _check_sample(self, new_sample, sample_list):
-        for sample in sample_list:
-            tmp_sample = copy.deepcopy(sample)
-            tmp_sample.action_uuid = []
