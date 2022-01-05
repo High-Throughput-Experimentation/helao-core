@@ -22,6 +22,7 @@ def print_message(server_cfg, server_name, *args, **kwargs):
 
 
     srv_type = server_cfg.get("group", "")
+    cmd_print = server_cfg.get("cmd_print", True)
     style = ""
     if srv_type == "orchestrator":
         style = f"{Style.BRIGHT}{Fore.GREEN}"
@@ -34,10 +35,11 @@ def print_message(server_cfg, server_name, *args, **kwargs):
     else:
         style = ""
 
-    for arg in args:
-        print(
-            f"{precolor}[{strftime('%H:%M:%S')}_{server_name}]:{Style.RESET_ALL} {style}{arg}{Style.RESET_ALL}"
-        )
+    if cmd_print:
+        for arg in args:
+            print(
+                f"{precolor}[{strftime('%H:%M:%S')}_{server_name}]:{Style.RESET_ALL} {style}{arg}{Style.RESET_ALL}"
+            )
 
     output_path = kwargs.get("log_dir", None)
     if output_path is not None:
