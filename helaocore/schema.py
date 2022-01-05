@@ -3,7 +3,13 @@ Standard classes for experiment queue objects.
 
 """
 
-__all__ = ["Sequence", "Process", "Action", "Sequencer"]
+__all__ = [
+           "Sequence", 
+           "Process", 
+           "Action", 
+           "ActionPlanMaker",
+           "ProcessPlanMaker"
+          ]
 
 
 import inspect
@@ -14,7 +20,6 @@ from datetime import datetime
 from pydantic import BaseModel
 from typing import List
 from uuid import UUID
-import copy
 from collections import defaultdict
 
 
@@ -47,7 +52,10 @@ class Sequence(HelaoDict, object):
         self.sequence_params = imports.get("sequence_params", {})
         if self.sequence_params is None:
             self.sequence_params = {}
-        self.process_list = imports.get("process_list", [])
+        self.process_plan_list = imports.get("process_plan_list", [])
+        self.processmodel_list: List[ProcessModel] = []
+
+
 
         def _to_time(Basemodel):
             time: datetime
@@ -92,8 +100,8 @@ class Sequence(HelaoDict, object):
             sequence_uuid = self.sequence_uuid,
             sequence_timestamp = self.sequence_timestamp,
             sequence_status = self.sequence_status,
-            process_plan_list = [process.process_name for process in self.process_list],
-            # process_list = [process.process_uuid for process in self.process_list]
+            process_plan_list = [process.process_name for process in self.process_plan_list],
+            # process_list = 
         )
 
     
@@ -141,8 +149,8 @@ class Process(Sequence):
         self.result_dict = {}  # imports.get("result_dict", {})# this gets big really fast, bad for debugging
         self.global_params = {}  # TODO: reserved for internal use, do not write to .prg
 
-        self.sequence_action_uuid_list: List[UUID] = []#imports.get("action_uuid_list", None)
-        self.sequence_action_list: List[ActionModel] = []
+        self.process_action_uuid_list: List[UUID] = []#imports.get("action_uuid_list", None)
+        self.process_action_list: List[ActionModel] = []
 
 
     def __repr__(self):
@@ -202,11 +210,11 @@ class Process(Sequence):
 
     def _process_update_from_actlist(self, prc: ProcessModel):
 
-        if self.sequence_action_list is None:
-            self.sequence_action_list = []
+        if self.process_action_list is None:
+            self.process_action_list = []
 
 
-        for actm in self.sequence_action_list:
+        for actm in self.process_action_list:
             prc.action_list.append(ShortActionModel(**actm.dict()))
 
             for file in actm.files:
@@ -402,7 +410,7 @@ class Action(Process):
 
 
 
-class Sequencer(object):
+class ActionPlanMaker(object):
     def __init__(
         self,
         pg: Process,
@@ -445,11 +453,11 @@ class Sequencer(object):
             self.action_list.append(action)
 
 
-class SequenceListMaker(object):
+class ProcessPlanMaker(object):
     def __init__(
         self,
     ):
-        self.process_list = []
+        self.process_plan_list = []
 
 
     def add_process(self, selected_process, process_params):
@@ -457,4 +465,4 @@ class SequenceListMaker(object):
             "process_name":selected_process,
             "process_params":process_params,
         })
-        self.process_list.append(D.as_dict())
+        self.process_plan_list.append(D.as_dict())

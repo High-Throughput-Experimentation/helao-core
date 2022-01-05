@@ -456,7 +456,7 @@ class Base(object):
                                   )
         output_file = os.path.join(output_path, f"{process.process_timestamp.strftime('%Y%m%d.%H%M%S%f')}.meta")
 
-        self.print_message(f"writing to prc metal file: {output_file}")
+        self.print_message(f"writing to prc meta file: {output_file}")
         output_str = pyaml.dump(prc_dict, sort_dicts=False)
 
         if not os.path.exists(output_path):

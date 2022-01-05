@@ -9,6 +9,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from .process import ShortProcessModel
 from ..version import get_hlo_version
 from ..helper.helaodict import HelaoDict
 
@@ -36,4 +37,4 @@ class ProcessSequenceModel(ProcessSequenceTemplate):
     sequence_uuid: Optional[UUID]
     sequence_timestamp: Optional[datetime]
     sequence_status: Optional[str]
-    process_list: List[UUID] = Field(default_factory=list)
+    process_list: List[ShortProcessModel] = Field(default_factory=list)

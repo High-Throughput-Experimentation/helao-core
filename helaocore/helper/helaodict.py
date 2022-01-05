@@ -48,7 +48,7 @@ class HelaoDict():
 
 
     def fastdict(self):
-        json_list_keys = ["process_list"]
+        json_list_keys = ["process_plan_list"]
         d = vars(self)
         params_dict = {
             k: int(v) if isinstance(v, bool) else v

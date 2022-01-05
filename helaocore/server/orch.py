@@ -263,7 +263,7 @@ class Orch(Base):
 
             # for prc in unpacked_prcs:
             #     D = Process(inputdict=prc)
-            #     self.active_sequence.process_list.append(D)
+            #     self.active_sequence.process_plan_list.append(D)
 
 
             self.seq_file = self.active_sequence.get_seq()
@@ -272,7 +272,7 @@ class Orch(Base):
             # add all processes from sequence to process queue
             # todo: use seq model instead to initialize some parameters
             # of the process
-            for prc in self.active_sequence.process_list:
+            for prc in self.active_sequence.process_plan_list:
                     self.print_message(f"unpack process {prc.process_name}")
                     await self.add_process(
                         seq = self.seq_file,
@@ -615,7 +615,7 @@ class Orch(Base):
                            sequence_name: str = None,
                            sequence_params: dict = None,
                            sequence_label: str = None,
-                           process_list: List[dict] = []
+                           process_plan_list: List[dict] = []
                            ):
         seq = Sequence()
         seq.sequence_uuid = sequence_uuid
@@ -623,9 +623,9 @@ class Orch(Base):
         seq.sequence_name = sequence_name
         seq.sequence_params = sequence_params
         seq.sequence_label = sequence_label
-        for D_dict in process_list:
+        for D_dict in process_plan_list:
             D = Process(D_dict)
-            seq.process_list.append(D)
+            seq.process_plan_list.append(D)
         self.sequence_dq.append(seq)
 
 
@@ -672,14 +672,14 @@ class Orch(Base):
 
     def get_process(self, last=False):
         """Return the active or last process."""
-        process_list = []
+        active_process_list = []
         if last:
             process = self.last_process
         else:
             process = self.active_process
         if process is not None:
-            process_list.append(process.get_prc())
-        return process_list
+            active_process_list.append(process.get_prc())
+        return active_process_list
 
 
     def list_active_actions(self):
@@ -796,11 +796,11 @@ class Orch(Base):
             self.print_message(f"finished prc uuid is: {self.prc_file.process_uuid}, adding matching acts to it")
 
             # todo: update here all acts from self.dispatched_actions list
-            self.active_process.sequence_action_uuid_list = []
-            self.active_process.sequence_action_list = []
+            self.active_process.process_action_uuid_list = []
+            self.active_process.process_action_list = []
             self.print_message("getting uuids from all dispatched actions of active process")
             for action_actual_order, dispachted_act in self.dispatched_actions.items():
-                self.active_process.sequence_action_uuid_list.append(dispachted_act.action_uuid)
+                self.active_process.process_action_uuid_list.append(dispachted_act.action_uuid)
 
             self.active_process.process_status = "finished"
 
@@ -810,15 +810,15 @@ class Orch(Base):
                 # getting only "finished" actions updates
                 if actm.orchestrator == self.server_name \
                 and actm.action_status == "finished" \
-                and actm.action_uuid in self.active_process.sequence_action_uuid_list:
+                and actm.action_uuid in self.active_process.process_action_uuid_list:
                     self.print_message(f"adding finished action '{actm.action_name}' to process")
-                    self.active_process.sequence_action_list.append(actm)
+                    self.active_process.process_action_list.append(actm)
             
             # get new updated prc
             self.prc_file = self.active_process.get_prc()
             await self.write_prc(self.prc_file.dict(), self.active_process)
 
-        # set prc to None ti signal that its done
+        # set prc to None to signal that its done
         self.prc_file = None
         # set dispatched actions to zero again
         self.dispatched_actions = {}

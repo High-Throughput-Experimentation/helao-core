@@ -1,6 +1,7 @@
 __all__ = [
            "ProcessTemplate",
-           "ProcessModel"
+           "ProcessModel",
+           "ShortProcessModel"
           ]
 
 from datetime import datetime
@@ -14,6 +15,12 @@ from .action import ShortActionModel
 from .fileinfo import FileInfo
 from ..version import get_hlo_version
 from ..helper.helaodict import HelaoDict
+
+
+class ShortProcessModel(BaseModel, HelaoDict):
+    process_uuid: Optional[UUID]
+    process_name: Optional[str]
+    output_dir: Optional[str]
 
 
 class ProcessTemplate(BaseModel, HelaoDict):
@@ -48,6 +55,7 @@ class ProcessModel(ProcessTemplate):
     process_uuid: Optional[UUID]
     process_timestamp: Optional[datetime]
     process_status: Optional[str]
+    output_dir: Optional[str]
     action_list: List[ShortActionModel] = Field(default_factory=list)
     samples_in: List[SampleUnion] = Field(default_factory=list)
     samples_out: List[SampleUnion] = Field(default_factory=list)
