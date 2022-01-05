@@ -22,7 +22,6 @@ from .action_start_condition import action_start_condition
 from ..helper.multisubscriber_queue import MultisubscriberQueue
 from ..schema import Sequence, Process, Action
 from ..model.process_sequence import ProcessSequenceModel
-from ..helper.cleanup_dict import cleanupdict
 from ..model.action import ActionModel
 
 # ANSI color codes converted to the Windows versions
@@ -787,8 +786,8 @@ class Orch(Base):
             self.active_sequence.sequence_status = "finished"
             seq_file = self.active_sequence.get_seq()
             await self.write_seq(seq_file.dict(), self.active_sequence)
-
             self.seq_file = None
+
 
     async def finish_active_process(self):
         # we need to wait for all actions to finish first
@@ -797,14 +796,13 @@ class Orch(Base):
             self.print_message(f"finished prc uuid is: {self.prc_file.process_uuid}, adding matching acts to it")
 
             # todo: update here all acts from self.dispatched_actions list
-            self.active_process.action_uuid_list = []
-            # file_dict = {}
+            self.active_process.sequence_action_uuid_list = []
+            self.active_process.sequence_action_list = []
             self.print_message("getting uuids from all dispatched actions of active process")
             for action_actual_order, dispachted_act in self.dispatched_actions.items():
-                self.active_process.action_uuid_list.append(dispachted_act.action_uuid)
+                self.active_process.sequence_action_uuid_list.append(dispachted_act.action_uuid)
 
             self.active_process.process_status = "finished"
-            self.prc_file = self.active_process.get_prc()
 
             self.print_message("getting all finished actions")
             for act in self.finished_actions:
@@ -812,14 +810,12 @@ class Orch(Base):
                 # getting only "finished" actions updates
                 if actm.orchestrator == self.server_name \
                 and actm.action_status == "finished" \
-                and actm.action_uuid in self.active_process.action_uuid_list:
-                    self.prc_file.add_action(actm)
-
-                    # if actm.files is not None:
-                    #     file_dict.update(actm.files)
+                and actm.action_uuid in self.active_process.sequence_action_uuid_list:
+                    self.print_message(f"adding finished action '{actm.action_name}' to process")
+                    self.active_process.sequence_action_list.append(actm)
             
-            # update rest of prc params from added actm
-            self.prc_file.update_from_actlist()
+            # get new updated prc
+            self.prc_file = self.active_process.get_prc()
             await self.write_prc(self.prc_file.dict(), self.active_process)
 
         # set prc to None ti signal that its done

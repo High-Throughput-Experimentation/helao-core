@@ -12,13 +12,17 @@ from pathlib import Path
 from typing import Optional
 from datetime import datetime
 from pydantic import BaseModel
+from typing import List
+from uuid import UUID
+import copy
+from collections import defaultdict
 
 
 from .helper.print_message import print_message
 from .helper.gen_uuid import gen_uuid
 from .helper.set_time import set_time
 from .helper.helaodict import HelaoDict
-from .model.action import ActionModel
+from .model.action import ActionModel, ShortActionModel
 from .model.process import ProcessModel
 from .model.process_sequence import ProcessSequenceModel
 from .version import get_hlo_version
@@ -137,9 +141,9 @@ class Process(Sequence):
         self.result_dict = {}  # imports.get("result_dict", {})# this gets big really fast, bad for debugging
         self.global_params = {}  # TODO: reserved for internal use, do not write to .prg
 
-        self.action_uuid_list = imports.get("action_uuid_list", None)
-        self.action_file_list = imports.get("action_file_list", None)
-        # sequence parameters which should go in its own class later
+        self.sequence_action_uuid_list: List[UUID] = []#imports.get("action_uuid_list", None)
+        self.sequence_action_list: List[ActionModel] = []
+
 
     def __repr__(self):
         return f"<process_name:{self.process_name}>" 
@@ -185,13 +189,84 @@ class Process(Sequence):
             technique_name=self.technique_name,
             process_name=self.process_name,
             process_params=self.process_params,
-            # action_uuid_list=self.action_uuid_list,
-            # samples_in: Optional[List[sample.SampleUnion]]
-            # samples_out: Optional[List[sample.SampleUnion]]
-            # files = self.action_file_list
+            # action_list = 
+            # samples_in = 
+            # samples_out = 
+            # files = 
         )
-        prc.update_from_actlist()
+        
+        # now add all actions
+        self._process_update_from_actlist(prc = prc)
         return prc
+
+
+    def _process_update_from_actlist(self, prc: ProcessModel):
+
+        if self.sequence_action_list is None:
+            self.sequence_action_list = []
+
+
+        for actm in self.sequence_action_list:
+            prc.action_list.append(ShortActionModel(**actm.dict()))
+
+            for file in actm.files:
+                if file.action_uuid is None:
+                    file.action_uuid = actm.action_uuid
+                prc.files.append(file)
+
+            for _sample in actm.samples_in:
+                identical = self._check_sample(
+                                    new_sample = _sample,
+                                    sample_list = prc.samples_in
+                                    )
+                if identical is None:
+                    _sample.action_uuid = []
+                    _sample.action_uuid.append(actm.action_uuid)
+                    prc.samples_in.append(_sample)
+                else:
+                    prc.samples_in[identical].action_uuid.append(actm.action_uuid)
+
+            for _sample in actm.samples_out:
+                identical = self._check_sample(
+                                    new_sample = _sample,
+                                    sample_list = prc.samples_out
+                                    )
+                if identical is None:
+                    _sample.action_uuid = []
+                    _sample.action_uuid.append(actm.action_uuid)
+                    prc.samples_out.append(_sample)
+                else:
+                    prc.samples_out[identical].action_uuid.append(actm.action_uuid)
+
+        self._check_sample_duplicates(prc = prc)
+
+
+    def _check_sample(self, new_sample, sample_list):
+        for idx, sample in enumerate(sample_list):
+            tmp_sample = copy.deepcopy(sample)
+            tmp_sample.action_uuid = []
+            identical = tmp_sample == new_sample
+            if identical:
+                return idx
+        return None
+
+    def _check_sample_duplicates(self, prc: ProcessModel):
+        out_labels = defaultdict(list)
+        in_labels = defaultdict(list)
+        for i, sample in enumerate(prc.samples_out):
+            out_labels[sample.get_global_label()].append(i)
+        for i, sample in enumerate(prc.samples_in):
+            in_labels[sample.get_global_label()].append(i)
+
+        isunique = True
+        for key, locs in in_labels.items():
+            if len(locs)>1:
+                isunique = False
+
+        if not isunique:
+            print_message({}, "process", "\n----------------------------------\nDuplicate but 'unique' samples.\nProcess needs to be split.\n----------------------------------", error=True)
+            print_message({}, "process", f"samples_in labels: {in_labels}", error = True)
+            print_message({}, "process", f"samples_out labels: {out_labels}", error = True)
 
 
 class Action(Process):

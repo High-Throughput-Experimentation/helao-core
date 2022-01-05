@@ -1057,7 +1057,7 @@ class Base(object):
                     self.base.print_message("sample.inheritance is None. Using 'allow_both'.")
                     sample.inheritance = "allow_both"
 
-                if sample.status is None:
+                if not sample.status:
                     self.base.print_message("sample.status is None. Using 'preserved'.")
                     sample.status = ["preserved"]
 
