@@ -43,6 +43,7 @@ class _BaseSampleAPI(object):
               last_update INTEGER NOT NULL,
               inheritance TEXT,
               status TEXT,
+              action_uuid TEXT,
               sample_creation_process_uuid VARCHAR(255),
               sample_creation_action_uuid VARCHAR(255),
               server_name VARCHAR(255),
@@ -72,7 +73,7 @@ class _BaseSampleAPI(object):
         self._con = None
         self._cur = None
         # convert these to json when saving them to the db
-        self._jsonkeys = ["chemical", "mass", "supplier", "lot_number", "source", "status"]
+        self._jsonkeys = ["chemical", "mass", "supplier", "lot_number", "source", "status", "action_uuid"]
         self.ready = False
 
     async def _open_db(self):
@@ -609,18 +610,16 @@ class OldLiquidSampleAPI:
             # to any new fields
             # del liquid_sample_jsondict["action_time"]
             # liquid_sample_jsondict.update({"action_timestamp":liquid_sample_jsondict.get("action_time","00000000.000000000000")})
-            
-            
-            
 
             volume_mL = liquid_sample_jsondict.get("volume_mL",0.0)
             liquid_sample_jsondict.update({"volume_ml":volume_mL})
-            source = liquid_sample_jsondict.get("source","")
-            source = source[0]
-            if source != "":
-                source = f"{gethostname()}__liquid__{source}"
+            source = liquid_sample_jsondict.get("source",[])
+            new_source = []
+            for src in source:
+                if src != "":
+                    new_source.append(f"{gethostname()}__liquid__{src}")
                 
-            liquid_sample_jsondict.update({"source":source})
+            liquid_sample_jsondict.update({"source":new_source})
 
             if "id" in liquid_sample_jsondict:  # old v1
                 # liquid_sample_jsondict["plate_sample_no"] = liquid_sample_jsondict["sample_no"]

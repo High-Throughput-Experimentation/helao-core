@@ -59,12 +59,12 @@ class _BaseSample(SampleModel):
     # metadata
     sample_position: Optional[str]
     inheritance: Optional[str]  # only for internal use
-    status: Optional[Union[List[str], str]]  # only for internal use
-    chemical: Optional[List[str]] = Field(default_factory=list)
-    mass: Optional[List[str]] = Field(default_factory=list)
-    supplier: Optional[List[str]] = Field(default_factory=list)
-    lot_number: Optional[List[str]] = Field(default_factory=list)
-    source: Optional[Union[List[str], str]]
+    status: List[str] = Field(default_factory=list)  # only for internal use
+    chemical: List[str] = Field(default_factory=list)
+    mass: List[str] = Field(default_factory=list)
+    supplier: List[str] = Field(default_factory=list)
+    lot_number: List[str] = Field(default_factory=list)
+    source: List[str] = Field(default_factory=list)
     comment: Optional[str]
 
 
@@ -126,7 +126,7 @@ class NoneSample(SampleModel):
     sample_type: Literal[None] = None
     global_label: Literal[None] = None
     inheritance: Optional[str]  # only for internal use
-    status: Optional[Union[List[str], str]]  # only for internal use
+    status: List[str] = Field(default_factory=list)  # only for internal use
 
     def get_global_label(self):
         return None
