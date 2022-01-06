@@ -7,12 +7,9 @@ from pydantic import BaseModel
 from typing import Any
 from enum import Enum
 
-simple = (int, str, float, bool, type(None))
-complextostr = (UUID, datetime)
-iterables = (list, set, tuple)
-
 
 class HelaoDict():
+    """implements dict and serialization methods for helao"""
     def _serialize_dict(self, dict_in: dict):
         clean = dict()
         for k, v in dict_in.items():
@@ -23,9 +20,9 @@ class HelaoDict():
 
     
     def _serialize_item(self, val: Any):
-        if isinstance(val, simple):
+        if isinstance(val, (int, str, float, bool, type(None))):
             return val
-        elif isinstance(val, complextostr):
+        elif isinstance(val, (UUID, datetime)):
             return str(val)
         elif isinstance(val, list):
             return [self._serialize_item(val = item) for item in val]
@@ -39,7 +36,15 @@ class HelaoDict():
             return val.name
         elif isinstance(val, BaseModel):
             return self._serialize_dict(dict_in = val.dict())
+        elif hasattr(val, "as_dict"):
+            return val.as_dict()
+        else:
+            tmp_str = f"Helao as_dict cannot serialize {val}"
+            raise ValueError(tmp_str)
 
+
+    def json_dict(self):
+        return self.as_dict()
 
     def as_dict(self):
         d = vars(self)
@@ -48,42 +53,52 @@ class HelaoDict():
 
 
     def fastdict(self):
-        json_list_keys = ["process_plan_list"]
+        """creates dictionaries for FastAPI post request"""
         d = vars(self)
-        params_dict = {
-            k: int(v) if isinstance(v, bool) else v
-            for k, v in d.items()
-            if not isinstance(v,types.FunctionType)
-            and not k.startswith("__")
-            and k not in json_list_keys
-            and (v is not None)
-            # and not isinstance(v, UUID)
-            and not isinstance(v,dict)
-            and not isinstance(v,list)
-            and (v != {})
-        }
-        
-        
-        json_dict = {
-            k: v
-            for k, v in d.items()
-            if not isinstance(v,types.FunctionType)
-            and not k.startswith("__")
-            and k not in json_list_keys
-            and (v is not None)
-            and not isinstance(v, UUID)
-            and isinstance(v,dict)
-        }
 
-        # # add UUID keys to json_dict
-        # for key,val in d.items():
-        #     if isinstance(val, UUID):
-        #         json_dict.update({key:str(val)})
-
-
-        for key in json_list_keys:
-            if key in d:
-                json_dict.update({key:[val.as_dict() for val in d[key]]})
-
+        params_dict = dict()
+        json_dict = dict()
+        for k, v in d.items():
+            if not isinstance(v,types.FunctionType) \
+            and not k.startswith("__") \
+            and (v is not None):
+                if isinstance(v, (dict, list, set, tuple)):
+                    json_dict.update({k:self._fastdict_serialize_item(v)})
+                elif isinstance(v, BaseModel):
+                    json_dict.update({k:self._fastdict_serialize_basemodel(v)})
+                elif hasattr(v,"json_dict"):
+                    json_dict.update({k:v.json_dict()})
+                # elif isinstance(v, UUID):
+                #     params_dict.update({k:v})
+                
+                else:
+                    params_dict.update({k:v})
 
         return params_dict, json_dict
+
+
+    def _fastdict_serialize_item(self, val: Any):
+        if isinstance(val,dict):
+            return {k:self._fastdict_serialize_item(v) for k,v in val.items()}
+        elif isinstance(val,list):
+            return [self._fastdict_serialize_item(item) for item in val]
+        elif isinstance(val,tuple):
+            return (self._fastdict_serialize_item(item) for item in val)
+        elif isinstance(val,set):
+            return {self._fastdict_serialize_item(item) for item in val}
+        elif isinstance(val, BaseModel):
+            return self._fastdict_serialize_basemodel(val)
+        elif hasattr(val,"json_dict"):
+            return val.json_dict()
+        else:
+            return val
+
+
+    def _fastdict_serialize_basemodel(self, model: BaseModel):
+        if hasattr(model, "as_dict"):
+            return model.as_dict()
+        elif hasattr(model, "dict"):
+            return self._serialize_dict(model.dict())
+        else:
+            tmp_str = f"Helao fastdict cannot serialize {model}"
+            raise ValueError(tmp_str)
