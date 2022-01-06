@@ -11,11 +11,14 @@ __all__ = [
            "AssemblySample", 
            "SampleList",
            "SampleUnion",
-           "object_to_sample"
+           "object_to_sample",
+           "SampleInheritance",
+           "SampleStatus"
           ]
 
 from socket import gethostname
 from uuid import UUID
+from enum import Enum
 
 from pydantic import BaseModel, validator, root_validator, Field
 from pydantic.tools import parse_obj_as
@@ -25,6 +28,30 @@ from typing import List, Optional, Union, Literal
 from ..helper.print_message import print_message
 from ..version import get_hlo_version
 from ..helper.helaodict import HelaoDict
+
+
+class SampleInheritance(str, Enum):
+    none = "none"
+    give_only = "give_only"
+    receive_only = "receive_only"
+    allow_both = "allow_both"
+    block_both = "block_both"
+
+
+class SampleStatus(str, Enum):
+    none = "none" 
+    # pretty self-explanatory; the sample was created during the action.
+    created = "created"
+    # also self-explanatory
+    destroyed = "destroyed"
+    # the sample exists before and after the action. e.g. an echem experiment
+    preserved = "preserved"
+    # the sample was combined with others in the action. E.g. the creation of an electrode assembly from electrodes and electrolytes
+    incorporated = "incorporated"
+    # the opposite of incorporated. E.g. an electrode assembly is taken apart, and the original electrodes are recovered, and further experiments may be done on those electrodes
+    recovered = "recovered"
+    loaded = "loaded"
+    unloaded = "unloaded"
 
 
 class SampleModel(BaseModel, HelaoDict):
