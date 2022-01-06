@@ -37,4 +37,5 @@ class ProcessSequenceModel(ProcessSequenceTemplate):
     sequence_uuid: Optional[UUID]
     sequence_timestamp: Optional[datetime]
     sequence_status: Optional[str]
+    output_dir: Optional[str]
     process_list: List[ShortProcessModel] = Field(default_factory=list)
