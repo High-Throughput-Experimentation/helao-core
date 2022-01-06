@@ -28,7 +28,7 @@ from .helper.gen_uuid import gen_uuid
 from .helper.set_time import set_time
 from .helper.helaodict import HelaoDict
 from .model.action import ActionModel, ShortActionModel
-from .model.process import ProcessModel
+from .model.process import ProcessModel, ShortProcessModel
 from .model.process_sequence import ProcessSequenceModel
 from .version import get_hlo_version
 
@@ -54,7 +54,7 @@ class Sequence(HelaoDict, object):
             self.sequence_params = {}
         self.process_plan_list = imports.get("process_plan_list", [])
         self.processmodel_list: List[ProcessModel] = []
-
+        self.sequence_output_dir = None
 
 
         def _to_time(Basemodel):
@@ -101,7 +101,10 @@ class Sequence(HelaoDict, object):
             sequence_timestamp = self.sequence_timestamp,
             sequence_status = self.sequence_status,
             process_plan_list = [process.process_name for process in self.process_plan_list],
-            # process_list = 
+            output_dir = Path(self.sequence_output_dir).as_posix() \
+                            if self.sequence_output_dir is not None else None,
+            process_list = [ShortProcessModel(**prc.dict()) for prc in self.processmodel_list]
+
         )
 
     
@@ -149,6 +152,7 @@ class Process(Sequence):
         self.result_dict = {}  # imports.get("result_dict", {})# this gets big really fast, bad for debugging
         self.global_params = {}  # TODO: reserved for internal use, do not write to .prg
 
+        self.process_output_dir = None
         self.process_action_uuid_list: List[UUID] = []#imports.get("action_uuid_list", None)
         self.process_action_list: List[ActionModel] = []
 
@@ -197,6 +201,8 @@ class Process(Sequence):
             technique_name=self.technique_name,
             process_name=self.process_name,
             process_params=self.process_params,
+            output_dir = Path(self.process_output_dir).as_posix() \
+                if self.process_output_dir is not None else None,
             # action_list = 
             # samples_in = 
             # samples_out = 

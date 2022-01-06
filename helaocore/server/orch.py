@@ -3,7 +3,7 @@ __all__ = ["Orch"]
 import asyncio
 import sys
 from collections import defaultdict, deque
-from copy import copy
+from copy import copy, deepcopy
 from math import floor
 from typing import Optional, Union, List
 from uuid import UUID
@@ -246,44 +246,52 @@ class Orch(Base):
         # clause for resuming paused action list
         self.print_message(f"orch descisions: {self.process_dq}")
         try:
-            self.last_sequence = copy(self.active_sequence)
-            self.active_sequence = self.sequence_dq.popleft()
-            self.active_sequence.init_seq(machine_name = self.hostname,
-                                          time_offset = self.ntp_offset)
-            self.active_sequence.sequence_status = "active"
-
-            # todo: this is for later, for now the operator needs to unpack the sequence
-            # in order to also use a semi manual op mode
-            
-            # self.print_message(f"unpacking processes for {self.active_sequence.sequence_name}")
-            # if self.active_sequence.sequence_name in self.sequence_lib:
-            #     unpacked_prcs = self.sequence_lib[self.active_sequence.sequence_name](**self.active_sequence.sequence_params)
-            # else:
-            #     unpacked_prcs = []
-
-            # for prc in unpacked_prcs:
-            #     D = Process(inputdict=prc)
-            #     self.active_sequence.process_plan_list.append(D)
-
-
-            self.seq_file = self.active_sequence.get_seq()
-            await self.write_seq(self.seq_file.dict(), self.active_sequence)
-
-            # add all processes from sequence to process queue
-            # todo: use seq model instead to initialize some parameters
-            # of the process
-            for prc in self.active_sequence.process_plan_list:
-                    self.print_message(f"unpack process {prc.process_name}")
-                    await self.add_process(
-                        seq = self.seq_file,
-                        # prc = prc,
-                        process_name = prc.process_name,
-                        process_params = prc.process_params,
-                        )
+            if self.sequence_dq:
+                self.last_sequence = copy(self.active_sequence)
+                self.active_sequence = self.sequence_dq.popleft()
+                self.active_sequence.init_seq(machine_name = self.hostname,
+                                              time_offset = self.ntp_offset)
+                self.active_sequence.sequence_status = "active"
+                self.active_sequence.sequence_output_dir = self.get_sequence_dir(self.active_sequence)
+    
+                # todo: this is for later, for now the operator needs to unpack the sequence
+                # in order to also use a semi manual op mode
                 
+                # self.print_message(f"unpacking processes for {self.active_sequence.sequence_name}")
+                # if self.active_sequence.sequence_name in self.sequence_lib:
+                #     unpacked_prcs = self.sequence_lib[self.active_sequence.sequence_name](**self.active_sequence.sequence_params)
+                # else:
+                #     unpacked_prcs = []
+    
+                # for prc in unpacked_prcs:
+                #     D = Process(inputdict=prc)
+                #     self.active_sequence.process_plan_list.append(D)
+    
+    
+                self.seq_file = self.active_sequence.get_seq()
+                await self.write_seq(self.active_sequence)
+    
+                # add all processes from sequence to process queue
+                # todo: use seq model instead to initialize some parameters
+                # of the process
+                for prc in self.active_sequence.process_plan_list:
+                        self.print_message(f"unpack process {prc.process_name}")
+                        await self.add_process(
+                            seq = self.active_sequence.get_seq(),
+                            # prc = prc,
+                            process_name = prc.process_name,
+                            process_params = prc.process_params,
+                            )
 
-            
-            self.loop_state = "started"
+
+                self.loop_state = "started"
+
+            else:
+
+                self.print_message("sequence queue is empty, cannot start orch loop")
+
+
+
             while self.loop_state == "started" and (self.action_dq or self.process_dq):
                 self.print_message(f"current content of action_dq: {self.action_dq}")
                 self.print_message(f"current content of process_dq: {self.process_dq}")
@@ -311,7 +319,7 @@ class Orch(Base):
                     self.active_process.gen_uuid_process(self.hostname)
                     self.active_process.access = "hte"
                     self.active_process.process_status = "active"
-
+                    self.active_process.process_output_dir = self.get_process_dir(self.active_process)
 
                     # additional process params should be stored 
                     # in process.process_params
@@ -784,8 +792,7 @@ class Orch(Base):
     async def finish_active_sequence(self):
         if self.seq_file is not None:
             self.active_sequence.sequence_status = "finished"
-            seq_file = self.active_sequence.get_seq()
-            await self.write_seq(seq_file.dict(), self.active_sequence)
+            await self.write_seq(self.active_sequence)
             self.seq_file = None
 
 
@@ -814,9 +821,14 @@ class Orch(Base):
                     self.print_message(f"adding finished action '{actm.action_name}' to process")
                     self.active_process.process_action_list.append(actm)
             
-            # get new updated prc
-            self.prc_file = self.active_process.get_prc()
-            await self.write_prc(self.prc_file.dict(), self.active_process)
+            # add finished prc to seq
+            self.active_sequence.processmodel_list.append(deepcopy(self.active_process.get_prc()))
+            # write new updated seq
+            await self.write_active_sequence_seq()
+
+            # write final prc
+            await self.write_prc(self.active_process)
+
 
         # set prc to None to signal that its done
         self.prc_file = None
@@ -826,9 +838,11 @@ class Orch(Base):
 
 
     async def write_active_process_prc(self):
-        if self.prc_file is not None:
-            await self.write_prc(self.prc_file.dict(), self.active_process)
-        # self.prc_file = None
+        await self.write_prc(self.active_process)
+
+
+    async def write_active_sequence_seq(self):
+        await self.write_seq(self.active_sequence)
 
 
     async def shutdown(self):

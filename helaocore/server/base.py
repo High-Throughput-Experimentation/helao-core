@@ -427,10 +427,10 @@ class Base(object):
         self.ntp_syncer.cancel()
 
 
-    async def write_act(self, act_dict: dict, action):
+    async def write_act(self, action):
         "Create new prc if it doesn't exist."
         if action.save_act:
-            act_dict = cleanupdict(act_dict)
+            act_dict = cleanupdict(action.get_act().dict())
             output_path = os.path.join(self.save_root,action.output_dir)
             output_file = os.path.join(output_path, f"{action.action_timestamp.strftime('%Y%m%d.%H%M%S%f')}.meta")
     
@@ -448,8 +448,8 @@ class Base(object):
                                info = True)
 
 
-    async def write_prc(self, prc_dict: dict, process):
-        prc_dict = cleanupdict(prc_dict)
+    async def write_prc(self, process):
+        prc_dict = cleanupdict(process.get_prc().dict())
         output_path = os.path.join(
                                    self.save_root, 
                                    self.get_process_dir(process)
@@ -462,7 +462,6 @@ class Base(object):
         if not os.path.exists(output_path):
             os.makedirs(output_path, exist_ok=True)
         
-        # async with aiofiles.open(output_file, mode="a+") as f:
         async with aiofiles.open(output_file, mode="w+") as f:
             await f.write(pyaml.dump({"file_type":"process"}))
             if not output_str.endswith("\n"):
@@ -470,13 +469,9 @@ class Base(object):
             await f.write(output_str)
 
 
-    async def write_seq(self, seq_dict: dict, sequence):
-        seq_dict = cleanupdict(seq_dict)
-        sequence_dir = self.get_sequence_dir(
-                         sequence_timestamp = sequence.sequence_timestamp,
-                         sequence_name = sequence.sequence_name,
-                         sequence_label = sequence.sequence_label
-                         )
+    async def write_seq(self, sequence):
+        seq_dict = cleanupdict(sequence.get_seq().dict())
+        sequence_dir = self.get_sequence_dir(sequence)
         output_path = os.path.join(self.save_root, sequence_dir)
         output_file = os.path.join(output_path, f"{sequence.sequence_timestamp.strftime('%Y%m%d.%H%M%S%f')}.meta")
 
@@ -494,35 +489,33 @@ class Base(object):
             await f.write(output_str)
 
 
-    def get_sequence_dir(
-                         self, 
-                         sequence_timestamp: datetime,
-                         sequence_name,
-                         sequence_label
-                        ):
-        HMS = sequence_timestamp.strftime("%H%M%S")
-        year_week = sequence_timestamp.strftime("%y.%U")
-        sequence_date = sequence_timestamp.strftime("%Y%m%d")
+    def get_sequence_dir(self, sequence):
+        HMS = sequence.sequence_timestamp.strftime("%H%M%S")
+        year_week = sequence.sequence_timestamp.strftime("%y.%U")
+        sequence_date = sequence.sequence_timestamp.strftime("%Y%m%d")
         
         return os.path.join(
             year_week,
             sequence_date,
-            f"{HMS}__{sequence_name}__{sequence_label}",
+            f"{HMS}__{sequence.sequence_name}__{sequence.sequence_label}",
         )
 
 
     def get_process_dir(self, process):
         """accepts action or process object"""
         process_time = process.process_timestamp.strftime("%H%M%S%f")
-
-        sequence_dir = self.get_sequence_dir(
-                         sequence_timestamp = process.sequence_timestamp,
-                         sequence_name = process.sequence_name,
-                         sequence_label = process.sequence_label
-                         )
+        sequence_dir = self.get_sequence_dir(process)
         return os.path.join(
             sequence_dir,
             f"{process_time}__{process.process_name}",
+        )
+
+
+    def get_action_dir(self, action):
+        process_dir = self.get_process_dir(action)
+        return os.path.join(
+            process_dir,
+            f"{action.action_actual_order}__{action.action_timestamp.strftime('%Y%m%d.%H%M%S%f')}__{action.action_server_name}__{action.action_name}",
         )
 
 
@@ -547,11 +540,7 @@ class Base(object):
             self.action.file_sample_label = file_sample_label
             self.action.action_status = "active"
             self.action.header = header
-            self.act_file = None
-            self.manual_prc_file = None
-            self.manual_seq_file = None
             self.manual = False
-            self.process_dir = None
 
             if file_sample_keys is None:
                 self.action.file_sample_keys = ["None"]
@@ -630,11 +619,7 @@ class Base(object):
                 if self.action.save_data is True:
                     self.action.save_act = True
 
-                self.process_dir = self.base.get_process_dir(self.action)
-                self.action.output_dir = os.path.join(
-                    self.process_dir,
-                    f"{self.action.action_actual_order}__{self.action.action_timestamp.strftime('%Y%m%d.%H%M%S%f')}__{self.action.action_server_name}__{self.action.action_name}",
-                )
+                self.action.output_dir = self.base.get_action_dir(self.action)
 
             self.base.print_message(
                 f"save_act is '{self.action.save_act}' for action '{self.action.action_name}'",
@@ -647,10 +632,9 @@ class Base(object):
 
             self.data_logger = self.base.aloop.create_task(self.log_data_task())
 
+
         async def update_act_file(self):
-            self.act_file = self.action.get_act()
-            # write initial temporary prc file
-            await self.base.write_act(self.act_file.dict(), self.action)
+            await self.base.write_act(self.action)
 
 
         async def myinit(self):
@@ -664,11 +648,9 @@ class Base(object):
 
                 if self.manual:
                     # create and write seq file for manual action
-                    self.manual_seq_file = self.action.get_seq()
-                    await self.base.write_seq(self.manual_seq_file.dict(), self.action)
+                    await self.base.write_seq(self.action)
                     # create and write prc file for manual action
-                    self.manual_prc_file = self.action.get_prc()
-                    await self.base.write_prc(self.manual_prc_file.dict(), self.action)
+                    await self.base.write_prc(self.action)
 
                 if self.action.save_data:
                     for i, file_sample_key in enumerate(self.action.file_sample_keys):
@@ -1081,9 +1063,8 @@ class Base(object):
                     await self.file_conn[filekey].close()
             self.file_conn = dict()
 
-            self.act_file = self.action.get_act()
-            # write full prc header to file
-            await self.base.write_act(self.act_file.dict(), self.action)
+            # write final act meta file (overwrite existing one)
+            await self.base.write_act(self.action)
 
             await self.clear_status()
             self.data_logger.cancel()
