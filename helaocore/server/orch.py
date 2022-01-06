@@ -71,8 +71,7 @@ class Orch(Base):
         self.last_process = None
         self.active_sequence = None
         self.last_sequence = None
-        self.prc_file = None
-        self.seq_file = None
+
 
         # compilation of action server status dicts
         self.global_state_dict = defaultdict(lambda: defaultdict(list))
@@ -247,7 +246,6 @@ class Orch(Base):
         self.print_message(f"orch descisions: {self.process_dq}")
         try:
             if self.sequence_dq:
-                self.last_sequence = copy(self.active_sequence)
                 self.active_sequence = self.sequence_dq.popleft()
                 self.active_sequence.init_seq(machine_name = self.hostname,
                                               time_offset = self.ntp_offset)
@@ -309,7 +307,6 @@ class Orch(Base):
                     self.print_message("getting action_dq from new process")
                     # generate uids when populating, 
                     # generate timestamp when acquring
-                    self.last_process = copy(self.active_process)
                     self.active_process = self.process_dq.popleft()
                     self.print_message(f"new active process is {self.active_process.process_name}")
 
@@ -351,7 +348,6 @@ class Orch(Base):
 
 
                     # write a temporary prc
-                    self.prc_file = self.active_process.get_prc()
                     await self.write_active_process_prc()
 
                 else:
@@ -790,17 +786,18 @@ class Orch(Base):
 
     
     async def finish_active_sequence(self):
-        if self.seq_file is not None:
+        if self.active_sequence is not None:
             self.active_sequence.sequence_status = "finished"
             await self.write_seq(self.active_sequence)
-            self.seq_file = None
+            self.last_sequence = copy(self.active_sequence)
+            self.active_sequence = None
 
 
     async def finish_active_process(self):
         # we need to wait for all actions to finish first
         await self.orch_wait_for_all_actions()
-        if self.prc_file is not None:
-            self.print_message(f"finished prc uuid is: {self.prc_file.process_uuid}, adding matching acts to it")
+        if self.active_process is not None:
+            self.print_message(f"finished prc uuid is: {self.active_process.process_uuid}, adding matching acts to it")
 
             # todo: update here all acts from self.dispatched_actions list
             self.active_process.process_action_uuid_list = []
@@ -830,8 +827,8 @@ class Orch(Base):
             await self.write_prc(self.active_process)
 
 
-        # set prc to None to signal that its done
-        self.prc_file = None
+        self.last_process = copy(self.active_process)
+        self.active_process = None
         # set dispatched actions to zero again
         self.dispatched_actions = {}
         self.finished_actions = []
