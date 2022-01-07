@@ -20,7 +20,11 @@ class HelaoDict():
 
     
     def _serialize_item(self, val: Any):
-        if isinstance(val, (int, str, float, bool, type(None))):
+        
+        if isinstance(val, Enum):
+            # need to be first to catch also str enums
+            return val.name
+        elif isinstance(val, (int, str, float, bool, type(None))):
             return val
         elif isinstance(val, (UUID, datetime)):
             return str(val)
@@ -32,8 +36,6 @@ class HelaoDict():
             return {self._serialize_item(val = item) for item in val}
         elif isinstance(val, dict):
             return self._serialize_dict(dict_in = val)
-        elif isinstance(val, Enum):
-            return val.name
         elif isinstance(val, BaseModel):
             return self._serialize_dict(dict_in = val.dict())
         elif hasattr(val, "as_dict"):
@@ -102,3 +104,44 @@ class HelaoDict():
         else:
             tmp_str = f"Helao fastdict cannot serialize {model}"
             raise ValueError(tmp_str)
+
+
+    def clean_dict(self):
+        return self._cleanupdict(self.as_dict())
+    
+        
+    def _cleanupdict(self, d):
+        clean = {}
+        for k, v in d.items():
+            if k.startswith("_"):
+                continue
+            elif isinstance(v, dict):
+                nested = self._cleanupdict(v)
+                if len(nested.keys()) > 0:
+                    clean[k] = nested
+            elif v is not None:
+                if isinstance(v, Enum):
+                    clean[k] = v.name
+                elif isinstance(v, UUID):
+                    clean[k] = str(v)
+                elif isinstance(v, list):
+                    if len(v) !=0:
+                        clean[k] = self._cleanuplist(v)
+                elif isinstance(v, str):
+                    if len(v) !=0:
+                        clean[k] = v
+                else:
+                    clean[k] = v
+        return clean
+    
+    
+    def _cleanuplist(self, input_list):
+        clean_list = []
+        for list_item in input_list:
+            if isinstance(list_item, dict):
+                clean_list.append(self._cleanupdict(list_item))
+            elif isinstance(list_item, UUID):
+                clean_list.append(str(list_item))
+            else:
+                clean_list.append(list_item)
+        return clean_list
