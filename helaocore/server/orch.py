@@ -240,12 +240,17 @@ class Orch(Base):
 
     async def dispatch_loop_task(self):
         """Parse process and action queues, and dispatch action_dq while tracking run state flags."""
-        self.print_message("running operator orch")
-        self.print_message(f"orch status: {self.global_state_str}")
+        self.print_message("--- started operator orch ---")
+        self.print_message(f"current orch status: {self.global_state_str}")
         # clause for resuming paused action list
-        self.print_message(f"orch descisions: {self.process_dq}")
+        self.print_message(f"current orch sequences: {self.sequence_dq}")
+        self.print_message(f"current orch descisions: {self.process_dq}")
+        self.print_message(f"current orch actions: {self.action_dq}")
+        self.print_message("--- resuming orch loop now ---")
+        
         try:
             if self.sequence_dq:
+                self.print_message("getting new sequence from sequence_dq")
                 self.active_sequence = self.sequence_dq.popleft()
                 self.active_sequence.init_seq(machine_name = self.hostname,
                                               time_offset = self.ntp_offset)
@@ -285,7 +290,6 @@ class Orch(Base):
                 self.loop_state = "started"
 
             else:
-
                 self.print_message("sequence queue is empty, cannot start orch loop")
 
 
@@ -296,15 +300,15 @@ class Orch(Base):
                 await asyncio.sleep(
                     0.001
                 )  
-                # allows status changes to affect between action_dq, 
-                # also enforce unique timestamp
+                
+                # if status queue is empty get first new actions from new process
                 if not self.action_dq:
-
-                    # this wait for all actions in active process
-                    # to finish and then updates the prc with the acts
+                    self.print_message("action_dq is empty, getting new actions")
+                    # wait for all actions in last/active process to finish 
+                    self.print_message("finishing last active process first")
                     await self.finish_active_process()
 
-                    self.print_message("getting action_dq from new process")
+                    self.print_message("getting new process to fill action_dq")
                     # generate uids when populating, 
                     # generate timestamp when acquring
                     self.active_process = self.process_dq.popleft()
@@ -351,6 +355,7 @@ class Orch(Base):
                     await self.write_active_process_prc()
 
                 else:
+                    self.print_message("actions in action_dq, processing them")
                     if self.loop_intent == "stop":
                         self.print_message("stopping orchestrator")
                         # monitor status of running action_dq, then end loop
@@ -500,7 +505,9 @@ class Orch(Base):
             # finish the last prc
             # this wait for all actions in active process
             # to finish and then updates the prc with the acts
+            self.print_message("finishing final process")
             await self.finish_active_process()
+            self.print_message("finishing final sequence")
             await self.finish_active_sequence()
 
 
@@ -663,10 +670,10 @@ class Orch(Base):
             self.process_dq.insert(i=at_index, x=D)
         elif prepend:
             self.process_dq.appendleft(D)
-            self.print_message(f"process {str(D.process_uuid)} prepended to queue")
+            self.print_message(f"process {D.process_name} prepended to queue")
         else:
             self.process_dq.append(D)
-            self.print_message(f"process {str(D.process_uuid)} appended to queue")
+            self.print_message(f"process {D.process_name} appended to queue")
 
 
     def list_processes(self):

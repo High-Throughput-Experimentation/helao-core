@@ -26,10 +26,10 @@ from .dispatcher import async_private_dispatcher
 from ..helper.helao_dirs import helao_dirs
 from ..helper.multisubscriber_queue import MultisubscriberQueue
 from ..helper.print_message import print_message
-from ..helper.cleanup_dict import cleanupdict
 from ..helper import async_copy
 from ..schema import Action
 from ..model.sample import SampleUnion, NoneSample
+from ..model.sample import SampleInheritance, SampleStatus
 from ..model.fileinfo import FileInfo
 from ..helper.file_in_use import file_in_use
 from ..version import get_hlo_version
@@ -430,7 +430,7 @@ class Base(object):
     async def write_act(self, action):
         "Create new prc if it doesn't exist."
         if action.save_act:
-            act_dict = cleanupdict(action.get_act().dict())
+            act_dict = action.get_act().clean_dict()
             output_path = os.path.join(self.save_root,action.output_dir)
             output_file = os.path.join(output_path, f"{action.action_timestamp.strftime('%Y%m%d.%H%M%S%f')}.meta")
     
@@ -449,7 +449,7 @@ class Base(object):
 
 
     async def write_prc(self, process):
-        prc_dict = cleanupdict(process.get_prc().dict())
+        prc_dict = process.get_prc().clean_dict()
         output_path = os.path.join(
                                    self.save_root, 
                                    self.get_process_dir(process)
@@ -470,7 +470,7 @@ class Base(object):
 
 
     async def write_seq(self, sequence):
-        seq_dict = cleanupdict(sequence.get_seq().dict())
+        seq_dict = sequence.get_seq().clean_dict()
         sequence_dir = self.get_sequence_dir(sequence)
         output_path = os.path.join(self.save_root, sequence_dir)
         output_file = os.path.join(output_path, f"{sequence.sequence_timestamp.strftime('%Y%m%d.%H%M%S%f')}.meta")
@@ -1010,20 +1010,6 @@ class Base(object):
 
         async def append_sample(self, samples: List[SampleUnion], IO: str):
             "Add sample to samples_out and samples_in dict"
-
-            # - inheritance
-            # give_only:
-            # receive_only:
-            # allow_both:
-            # block_both:
-
-            # - status:
-            # created: pretty self-explanatory; the sample was created during the action.
-            # destroyed: also self-explanatory
-            # preserved: the sample exists before and after the action. e.g. an echem experiment
-            # incorporated: the sample was combined with others in the action. E.g. the creation of an electrode assembly from electrodes and electrolytes
-            # recovered: the opposite of incorporated. E.g. an electrode assembly is taken apart, and the original electrodes are recovered, and further experiments may be done on those electrodes
-
             # check if samples is empty
             if not samples:
                 return
@@ -1037,11 +1023,11 @@ class Base(object):
                 
                 if sample.inheritance is None:
                     self.base.print_message("sample.inheritance is None. Using 'allow_both'.")
-                    sample.inheritance = "allow_both"
+                    sample.inheritance = SampleInheritance.allow_both
 
                 if not sample.status:
-                    self.base.print_message("sample.status is None. Using 'preserved'.")
-                    sample.status = ["preserved"]
+                    self.base.print_message(f"sample.status is None. Using '{SampleStatus.preserved}'.")
+                    sample.status = [SampleStatus.preserved]
 
                 if IO == "in":
                     if self.action.samples_in is None:
