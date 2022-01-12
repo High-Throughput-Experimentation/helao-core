@@ -145,8 +145,6 @@ class Base(object):
         url_list = []
         for route in app.routes:
             routeD = {"path": route.path, "name": route.name}
-            # print(route.path)
-            # print(route.name)
             if "dependant" in dir(route):
                 flatParams = get_flat_params(route.dependant)
                 paramD = {
@@ -653,25 +651,11 @@ class Base(object):
                     await self.base.write_prc(self.action)
 
                 if self.action.save_data:
-                    for i, file_sample_key in enumerate(self.action.file_sample_keys):
-                        header, file_info = self.init_datafile(
-                            header=self.action.header.get(file_sample_key, None),
-                            file_type=self.action.file_type,
-                            file_data_keys=self.action.file_data_keys.get(file_sample_key, None),
-                            file_sample_label=self.action.file_sample_label.get(file_sample_key, None),
-                            filename=None,  # always autogen a filename
-                            file_group=self.action.file_group,
-                            filenum=i,
-                        )
-                        if self.action.file_dict is None:
-                            self.action.file_dict = []
-                        self.action.file_dict.append(file_info)
-
-                        await self.set_output_file(
-                            filename=file_info.file_name,
-                            header=header,
-                            file_sample_key=file_sample_key,
-                        )
+                    for file_sample_key in self.action.file_sample_keys:
+                        # no file yet created
+                        self.file_conn[file_sample_key] = None
+                        # no header finished
+                        self.finished_hlo_header[file_sample_key] = False
 
             await self.add_status()
 
@@ -684,8 +668,11 @@ class Base(object):
             file_sample_label,
             filename,
             file_group,
-            filenum: Optional[int] = 0,
+            file_sample_key: Optional[str] = None
         ):
+            filenum = 0
+            if file_sample_key in self.action.file_sample_keys:
+                filenum = self.action.file_sample_keys.index(file_sample_key)
 
             if header:
                 if isinstance(header, dict):
@@ -699,6 +686,8 @@ class Base(object):
                     # else:
                     #     header_lines = len(header.split("\n"))
 
+            if file_data_keys is None:
+                file_data_keys = []
 
             if filename is None:  # generate filename
                 file_ext = "csv"
@@ -820,24 +809,43 @@ class Base(object):
                  }
             )
 
+
         async def set_realtime(self, epoch_ns: Optional[float] = None, offset: Optional[float] = None):
             # return self.set_realtime_nowait(epoch_ns=epoch_ns, offset=offset)
             return self.base.set_realtime_nowait(epoch_ns=epoch_ns, offset=offset)
 
+
         def set_realtime_nowait(self, epoch_ns: Optional[float] = None, offset: Optional[float] = None):
             return self.base.set_realtime_nowait(epoch_ns=epoch_ns, offset=offset)
 
-        async def set_output_file(self, filename: str, file_sample_key: str, header: Optional[str] = None):
+
+        async def set_output_file(self, file_sample_key: str):
             "Set active save_path, write header if supplied."
+
+            header, file_info = self.init_datafile(
+                header=self.action.header.get(file_sample_key, None),
+                file_type=self.action.file_type,
+                file_data_keys=self.action.file_data_keys.get(file_sample_key, []),
+                file_sample_label=self.action.file_sample_label.get(file_sample_key, None),
+                filename=None,  # always autogen a filename
+                file_group=self.action.file_group,
+                file_sample_key = file_sample_key
+            )
+
+            if self.action.file_dict is None:
+                self.action.file_dict = []
+            self.action.file_dict.append(file_info)
+            filename = file_info.file_name
+
             output_path = os.path.join(self.base.save_root, self.action.output_dir, filename)
             self.base.print_message(f"writing data to: {output_path}")
             # create output file and set connection
             self.file_conn[file_sample_key] = await aiofiles.open(output_path, mode="a+")
-            self.finished_hlo_header[file_sample_key] = False
             if header:
                 if not header.endswith("\n"):
                     header += "\n"
                 await self.file_conn[file_sample_key].write(header)
+
 
         async def write_live_data(self, output_str: str, file_conn_key):
             """Appends lines to file_conn."""
@@ -888,6 +896,11 @@ class Base(object):
                         self.action.data.append(data_val)
                         for sample, sample_data in data_val.items():
                             if sample in self.file_conn:
+                                # check if we need to create the file first
+                                if self.file_conn[sample] is None:
+                                    await self.set_output_file(
+                                        file_sample_key = sample)
+                                
                                 if self.file_conn[sample]:
                                     # check if end of hlo header was writen
                                     # else force it here
