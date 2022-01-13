@@ -584,22 +584,32 @@ class Base(object):
             self.file_conn = dict()
 
             # check if its swagger submission
-            if self.action.sequence_timestamp is None:
-                self.manual = True
-                self.base.print_message("Manual Sequence.", info=True)
-                self.action.sequence_name = "manual_swagger_seq"
-                # self.action.set_sequence_time(offset=self.base.ntp_offset)
-                # self.action.gen_uuid_sequence(self.base.ntp_offset)
-                self.action.init_seq(machine_name = self.base.ntp_offset,
-                                     time_offset = self.base.ntp_offset)
-
-
-            if self.action.process_timestamp is None:
+            if self.action.sequence_timestamp is None \
+            or self.action.process_timestamp is None:
                 self.manual = True
                 self.base.print_message("Manual Action.", info=True)
+                self.action.access = "manual"
+
+                # -- (1) -- set missing sequence parameters
+                self.action.sequence_name = "manual_swagger_seq"
+                self.action.init_seq(machine_name = self.base.ntp_offset,
+                                     time_offset = self.base.ntp_offset)
+                self.action.sequence_output_dir = \
+                    self.base.get_sequence_dir(self.action)
+                self.action.sequence_status = "active"
+
+                # -- (2) -- set missing process parameters
                 self.action.process_name="MANUAL"
                 self.action.set_dtime(offset=self.base.ntp_offset)
                 self.action.gen_uuid_process(self.base.hostname)
+                self.action.process_output_dir = \
+                    self.base.get_process_dir(self.action)
+                self.action.process_status = "active"
+                # these are set in setup_action
+                # self.action.technique_name = "MANUAL"
+                # self.action.orchestrator = "MANUAL"
+                # machine name is set above
+
 
             if not self.base.save_root:
                 self.base.print_message(
@@ -1062,6 +1072,9 @@ class Base(object):
                     await self.file_conn[filekey].close()
             self.file_conn = dict()
 
+            if self.manual:
+                await self.finish_manual_action()
+
             # write final act meta file (overwrite existing one)
             await self.base.write_act(self.action)
 
@@ -1097,3 +1110,26 @@ class Base(object):
             for x in self.action.file_paths:
                 new_path = os.path.join(self.base.save_root, self.action.output_dir, os.path.basename(x))
                 await async_copy(x, new_path)
+
+        async def finish_manual_action(self):
+            if self.manual:
+                self.action.process_status = "finished"
+                self.action.sequence_status = "finished"
+                
+                # add action to process
+                self.action.process_action_list.append(
+                    self.action.get_act()
+                )
+
+                # add process to sequence
+                self.action.processmodel_list.append(
+                    self.action.get_prc()
+                )
+
+                # this will write the correct
+                # sequence and process meta files for 
+                # manual operation
+                # create and write seq file for manual action
+                await self.base.write_seq(self.action)
+                # create and write prc file for manual action
+                await self.base.write_prc(self.action)

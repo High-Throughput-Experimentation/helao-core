@@ -179,7 +179,7 @@ class _BaseSampleAPI(object):
         return sample
 
 
-    async def new_sample(self, samples: List[SampleUnion] = None):
+    async def new_sample(self, samples: List[SampleUnion] = None) -> List[SampleUnion]:
         if samples is None:
             samples = []
         while not self.ready:
@@ -228,7 +228,7 @@ class _BaseSampleAPI(object):
         await self.count_samples() # has also a separate lock
 
 
-    async def count_samples(self):
+    async def count_samples(self) -> int:
         while not self.ready:
             self._base.print_message("db not ready", info = True)
             await asyncio.sleep(0.1)
@@ -243,7 +243,7 @@ class _BaseSampleAPI(object):
             return counts
 
 
-    async def get_sample(self, samples: List[SampleUnion] = []):
+    async def get_sample(self, samples: List[SampleUnion] = []) -> List[SampleUnion]:
         """this will only use the sample_no for local sample, or global_label for external samples
         and fills in the rest from the db and returns the list again.
         We expect to not have mixed sample types here.
@@ -445,7 +445,7 @@ class SolidSampleAPI(_BaseSampleAPI):
         )
 
 
-    async def new_sample(self, samples: List[SampleUnion] = []):
+    async def new_sample(self, samples: List[SampleUnion] = []) -> List[SampleUnion]:
         self._base.print_message("new_sample is not supported yet for solid sample", error=True)
         await asyncio.sleep(0.001)
         ret_samples = []
@@ -453,7 +453,7 @@ class SolidSampleAPI(_BaseSampleAPI):
         return ret_samples
 
 
-    async def get_sample(self, samples: List[SampleUnion] = []):
+    async def get_sample(self, samples: List[SampleUnion] = []) -> List[SampleUnion]:
 
         await asyncio.sleep(0.001)
         ret_samples = []
@@ -473,7 +473,7 @@ class SolidSampleAPI(_BaseSampleAPI):
         return ret_samples
 
 
-    async def update_sample(self, samples: List[SampleUnion] = []):
+    async def update_sample(self, samples: List[SampleUnion] = []) -> List[SampleUnion]:
         self._base.print_message("Update is not supported yet for solid sample", error=True)
         await asyncio.sleep(0.001)
 
@@ -659,7 +659,7 @@ class UnifiedSampleDataAPI:
         self.assemblyAPI = AssemblySampleAPI(self._base)
         self.ready = False
 
-    async def init_db(self):
+    async def init_db(self) -> None:
         await self.solidAPI.init_db()
         await self.liquidAPI.init_db()
         await self.gasAPI.init_db()
@@ -668,7 +668,7 @@ class UnifiedSampleDataAPI:
         self.ready = True
 
 
-    async def new_sample(self, samples: List[SampleUnion] = []):
+    async def new_sample(self, samples: List[SampleUnion] = []) -> List[SampleUnion]:
         retval = []
 
         for sample in samples:
@@ -688,7 +688,7 @@ class UnifiedSampleDataAPI:
         return retval
 
 
-    async def get_sample(self, samples: List[SampleUnion] = []):
+    async def get_sample(self, samples: List[SampleUnion] = []) -> List[SampleUnion]:
         """this will only use the sample_no for local sample, or global_label for external samples
         and fills in the rest from the db and returns the list again.
         We expect to not have mixed sample types here.
@@ -719,7 +719,7 @@ class UnifiedSampleDataAPI:
         return retval
 
     
-    async def update_sample(self, samples: List[SampleUnion] = []):
+    async def update_sample(self, samples: List[SampleUnion] = []) -> None:
         for sample in samples:
             self._base.print_message(f"updating sample: {sample.global_label}", info=True)
             if isinstance(sample, LiquidSample):
