@@ -430,7 +430,7 @@ class Base(object):
         if action.save_act:
             act_dict = action.get_act().clean_dict()
             output_path = os.path.join(self.save_root,action.output_dir)
-            output_file = os.path.join(output_path, f"{action.action_timestamp.strftime('%Y%m%d.%H%M%S%f')}.meta")
+            output_file = os.path.join(output_path, f"{action.action_timestamp.strftime('%Y%m%d.%H%M%S%f')}.yml")
     
             self.print_message(f"writing to act meta file: {output_path}")
     
@@ -452,7 +452,7 @@ class Base(object):
                                    self.save_root, 
                                    self.get_experiment_dir(experiment)
                                   )
-        output_file = os.path.join(output_path, f"{experiment.experiment_timestamp.strftime('%Y%m%d.%H%M%S%f')}.meta")
+        output_file = os.path.join(output_path, f"{experiment.experiment_timestamp.strftime('%Y%m%d.%H%M%S%f')}.yml")
 
         self.print_message(f"writing to prc meta file: {output_file}")
         output_str = pyaml.dump(prc_dict, sort_dicts=False)
@@ -471,7 +471,7 @@ class Base(object):
         seq_dict = sequence.get_seq().clean_dict()
         sequence_dir = self.get_sequence_dir(sequence)
         output_path = os.path.join(self.save_root, sequence_dir)
-        output_file = os.path.join(output_path, f"{sequence.sequence_timestamp.strftime('%Y%m%d.%H%M%S%f')}.meta")
+        output_file = os.path.join(output_path, f"{sequence.sequence_timestamp.strftime('%Y%m%d.%H%M%S%f')}.yml")
 
         self.print_message(f"writing to seq meta file: {output_file}")
         output_str = pyaml.dump(seq_dict, sort_dicts=False)
