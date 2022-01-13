@@ -1,7 +1,7 @@
 __all__ = [
-           "ProcessTemplate",
-           "ProcessModel",
-           "ShortProcessModel"
+           "ExperimentTemplate",
+           "ExperimentModel",
+           "ShortExperimentModel"
           ]
 
 from datetime import datetime
@@ -17,44 +17,44 @@ from ..version import get_hlo_version
 from ..helper.helaodict import HelaoDict
 
 
-class ShortProcessModel(BaseModel, HelaoDict):
-    process_uuid: Optional[UUID]
-    process_name: Optional[str]
+class ShortExperimentModel(BaseModel, HelaoDict):
+    experiment_uuid: Optional[UUID]
+    experiment_name: Optional[str]
     output_dir: Optional[str]
 
 
-class ProcessTemplate(BaseModel, HelaoDict):
+class ExperimentTemplate(BaseModel, HelaoDict):
     access: Optional[str]
     technique_name: Optional[str]
-    process_name: Optional[str]
-    process_params: Optional[dict]
+    experiment_name: Optional[str]
+    experiment_params: Optional[dict]
 
-    def make_process(
+    def make_experiment(
                      self, 
                      orchestrator: str, 
                      machine_name: str, 
                      sequence_uuid: UUID, 
-                     process_uuid: UUID, 
-                     process_timestamp: datetime, 
+                     experiment_uuid: UUID, 
+                     experiment_timestamp: datetime, 
                     ):
-        return ProcessModel(
+        return ExperimentModel(
                         **self.dict(),
                         orchestrator = orchestrator,
                         machine_name = machine_name,
                         sequence_uuid = sequence_uuid,
-                        process_uuid = process_uuid,
-                        process_timestamp = process_timestamp
+                        experiment_uuid = experiment_uuid,
+                        experiment_timestamp = experiment_timestamp
         )
 
 
-class ProcessModel(ProcessTemplate):
+class ExperimentModel(ExperimentTemplate):
     hlo_version: Optional[str] = get_hlo_version()
     orchestrator: Optional[str]
     machine_name: Optional[str]
     sequence_uuid: Optional[UUID]
-    process_uuid: Optional[UUID]
-    process_timestamp: Optional[datetime]
-    process_status: Optional[str]
+    experiment_uuid: Optional[UUID]
+    experiment_timestamp: Optional[datetime]
+    experiment_status: Optional[str]
     output_dir: Optional[str]
     action_list: List[ShortActionModel] = Field(default_factory=list)
     samples_in: List[SampleUnion] = Field(default_factory=list)

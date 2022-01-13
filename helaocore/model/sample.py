@@ -81,7 +81,7 @@ class _BaseSample(SampleModel):
     # action related
     action_uuid: List[UUID] = Field(default_factory=list)
     sample_creation_action_uuid: Optional[UUID]
-    sample_creation_process_uuid: Optional[UUID]
+    sample_creation_experiment_uuid: Optional[UUID]
 
     # metadata
     sample_position: Optional[str]

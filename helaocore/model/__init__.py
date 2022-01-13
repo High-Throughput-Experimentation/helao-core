@@ -12,6 +12,6 @@ from .sample import SolidSample
 from .sample import object_to_sample
 from .sample import SampleInheritance
 from .sample import SampleStatus
-from .process import ProcessModel
-from .process_sequence import ProcessSequenceModel
+from .experiment import ExperimentModel
+from .experiment_sequence import ExperimentSequenceModel
 from .fileinfo import FileInfo

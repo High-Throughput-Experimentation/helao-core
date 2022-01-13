@@ -1,6 +1,6 @@
 __all__ = [
-           "ProcessSequenceTemplate",
-           "ProcessSequenceModel"
+           "ExperimentSequenceTemplate",
+           "ExperimentSequenceModel"
            ]
 
 from datetime import datetime
@@ -9,33 +9,33 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from .process import ShortProcessModel
+from .experiment import ShortExperimentModel
 from ..version import get_hlo_version
 from ..helper.helaodict import HelaoDict
 
 
-class ProcessSequenceTemplate(BaseModel, HelaoDict):
+class ExperimentSequenceTemplate(BaseModel, HelaoDict):
     sequence_name: Optional[str]
     sequence_params: Optional[dict]
     sequence_label: Optional[str]
-    process_plan_list: List[str] = Field(default_factory=list)
+    experiment_plan_list: List[str] = Field(default_factory=list)
 
     def make_sequence(
                       self, 
                       sequence_timestamp: datetime, 
                       sequence_uuid: UUID
                      ):
-        return ProcessSequenceModel(
+        return ExperimentSequenceModel(
             **self.dict(), 
             sequence_timestamp=sequence_timestamp, 
             sequence_uuid=sequence_uuid
         )
 
 
-class ProcessSequenceModel(ProcessSequenceTemplate):
+class ExperimentSequenceModel(ExperimentSequenceTemplate):
     hlo_version: Optional[str] = get_hlo_version()
     sequence_uuid: Optional[UUID]
     sequence_timestamp: Optional[datetime]
     sequence_status: Optional[str]
     output_dir: Optional[str]
-    process_list: List[ShortProcessModel] = Field(default_factory=list)
+    experiment_list: List[ShortExperimentModel] = Field(default_factory=list)

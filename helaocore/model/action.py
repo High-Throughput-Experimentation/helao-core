@@ -25,8 +25,8 @@ class ActionModel(ShortActionModel):
     orchestrator: Optional[str]
     machine_name: Optional[str]
     access: Optional[str]
-    process_uuid: Optional[UUID]
-    process_timestamp: Optional[datetime]
+    experiment_uuid: Optional[UUID]
+    experiment_timestamp: Optional[datetime]
     action_timestamp: Optional[datetime]
     action_status: Optional[str]
     action_order: Optional[int] = 0

@@ -7,7 +7,7 @@ from ..schema import Action
 async def async_action_dispatcher(world_config_dict: dict, A: Action):
     """Request non-blocking action_dq which may run concurrently.
 
-    Send action object to action server for processing.
+    Send action object to action server for experimenting.
 
     Args:
         A: an action type object contain action server name, endpoint, parameters

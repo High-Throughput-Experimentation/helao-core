@@ -5,10 +5,10 @@ Standard classes for experiment queue objects.
 
 __all__ = [
            "Sequence", 
-           "Process", 
+           "Experiment", 
            "Action", 
            "ActionPlanMaker",
-           "ProcessPlanMaker"
+           "ExperimentPlanMaker"
           ]
 
 
@@ -28,8 +28,8 @@ from .helper.gen_uuid import gen_uuid
 from .helper.set_time import set_time
 from .helper.helaodict import HelaoDict
 from .model.action import ActionModel, ShortActionModel
-from .model.process import ProcessModel, ShortProcessModel
-from .model.process_sequence import ProcessSequenceModel
+from .model.experiment import ExperimentModel, ShortExperimentModel
+from .model.experiment_sequence import ExperimentSequenceModel
 from .version import get_hlo_version
 
 
@@ -52,8 +52,8 @@ class Sequence(HelaoDict, object):
         self.sequence_params = imports.get("sequence_params", {})
         if self.sequence_params is None:
             self.sequence_params = {}
-        self.process_plan_list = imports.get("process_plan_list", [])
-        self.processmodel_list: List[ProcessModel] = []
+        self.experiment_plan_list = imports.get("experiment_plan_list", [])
+        self.experimentmodel_list: List[ExperimentModel] = []
         self.sequence_output_dir = None
 
 
@@ -73,8 +73,8 @@ class Sequence(HelaoDict, object):
         if self.sequence_uuid:
             print_message(
                 {},
-                "process",
-                f"process_uuid: {self.process_uuid} already exists",
+                "experiment",
+                f"experiment_uuid: {self.experiment_uuid} already exists",
                 info=True,
             )
         else:
@@ -92,7 +92,7 @@ class Sequence(HelaoDict, object):
 
 
     def get_seq(self):
-        return ProcessSequenceModel(
+        return ExperimentSequenceModel(
             hlo_version=f"{get_hlo_version()}",
             sequence_name = self.sequence_name,
             sequence_params = self.sequence_params,
@@ -100,10 +100,10 @@ class Sequence(HelaoDict, object):
             sequence_uuid = self.sequence_uuid,
             sequence_timestamp = self.sequence_timestamp,
             sequence_status = self.sequence_status,
-            process_plan_list = [process.process_name for process in self.process_plan_list],
+            experiment_plan_list = [experiment.experiment_name for experiment in self.experiment_plan_list],
             output_dir = Path(self.sequence_output_dir).as_posix() \
                             if self.sequence_output_dir is not None else None,
-            process_list = [ShortProcessModel(**prc.dict()) for prc in self.processmodel_list]
+            experiment_list = [ShortExperimentModel(**prc.dict()) for prc in self.experimentmodel_list]
 
         )
 
@@ -116,7 +116,7 @@ class Sequence(HelaoDict, object):
 
 
 
-class Process(Sequence):
+class Experiment(Sequence):
     "Sample-action grouping class."
 
     def __init__(
@@ -128,9 +128,9 @@ class Process(Sequence):
         imports.update(inputdict)
 
 
-        # main process parameters
-        self.process_uuid = imports.get("process_uuid", None) #
-        self.process_status = imports.get("process_status", None)
+        # main experiment parameters
+        self.experiment_uuid = imports.get("experiment_uuid", None) #
+        self.experiment_status = imports.get("experiment_status", None)
         # main parametes for Action, need to put it into 
         # the new Basemodel in the future
         self.machine_name = imports.get("machine_name", None)
@@ -138,12 +138,12 @@ class Process(Sequence):
 
         # others parameter
         self.orchestrator = imports.get("orchestrator", "orchestrator")
-        self.process_timestamp = _to_datetime(time = imports.get("process_timestamp", None)).time
+        self.experiment_timestamp = _to_datetime(time = imports.get("experiment_timestamp", None)).time
         self.access = imports.get("access", "hte")
-        self.process_name = imports.get("process_name", None)
-        self.process_params = imports.get("process_params", {})
-        if self.process_params is None:
-            self.process_params = {}
+        self.experiment_name = imports.get("experiment_name", None)
+        self.experiment_params = imports.get("experiment_params", {})
+        if self.experiment_params is None:
+            self.experiment_params = {}
 
         # name of "instrument": sdc, anec, adss etc. defined in world config
         self.technique_name = imports.get("technique_name", None)
@@ -152,57 +152,57 @@ class Process(Sequence):
         self.result_dict = {}  # imports.get("result_dict", {})# this gets big really fast, bad for debugging
         self.global_params = {}  # TODO: reserved for internal use, do not write to .prg
 
-        self.process_output_dir = None
-        self.process_action_uuid_list: List[UUID] = []#imports.get("action_uuid_list", None)
-        self.process_action_list: List[ActionModel] = []
+        self.experiment_output_dir = None
+        self.experiment_action_uuid_list: List[UUID] = []#imports.get("action_uuid_list", None)
+        self.experiment_action_list: List[ActionModel] = []
 
 
     def __repr__(self):
-        return f"<process_name:{self.process_name}>" 
+        return f"<experiment_name:{self.experiment_name}>" 
 
 
     def __str__(self):
-        return f"process_name:{self.process_name}" 
+        return f"experiment_name:{self.experiment_name}" 
 
 
-    def gen_uuid_process(self, machine_name: str):
+    def gen_uuid_experiment(self, machine_name: str):
         "server_name can be any string used in generating random uuid"
-        if self.process_uuid:
+        if self.experiment_uuid:
             print_message(
                 {},
-                "process",
-                f"process_uuid: {self.process_uuid} already exists",
+                "experiment",
+                f"experiment_uuid: {self.experiment_uuid} already exists",
                 info=True,
             )
         else:
-            self.process_uuid = gen_uuid(label=machine_name, timestamp=self.process_timestamp)
+            self.experiment_uuid = gen_uuid(label=machine_name, timestamp=self.experiment_timestamp)
             print_message(
                 {},
-                "process",
-                f"process_uuid: {self.process_uuid} assigned",
+                "experiment",
+                f"experiment_uuid: {self.experiment_uuid} assigned",
                 info=True,
             )
 
     def set_dtime(self, offset: float = 0):
-        self.process_timestamp = set_time(offset)
+        self.experiment_timestamp = set_time(offset)
 
 
     def get_prc(self):
         
-        prc = ProcessModel(
+        prc = ExperimentModel(
             hlo_version=f"{get_hlo_version()}",
             orchestrator=self.orchestrator,
             machine_name=self.machine_name,#gethostname(),
             sequence_uuid=self.sequence_uuid,
             access=self.access,
-            process_uuid=self.process_uuid,
-            process_timestamp=self.process_timestamp,
-            process_status = self.process_status,
+            experiment_uuid=self.experiment_uuid,
+            experiment_timestamp=self.experiment_timestamp,
+            experiment_status = self.experiment_status,
             technique_name=self.technique_name,
-            process_name=self.process_name,
-            process_params=self.process_params,
-            output_dir = Path(self.process_output_dir).as_posix() \
-                if self.process_output_dir is not None else None,
+            experiment_name=self.experiment_name,
+            experiment_params=self.experiment_params,
+            output_dir = Path(self.experiment_output_dir).as_posix() \
+                if self.experiment_output_dir is not None else None,
             # action_list = 
             # samples_in = 
             # samples_out = 
@@ -210,17 +210,17 @@ class Process(Sequence):
         )
         
         # now add all actions
-        self._process_update_from_actlist(prc = prc)
+        self._experiment_update_from_actlist(prc = prc)
         return prc
 
 
-    def _process_update_from_actlist(self, prc: ProcessModel):
+    def _experiment_update_from_actlist(self, prc: ExperimentModel):
 
-        if self.process_action_list is None:
-            self.process_action_list = []
+        if self.experiment_action_list is None:
+            self.experiment_action_list = []
 
 
-        for actm in self.process_action_list:
+        for actm in self.experiment_action_list:
             prc.action_list.append(ShortActionModel(**actm.dict()))
 
             for file in actm.files:
@@ -264,7 +264,7 @@ class Process(Sequence):
                 return idx
         return None
 
-    def _check_sample_duplicates(self, prc: ProcessModel):
+    def _check_sample_duplicates(self, prc: ExperimentModel):
         out_labels = defaultdict(list)
         in_labels = defaultdict(list)
         for i, sample in enumerate(prc.samples_out):
@@ -278,12 +278,12 @@ class Process(Sequence):
                 isunique = False
 
         if not isunique:
-            print_message({}, "process", "\n----------------------------------\nDuplicate but 'unique' samples.\nProcess needs to be split.\n----------------------------------", error=True)
-            print_message({}, "process", f"samples_in labels: {in_labels}", error = True)
-            print_message({}, "process", f"samples_out labels: {out_labels}", error = True)
+            print_message({}, "experiment", "\n----------------------------------\nDuplicate but 'unique' samples.\nExperiment needs to be split.\n----------------------------------", error=True)
+            print_message({}, "experiment", f"samples_in labels: {in_labels}", error = True)
+            print_message({}, "experiment", f"samples_out labels: {out_labels}", error = True)
 
 
-class Action(Process):
+class Action(Experiment):
     "Sample-action identifier class."
 
     def __init__(
@@ -291,7 +291,7 @@ class Action(Process):
         inputdict: dict = {},
         act: ActionModel = None,
     ):
-        super().__init__(inputdict)  # grab process keys
+        super().__init__(inputdict)  # grab experiment keys
         imports = {}
         imports.update(inputdict)
         
@@ -301,8 +301,8 @@ class Action(Process):
         self.technique_name = act.technique_name
         self.orchestrator = act.orchestrator
         self.machine_name = act.machine_name
-        self.process_uuid = act.process_uuid
-        self.process_timestamp = act.process_timestamp
+        self.experiment_uuid = act.experiment_uuid
+        self.experiment_timestamp = act.experiment_timestamp
         self.access = act.access
         
         
@@ -310,7 +310,7 @@ class Action(Process):
         self.action_uuid = act.action_uuid
         self.action_timestamp = act.action_timestamp
         self.action_status = act.action_status
-        # machine_name # get it from process later
+        # machine_name # get it from experiment later
         self.action_order = act.action_order
         self.action_retry = act.action_retry
         self.action_actual_order = act.action_actual_order
@@ -393,8 +393,8 @@ class Action(Process):
             access=self.access,
             output_dir=Path(self.output_dir).as_posix() \
                 if self.output_dir is not None else None,
-            process_uuid=self.process_uuid,
-            process_timestamp=self.process_timestamp,
+            experiment_uuid=self.experiment_uuid,
+            experiment_timestamp=self.experiment_timestamp,
             action_status=self.action_status,
             action_uuid=self.action_uuid,
             action_timestamp=self.action_timestamp,
@@ -420,22 +420,22 @@ class Action(Process):
 class ActionPlanMaker(object):
     def __init__(
         self,
-        pg: Process,
+        pg: Experiment,
     ):
         frame = inspect.currentframe().f_back
         _args, _varargs, _keywords, _locals = inspect.getargvalues(frame)
         self._pg = copy.deepcopy(pg)
         self.action_list = []
         self.pars = self._C()
-        if self._pg.process_params is not None:
-            for key, val in self._pg.process_params.items():
+        if self._pg.experiment_params is not None:
+            for key, val in self._pg.experiment_params.items():
                 setattr(self.pars, key, val)  # we could also add it direcly to the class root by just using self
 
         for key, val in _locals.items():
-            if key != "pg_Obj" and key not in self._pg.process_params.keys():
+            if key != "pg_Obj" and key not in self._pg.experiment_params.keys():
                 print_message(
                     {},
-                    "processr",
+                    "experimentr",
                     f"local var '{key}' not found in pg_Obj, addding it to sq.pars",
                     error=True,
                 )
@@ -460,16 +460,16 @@ class ActionPlanMaker(object):
             self.action_list.append(action)
 
 
-class ProcessPlanMaker(object):
+class ExperimentPlanMaker(object):
     def __init__(
         self,
     ):
-        self.process_plan_list = []
+        self.experiment_plan_list = []
 
 
-    def add_process(self, selected_process, process_params):
-        D = Process(inputdict={
-            "process_name":selected_process,
-            "process_params":process_params,
+    def add_experiment(self, selected_experiment, experiment_params):
+        D = Experiment(inputdict={
+            "experiment_name":selected_experiment,
+            "experiment_params":experiment_params,
         })
-        self.process_plan_list.append(D.as_dict())
+        self.experiment_plan_list.append(D.as_dict())

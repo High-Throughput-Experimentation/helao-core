@@ -14,14 +14,14 @@ import colorama
 
 from .base import Base
 from .api import HelaoFastAPI
-from .import_processes import import_processes
+from .import_experiments import import_experiments
 from .import_sequences import import_sequences
 from .dispatcher import async_private_dispatcher, async_action_dispatcher
 from .action_start_condition import action_start_condition
 
 from ..helper.multisubscriber_queue import MultisubscriberQueue
-from ..schema import Sequence, Process, Action
-from ..model.process_sequence import ProcessSequenceModel
+from ..schema import Sequence, Experiment, Action
+from ..model.experiment_sequence import ExperimentSequenceModel
 from ..model.action import ActionModel
 
 # ANSI color codes converted to the Windows versions
@@ -50,9 +50,9 @@ class Orch(Base):
 
     def __init__(self, fastapp: HelaoFastAPI):
         super().__init__(fastapp)
-        self.process_lib = import_processes(
+        self.experiment_lib = import_experiments(
             world_config_dict=self.world_cfg,
-            process_path=None,
+            experiment_path=None,
             server_name=self.server_name,
         )
         self.sequence_lib = import_sequences(
@@ -61,14 +61,14 @@ class Orch(Base):
             server_name=self.server_name
         )
 
-        # instantiate process/experiment queue, action queue
+        # instantiate experiment/experiment queue, action queue
         self.sequence_dq = deque([])
-        self.process_dq = deque([])
+        self.experiment_dq = deque([])
         self.action_dq = deque([])
         self.dispatched_actions = {}
         self.finished_actions = []
-        self.active_process = None
-        self.last_process = None
+        self.active_experiment = None
+        self.last_experiment = None
         self.active_sequence = None
         self.last_sequence = None
 
@@ -153,7 +153,7 @@ class Orch(Base):
             self.init_success = True
         else:
             self.print_message(
-                "Orchestrator cannot action process_dq unless all FastAPI servers in config file are accessible."
+                "Orchestrator cannot action experiment_dq unless all FastAPI servers in config file are accessible."
             )
 
 
@@ -239,12 +239,12 @@ class Orch(Base):
 
 
     async def dispatch_loop_task(self):
-        """Parse process and action queues, and dispatch action_dq while tracking run state flags."""
+        """Parse experiment and action queues, and dispatch action_dq while tracking run state flags."""
         self.print_message("--- started operator orch ---")
         self.print_message(f"current orch status: {self.global_state_str}")
         # clause for resuming paused action list
         self.print_message(f"current orch sequences: {self.sequence_dq}")
-        self.print_message(f"current orch descisions: {self.process_dq}")
+        self.print_message(f"current orch descisions: {self.experiment_dq}")
         self.print_message(f"current orch actions: {self.action_dq}")
         self.print_message("--- resuming orch loop now ---")
         
@@ -260,30 +260,30 @@ class Orch(Base):
                 # todo: this is for later, for now the operator needs to unpack the sequence
                 # in order to also use a semi manual op mode
                 
-                # self.print_message(f"unpacking processes for {self.active_sequence.sequence_name}")
+                # self.print_message(f"unpacking experiments for {self.active_sequence.sequence_name}")
                 # if self.active_sequence.sequence_name in self.sequence_lib:
                 #     unpacked_prcs = self.sequence_lib[self.active_sequence.sequence_name](**self.active_sequence.sequence_params)
                 # else:
                 #     unpacked_prcs = []
     
                 # for prc in unpacked_prcs:
-                #     D = Process(inputdict=prc)
-                #     self.active_sequence.process_plan_list.append(D)
+                #     D = Experiment(inputdict=prc)
+                #     self.active_sequence.experiment_plan_list.append(D)
     
     
                 self.seq_file = self.active_sequence.get_seq()
                 await self.write_seq(self.active_sequence)
     
-                # add all processes from sequence to process queue
+                # add all experiments from sequence to experiment queue
                 # todo: use seq model instead to initialize some parameters
-                # of the process
-                for prc in self.active_sequence.process_plan_list:
-                        self.print_message(f"unpack process {prc.process_name}")
-                        await self.add_process(
+                # of the experiment
+                for prc in self.active_sequence.experiment_plan_list:
+                        self.print_message(f"unpack experiment {prc.experiment_name}")
+                        await self.add_experiment(
                             seq = self.active_sequence.get_seq(),
                             # prc = prc,
-                            process_name = prc.process_name,
-                            process_params = prc.process_params,
+                            experiment_name = prc.experiment_name,
+                            experiment_params = prc.experiment_params,
                             )
 
 
@@ -294,43 +294,43 @@ class Orch(Base):
 
 
 
-            while self.loop_state == "started" and (self.action_dq or self.process_dq):
+            while self.loop_state == "started" and (self.action_dq or self.experiment_dq):
                 self.print_message(f"current content of action_dq: {self.action_dq}")
-                self.print_message(f"current content of process_dq: {self.process_dq}")
+                self.print_message(f"current content of experiment_dq: {self.experiment_dq}")
                 await asyncio.sleep(
                     0.001
                 )  
                 
-                # if status queue is empty get first new actions from new process
+                # if status queue is empty get first new actions from new experiment
                 if not self.action_dq:
                     self.print_message("action_dq is empty, getting new actions")
-                    # wait for all actions in last/active process to finish 
-                    self.print_message("finishing last active process first")
-                    await self.finish_active_process()
+                    # wait for all actions in last/active experiment to finish 
+                    self.print_message("finishing last active experiment first")
+                    await self.finish_active_experiment()
 
-                    self.print_message("getting new process to fill action_dq")
+                    self.print_message("getting new experiment to fill action_dq")
                     # generate uids when populating, 
                     # generate timestamp when acquring
-                    self.active_process = self.process_dq.popleft()
-                    self.print_message(f"new active process is {self.active_process.process_name}")
+                    self.active_experiment = self.experiment_dq.popleft()
+                    self.print_message(f"new active experiment is {self.active_experiment.experiment_name}")
 
-                    self.active_process.technique_name = self.technique_name
-                    self.active_process.machine_name = self.hostname
-                    self.active_process.set_dtime(offset=self.ntp_offset)
-                    self.active_process.gen_uuid_process(self.hostname)
-                    self.active_process.access = "hte"
-                    self.active_process.process_status = "active"
-                    self.active_process.process_output_dir = self.get_process_dir(self.active_process)
+                    self.active_experiment.technique_name = self.technique_name
+                    self.active_experiment.machine_name = self.hostname
+                    self.active_experiment.set_dtime(offset=self.ntp_offset)
+                    self.active_experiment.gen_uuid_experiment(self.hostname)
+                    self.active_experiment.access = "hte"
+                    self.active_experiment.experiment_status = "active"
+                    self.active_experiment.experiment_output_dir = self.get_experiment_dir(self.active_experiment)
 
-                    # additional process params should be stored 
-                    # in process.process_params
-                    self.print_message(f"unpacking actions for {self.active_process.process_name}")
-                    unpacked_acts = self.process_lib[
-                        self.active_process.process_name
-                                                    ](self.active_process)
+                    # additional experiment params should be stored 
+                    # in experiment.experiment_params
+                    self.print_message(f"unpacking actions for {self.active_experiment.experiment_name}")
+                    unpacked_acts = self.experiment_lib[
+                        self.active_experiment.experiment_name
+                                                    ](self.active_experiment)
                     if unpacked_acts is None:
                         self.print_message(
-                            "no actions in process",
+                            "no actions in experiment",
                             error = True
                         )
                         self.action_dq = deque([])
@@ -343,19 +343,19 @@ class Orch(Base):
                         # will be incremented as necessary
                         act.action_actual_order = int(i)
 
-                    # TODO:update process code
+                    # TODO:update experiment code
                     self.print_message("adding unpacked actions to action_dq")
                     self.action_dq = deque(unpacked_acts)
                     # self.dispatched_actions = {} # moved to finish prc function
                     self.print_message(f"got: {self.action_dq}")
-                    self.print_message(f"optional params: {self.active_process.process_params}")
+                    self.print_message(f"optional params: {self.active_experiment.experiment_params}")
 
 
                     # write a temporary prc
-                    await self.write_active_process_prc()
+                    await self.write_active_experiment_prc()
 
                 else:
-                    self.print_message("actions in action_dq, processing them")
+                    self.print_message("actions in action_dq, experimenting them")
                     if self.loop_intent == "stop":
                         self.print_message("stopping orchestrator")
                         # monitor status of running action_dq, then end loop
@@ -367,16 +367,16 @@ class Orch(Base):
                                 self.print_message("got stop")
                                 break
                     elif self.loop_intent == "skip":
-                        # clear action queue, forcing next process
+                        # clear action queue, forcing next experiment
                         self.action_dq.clear()
                         await self.intend_none()
-                        self.print_message("skipping to next process")
+                        self.print_message("skipping to next experiment")
                     else:
                         # all action blocking is handled like preempt, 
                         # check Action requirements
                         A = self.action_dq.popleft()
                         # append previous results to current action
-                        A.result_dict = self.active_process.result_dict
+                        A.result_dict = self.active_experiment.result_dict
 
                         # see async_action_dispatcher for unpacking
                         if isinstance(A.start_condition, int):
@@ -463,8 +463,8 @@ class Orch(Base):
                         # copy requested global param to action params
                         for k, v in A.from_global_params.items():
                             self.print_message(f"{k}:{v}")
-                            if k in self.active_process.global_params:
-                                A.action_params.update({v: self.active_process.global_params[k]})
+                            if k in self.active_experiment.global_params:
+                                A.action_params.update({v: self.active_experiment.global_params[k]})
 
                         self.print_message(
                             f"dispatching action {A.action_name} on server {A.action_server_name}"
@@ -481,32 +481,32 @@ class Orch(Base):
                         self.dispatched_actions[A.action_actual_order] = copy(A)
                         result = await async_action_dispatcher(self.world_cfg, A)
 
-                        self.active_process.result_dict[A.action_actual_order] = result
+                        self.active_experiment.result_dict[A.action_actual_order] = result
 
-                        self.print_message("copying global vars back to process")
+                        self.print_message("copying global vars back to experiment")
                         # self.print_message(result)
                         if "to_global_params" in result:
                             for k in result["to_global_params"]:
                                 if k in result["action_params"]:
                                     if (
                                         result["action_params"][k] is None
-                                        and k in self.active_process.global_params
+                                        and k in self.active_experiment.global_params
                                     ):
-                                        self.active_process.global_params.pop(k)
+                                        self.active_experiment.global_params.pop(k)
                                     else:
-                                        self.active_process.global_params.update(
+                                        self.active_experiment.global_params.update(
                                             {k: result["action_params"][k]}
                                         )
-                        self.print_message("done copying global vars back to process")
+                        self.print_message("done copying global vars back to experiment")
 
-            self.print_message("process queue is empty")
+            self.print_message("experiment queue is empty")
             self.print_message("stopping operator orch")
 
             # finish the last prc
-            # this wait for all actions in active process
+            # this wait for all actions in active experiment
             # to finish and then updates the prc with the acts
-            self.print_message("finishing final process")
-            await self.finish_active_process()
+            self.print_message("finishing final experiment")
+            await self.finish_active_experiment()
             self.print_message("finishing final sequence")
             await self.finish_active_sequence()
 
@@ -626,7 +626,7 @@ class Orch(Base):
                            sequence_name: str = None,
                            sequence_params: dict = None,
                            sequence_label: str = None,
-                           process_plan_list: List[dict] = []
+                           experiment_plan_list: List[dict] = []
                            ):
         seq = Sequence()
         seq.sequence_uuid = sequence_uuid
@@ -634,18 +634,18 @@ class Orch(Base):
         seq.sequence_name = sequence_name
         seq.sequence_params = sequence_params
         seq.sequence_label = sequence_label
-        for D_dict in process_plan_list:
-            D = Process(D_dict)
-            seq.process_plan_list.append(D)
+        for D_dict in experiment_plan_list:
+            D = Experiment(D_dict)
+            seq.experiment_plan_list.append(D)
         self.sequence_dq.append(seq)
 
 
-    async def add_process(
+    async def add_experiment(
         self,
-        seq: ProcessSequenceModel,
+        seq: ExperimentSequenceModel,
         orchestrator: str = None,
-        process_name: str = None,
-        process_params: dict = {},
+        experiment_name: str = None,
+        experiment_params: dict = {},
         result_dict: dict = {},
         access: str = "hte",
         prepend: Optional[bool] = False,
@@ -653,44 +653,44 @@ class Orch(Base):
     ):
         Ddict = {
                 "orchestrator": orchestrator,
-                "process_name": process_name,
-                "process_params": process_params,
+                "experiment_name": experiment_name,
+                "experiment_params": experiment_params,
                 "result_dict": result_dict,
                 "access": access,
             }
         Ddict.update(seq.dict())
-        D = Process(Ddict)
+        D = Experiment(Ddict)
 
-        # reminder: process_dict values take precedence over keyword args
+        # reminder: experiment_dict values take precedence over keyword args
         if D.orchestrator is None:
             D.orchestrator = self.server_name
 
         await asyncio.sleep(0.001)
         if at_index:
-            self.process_dq.insert(i=at_index, x=D)
+            self.experiment_dq.insert(i=at_index, x=D)
         elif prepend:
-            self.process_dq.appendleft(D)
-            self.print_message(f"process {D.process_name} prepended to queue")
+            self.experiment_dq.appendleft(D)
+            self.print_message(f"experiment {D.experiment_name} prepended to queue")
         else:
-            self.process_dq.append(D)
-            self.print_message(f"process {D.process_name} appended to queue")
+            self.experiment_dq.append(D)
+            self.print_message(f"experiment {D.experiment_name} appended to queue")
 
 
-    def list_processes(self):
-        """Return the current queue of process_dq."""
-        return [process.get_prc() for process in self.process_dq]
+    def list_experiments(self):
+        """Return the current queue of experiment_dq."""
+        return [experiment.get_prc() for experiment in self.experiment_dq]
 
 
-    def get_process(self, last=False):
-        """Return the active or last process."""
-        active_process_list = []
+    def get_experiment(self, last=False):
+        """Return the active or last experiment."""
+        active_experiment_list = []
         if last:
-            process = self.last_process
+            experiment = self.last_experiment
         else:
-            process = self.active_process
-        if process is not None:
-            active_process_list.append(process.get_prc())
-        return active_process_list
+            experiment = self.active_experiment
+        if experiment is not None:
+            active_experiment_list.append(experiment.get_prc())
+        return active_experiment_list
 
 
     def list_active_actions(self):
@@ -737,16 +737,16 @@ class Orch(Base):
                 self.print_message(", ".join(self.error_uuids))
 
 
-    def remove_process(self, by_index: Optional[int] = None, by_uuid: Optional[str] = None):
-        """Remove process in list by enumeration index or uuid."""
+    def remove_experiment(self, by_index: Optional[int] = None, by_uuid: Optional[str] = None):
+        """Remove experiment in list by enumeration index or uuid."""
         if by_index:
             i = by_index
         elif by_uuid:
-            i = [i for i, D in enumerate(list(self.process_dq)) if str(D.process_uuid) == by_uuid][0]
+            i = [i for i, D in enumerate(list(self.experiment_dq)) if str(D.experiment_uuid) == by_uuid][0]
         else:
-            self.print_message("No arguments given for locating existing process to remove.")
+            self.print_message("No arguments given for locating existing experiment to remove.")
             return None
-        del self.process_dq[i]
+        del self.experiment_dq[i]
 
 
     def replace_action(
@@ -800,20 +800,20 @@ class Orch(Base):
             self.active_sequence = None
 
 
-    async def finish_active_process(self):
+    async def finish_active_experiment(self):
         # we need to wait for all actions to finish first
         await self.orch_wait_for_all_actions()
-        if self.active_process is not None:
-            self.print_message(f"finished prc uuid is: {self.active_process.process_uuid}, adding matching acts to it")
+        if self.active_experiment is not None:
+            self.print_message(f"finished prc uuid is: {self.active_experiment.experiment_uuid}, adding matching acts to it")
 
             # todo: update here all acts from self.dispatched_actions list
-            self.active_process.process_action_uuid_list = []
-            self.active_process.process_action_list = []
-            self.print_message("getting uuids from all dispatched actions of active process")
+            self.active_experiment.experiment_action_uuid_list = []
+            self.active_experiment.experiment_action_list = []
+            self.print_message("getting uuids from all dispatched actions of active experiment")
             for action_actual_order, dispachted_act in self.dispatched_actions.items():
-                self.active_process.process_action_uuid_list.append(dispachted_act.action_uuid)
+                self.active_experiment.experiment_action_uuid_list.append(dispachted_act.action_uuid)
 
-            self.active_process.process_status = "finished"
+            self.active_experiment.experiment_status = "finished"
 
             self.print_message("getting all finished actions")
             for act in self.finished_actions:
@@ -821,28 +821,28 @@ class Orch(Base):
                 # getting only "finished" actions updates
                 if actm.orchestrator == self.server_name \
                 and actm.action_status == "finished" \
-                and actm.action_uuid in self.active_process.process_action_uuid_list:
-                    self.print_message(f"adding finished action '{actm.action_name}' to process")
-                    self.active_process.process_action_list.append(actm)
+                and actm.action_uuid in self.active_experiment.experiment_action_uuid_list:
+                    self.print_message(f"adding finished action '{actm.action_name}' to experiment")
+                    self.active_experiment.experiment_action_list.append(actm)
             
             # add finished prc to seq
-            self.active_sequence.processmodel_list.append(deepcopy(self.active_process.get_prc()))
+            self.active_sequence.experimentmodel_list.append(deepcopy(self.active_experiment.get_prc()))
             # write new updated seq
             await self.write_active_sequence_seq()
 
             # write final prc
-            await self.write_prc(self.active_process)
+            await self.write_prc(self.active_experiment)
 
 
-        self.last_process = copy(self.active_process)
-        self.active_process = None
+        self.last_experiment = copy(self.active_experiment)
+        self.active_experiment = None
         # set dispatched actions to zero again
         self.dispatched_actions = {}
         self.finished_actions = []
 
 
-    async def write_active_process_prc(self):
-        await self.write_prc(self.active_process)
+    async def write_active_experiment_prc(self):
+        await self.write_prc(self.active_experiment)
 
 
     async def write_active_sequence_seq(self):

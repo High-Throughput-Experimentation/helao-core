@@ -59,9 +59,9 @@ class Base(object):
 
     The data writing method will update a class attribute with the currently open file.
     For a given root directory, files and folders will be written as follows:
-    {%y.%j}/  # process_date year.weeknum
-        {%Y%m%d}/  # process_date
-            {%H%M%S}/  # process_time
+    {%y.%j}/  # experiment_date year.weeknum
+        {%Y%m%d}/  # experiment_date
+            {%H%M%S}/  # experiment_time
                 {%Y%m%d.%H%M%S}__{action_server_name}__{action_name}__{action_uuid}/
                     {filename}.{ext}
                     {%Y%m%d.%H%M%S%f}.prc  # action_datetime
@@ -446,13 +446,13 @@ class Base(object):
                                info = True)
 
 
-    async def write_prc(self, process):
-        prc_dict = process.get_prc().clean_dict()
+    async def write_prc(self, experiment):
+        prc_dict = experiment.get_prc().clean_dict()
         output_path = os.path.join(
                                    self.save_root, 
-                                   self.get_process_dir(process)
+                                   self.get_experiment_dir(experiment)
                                   )
-        output_file = os.path.join(output_path, f"{process.process_timestamp.strftime('%Y%m%d.%H%M%S%f')}.meta")
+        output_file = os.path.join(output_path, f"{experiment.experiment_timestamp.strftime('%Y%m%d.%H%M%S%f')}.meta")
 
         self.print_message(f"writing to prc meta file: {output_file}")
         output_str = pyaml.dump(prc_dict, sort_dicts=False)
@@ -461,7 +461,7 @@ class Base(object):
             os.makedirs(output_path, exist_ok=True)
         
         async with aiofiles.open(output_file, mode="w+") as f:
-            await f.write(pyaml.dump({"file_type":"process"}))
+            await f.write(pyaml.dump({"file_type":"experiment"}))
             if not output_str.endswith("\n"):
                 output_str += "\n"
             await f.write(output_str)
@@ -499,20 +499,20 @@ class Base(object):
         )
 
 
-    def get_process_dir(self, process):
-        """accepts action or process object"""
-        process_time = process.process_timestamp.strftime("%H%M%S%f")
-        sequence_dir = self.get_sequence_dir(process)
+    def get_experiment_dir(self, experiment):
+        """accepts action or experiment object"""
+        experiment_time = experiment.experiment_timestamp.strftime("%H%M%S%f")
+        sequence_dir = self.get_sequence_dir(experiment)
         return os.path.join(
             sequence_dir,
-            f"{process_time}__{process.process_name}",
+            f"{experiment_time}__{experiment.experiment_name}",
         )
 
 
     def get_action_dir(self, action):
-        process_dir = self.get_process_dir(action)
+        experiment_dir = self.get_experiment_dir(action)
         return os.path.join(
-            process_dir,
+            experiment_dir,
             f"{action.action_actual_order}__{action.action_timestamp.strftime('%Y%m%d.%H%M%S%f')}__{action.action_server_name}__{action.action_name}",
         )
 
@@ -585,7 +585,7 @@ class Base(object):
 
             # check if its swagger submission
             if self.action.sequence_timestamp is None \
-            or self.action.process_timestamp is None:
+            or self.action.experiment_timestamp is None:
                 self.manual = True
                 self.base.print_message("Manual Action.", info=True)
                 self.action.access = "manual"
@@ -598,13 +598,13 @@ class Base(object):
                     self.base.get_sequence_dir(self.action)
                 self.action.sequence_status = "active"
 
-                # -- (2) -- set missing process parameters
-                self.action.process_name="MANUAL"
+                # -- (2) -- set missing experiment parameters
+                self.action.experiment_name="MANUAL"
                 self.action.set_dtime(offset=self.base.ntp_offset)
-                self.action.gen_uuid_process(self.base.hostname)
-                self.action.process_output_dir = \
-                    self.base.get_process_dir(self.action)
-                self.action.process_status = "active"
+                self.action.gen_uuid_experiment(self.base.hostname)
+                self.action.experiment_output_dir = \
+                    self.base.get_experiment_dir(self.action)
+                self.action.experiment_status = "active"
                 # these are set in setup_action
                 # self.action.technique_name = "MANUAL"
                 # self.action.orchestrator = "MANUAL"
@@ -1113,21 +1113,21 @@ class Base(object):
 
         async def finish_manual_action(self):
             if self.manual:
-                self.action.process_status = "finished"
+                self.action.experiment_status = "finished"
                 self.action.sequence_status = "finished"
                 
-                # add action to process
-                self.action.process_action_list.append(
+                # add action to experiment
+                self.action.experiment_action_list.append(
                     self.action.get_act()
                 )
 
-                # add process to sequence
-                self.action.processmodel_list.append(
+                # add experiment to sequence
+                self.action.experimentmodel_list.append(
                     self.action.get_prc()
                 )
 
                 # this will write the correct
-                # sequence and process meta files for 
+                # sequence and experiment meta files for 
                 # manual operation
                 # create and write seq file for manual action
                 await self.base.write_seq(self.action)

@@ -3,7 +3,7 @@
 from .api import HelaoBokehAPI, HelaoFastAPI
 from .base import Base
 from .dispatcher import async_private_dispatcher, async_action_dispatcher
-from .import_processes import import_processes
+from .import_experiments import import_experiments
 from .import_sequences import import_sequences
 from .make_orch_serv import makeOrchServ
 from .make_action_serv import make_action_serv
