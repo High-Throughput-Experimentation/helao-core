@@ -1,0 +1,19 @@
+__all__ = ["read_hlo"]
+
+import json
+import yaml
+from pathlib import Path
+from typing import Tuple
+
+def read_hlo(path: str) -> Tuple[dict, dict]:
+    "Parse .hlo file into tuple of dictionaries containing metadata and data."
+    path_to_hlo = Path(path)
+    with path_to_hlo.open() as f:
+        lines = f.readlines()
+        
+    sep_index = lines.index('%%\n')
+    
+    meta = yaml.load("".join(lines[:sep_index]), Loader=yaml.CLoader)
+    data = json.loads("".join(lines[sep_index+1:]))
+    
+    return meta, data
