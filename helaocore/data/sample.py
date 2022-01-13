@@ -143,7 +143,7 @@ class _BaseSampleAPI(object):
                 sample.last_update = self._base.set_realtime_nowait()
             sample.global_label = sample.get_global_label()
 
-            dfdict = sample.dict()
+            dfdict = sample.json_dict()
             for key in self._jsonkeys:
                 dfdict.update({key: [json.dumps(dfdict[key])]})
 
@@ -353,7 +353,7 @@ class _BaseSampleAPI(object):
                 sample.last_update = self._base.set_realtime_nowait()
 
                 # update the old sample now
-                dfdict = sample.dict()
+                dfdict = sample.json_dict()
                 for key in self._jsonkeys:
                     # fdict.update({key: [json.dumps(dfdict[key])]})
                     dfdict.update({key: json.dumps(dfdict[key])})
