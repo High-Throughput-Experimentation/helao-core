@@ -709,7 +709,7 @@ class Base(object):
                 else:  # aux_files
                     pass
 
-                filename = f"{self.action.action_abbr}-{self.action.action_actual_order}.{self.action.action_order}.{self.action.action_retry}__{filenum}.{file_ext}"
+                filename = f"{self.action.action_abbr}-{self.action.action_actual_order}.{self.action.action_order}.{self.action.action_retry}.{self.action.action_split}__{filenum}.{file_ext}"
 
             if file_sample_label is None:
                 file_sample_label = []

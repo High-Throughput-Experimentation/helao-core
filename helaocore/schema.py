@@ -314,6 +314,7 @@ class Action(Process):
         self.action_order = act.action_order
         self.action_retry = act.action_retry
         self.action_actual_order = act.action_actual_order
+        self.action_split = act.action_split
 
         # name of the action server
         self.action_server_name = act.action_server_name

@@ -31,6 +31,7 @@ class ActionModel(ShortActionModel):
     action_status: Optional[str]
     action_order: Optional[int] = 0
     action_retry: Optional[int] = 0
+    action_split: Optional[int] = 0
     action_name: Optional[str]
     action_abbr: Optional[str]
     action_params: dict = Field(default_factory=dict)
