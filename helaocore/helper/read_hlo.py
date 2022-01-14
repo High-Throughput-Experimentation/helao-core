@@ -4,6 +4,7 @@ import json
 import yaml
 from pathlib import Path
 from typing import Tuple
+from collections import defaultdict
 
 def read_hlo(path: str) -> Tuple[dict, dict]:
     "Parse .hlo file into tuple of dictionaries containing metadata and data."
@@ -14,6 +15,11 @@ def read_hlo(path: str) -> Tuple[dict, dict]:
     sep_index = lines.index('%%\n')
     
     meta = yaml.load("".join(lines[:sep_index]), Loader=yaml.CLoader)
-    data = json.loads("".join(lines[sep_index+1:]))
+
+    data = defaultdict(list)
+    for line in lines[sep_index+1:]:
+        line_dict = json.loads(line)
+        for k,v in line_dict.items():
+            data[k] += v
     
     return meta, data

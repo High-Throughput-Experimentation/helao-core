@@ -22,7 +22,7 @@ from .action_start_condition import action_start_condition
 from ..helper.multisubscriber_queue import MultisubscriberQueue
 from ..schema import Sequence, Experiment, Action
 from ..model.experiment_sequence import ExperimentSequenceModel
-from ..model.action import ActionModel
+from ..model.action import ActionModel, ActionStatus
 
 # ANSI color codes converted to the Windows versions
 colorama.init(strip=not sys.stdout.isatty())  # strip colors if stdout is redirected
@@ -478,7 +478,7 @@ class Orch(Base):
                         A.init_act(machine_name = self.hostname,
                                    time_offset = self.ntp_offset)
 
-                        self.dispatched_actions[A.action_actual_order] = copy(A)
+                        self.dispatched_actions[A.action_actual_order] = copy(A.get_act())
                         result = await async_action_dispatcher(self.world_cfg, A)
 
                         self.active_experiment.result_dict[A.action_actual_order] = result
@@ -820,13 +820,13 @@ class Orch(Base):
                 actm = ActionModel(**act)
                 # getting only "finished" actions updates
                 if actm.orchestrator == self.server_name \
-                and actm.action_status == "finished" \
-                and actm.action_uuid in self.active_experiment.experiment_action_uuid_list:
+                and actm.action_status != ActionStatus.active \
+                and actm.experiment_uuid == self.active_experiment.experiment_uuid:
                     self.print_message(f"adding finished action '{actm.action_name}' to experiment")
                     self.active_experiment.experiment_action_list.append(actm)
             
             # add finished prc to seq
-            self.active_sequence.experimentmodel_list.append(deepcopy(self.active_experiment.get_prc()))
+            self.active_sequence.experiment_list.append(deepcopy(self.active_experiment.get_prc()))
             # write new updated seq
             await self.write_active_sequence_seq()
 
