@@ -287,7 +287,7 @@ class AssemblySample(_BaseSample):
 
 # TODO: this needs to be removed in the near future
 # and all calls to SampleList replaced by SampleUnion
-class SampleList(BaseModel):
+class SampleList(BaseModel, HelaoDict):
     """a combi basemodel which can contain all possible samples
     Its also a list and we should enforce samples as being a list"""
 
