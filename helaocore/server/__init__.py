@@ -1,7 +1,7 @@
 # helaocore.server __init__.py
 
 from .api import HelaoBokehAPI, HelaoFastAPI
-from .base import Base, make_action_serv
+from .base import Base, makeActionServ
 from .dispatcher import async_private_dispatcher, async_action_dispatcher
 from .import_experiments import import_experiments
 from .import_sequences import import_sequences

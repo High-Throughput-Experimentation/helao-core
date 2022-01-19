@@ -1,4 +1,4 @@
-__all__ = ["Orch", "makeOrchServ", "makeOrchServ"]
+__all__ = ["Orch", "makeOrchServ"]
 
 import asyncio
 import sys

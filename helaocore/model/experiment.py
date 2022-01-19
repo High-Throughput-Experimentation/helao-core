@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from .hlostatus import HloStatus
 from .sample import SampleUnion
 from .action import ShortActionModel
-from .fileinfo import FileInfo
+from .file import FileInfo
 
 from ..version import get_hlo_version
 from ..helper.helaodict import HelaoDict

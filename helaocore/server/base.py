@@ -1,8 +1,7 @@
 __all__ = [
            "Base",
-           "FileConnParams",
            "ActiveParams",
-           "make_action_serv"
+           "makeActionServ"
           ]
 
 import asyncio
@@ -21,9 +20,6 @@ import colorama
 import ntplib
 import numpy as np
 import pyaml
-from enum import Enum
-
-from pydantic import BaseModel, Field, validator
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.openapi.utils import get_flat_params
@@ -41,11 +37,17 @@ from ..schema import Action
 from ..model.hlostatus import HloStatus
 from ..model.sample import SampleUnion, NoneSample
 from ..model.sample import SampleInheritance, SampleStatus
-from ..model.fileinfo import FileInfo
 from ..model.data import DataModel, DataPackageModel
+from ..model.active import ActiveParams
+from ..model.file import (
+                          FileConn, 
+                          FileConnParams,
+                          HloFileGroup,
+                          HloHeaderModel,
+                          FileInfo
+                         )
 from ..helper.file_in_use import file_in_use
 from ..helper.helaodict import HelaoDict
-from ..version import get_hlo_version
 
 
 # ANSI color codes converted to the Windows versions
@@ -53,66 +55,8 @@ from ..version import get_hlo_version
 colorama.init(strip=not sys.stdout.isatty())
 # colorama.init()
 
-class HloFileGroup(str, Enum):
-    aux_files = "aux_files"
-    helao_files = "helao_files"
 
-
-class HloHeaderModel(BaseModel, HelaoDict):
-    hlo_version: Optional[str] = get_hlo_version()
-    action_name: str
-    column_headings: List[str] = Field(default_factory=list)
-
-
-class FileConnParams(BaseModel, HelaoDict):
-    # we require a file conn key
-    # cannot be uuid 'object' as we might have more then one file
-    # either use sample_label, or str(action_uuid) (if only one file etc
-    file_conn_key: UUID
-
-    # but samples are optional
-    # only need the global label, but not the full sample basemodel
-    sample_global_labels: List[str] = Field(default_factory=list)
-    json_data_keys: List[str] = Field(default_factory=list)
-    # type of file
-    file_type: str = "helao__file"
-    file_group: Optional[HloFileGroup] = HloFileGroup.helao_files
-    # None will trigger autogeneration of a file name
-    file_name: Optional[str]
-    # the header of the hlo file as dict (will be written as yml)
-    header: Optional[Dict] = Field(default_factory=dict)
-
-
-class FileConn(BaseModel):
-    """This is an internal BaseModel for Base which will hold all 
-    file connections.
-    """
-    params: FileConnParams
-    # signal if a header was written or not
-    finished_hlo_header: bool = False
-    added_hlo_separator: bool = False
-    # holds the file reference
-    file: Optional[object]
-
-
-class ActiveParams(BaseModel, HelaoDict):
-    # the Action object for this action
-    action: Action
-    # a list of data file connection parameters
-    file_conn_params_list: List[FileConnParams] = Field(default_factory=list)
-    aux_listen_uuids: List[UUID] = Field(default_factory=list)
-
-
-    class Config:
-        arbitrary_types_allowed = True
-
-
-    @validator("action")
-    def validate_action(cls, v):
-        return v
-
-
-def make_action_serv(config, server_key, server_title, description, version, driver_class=None):
+def makeActionServ(config, server_key, server_title, description, version, driver_class=None):
     app = HelaoFastAPI(config, server_key, title=server_title, description=description, version=version)
 
     @app.on_event("startup")
@@ -1223,7 +1167,6 @@ class Base(object):
                                 )
                                 self.file_conn[file_conn_key].\
                                     finished_hlo_header = True
-                                # TODO: add also hlo header (BaseModel)
                                 await self.write_live_data(
                                     output_str=pyaml.dump({"epoch_ns": self.set_realtime_nowait()}),
                                     file_conn_key=file_conn_key,
