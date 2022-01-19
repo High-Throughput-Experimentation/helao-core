@@ -271,7 +271,7 @@ class Base(object):
             action = A,
             file_conn_params_list = [FileConnParams(
                                     file_conn_key = self.dflt_file_conn_key(),
-                                    json_data_keys=json_data_keys
+                                    json_data_keys=json_data_keys,
                                     )]))
         return active
 
@@ -695,12 +695,6 @@ class Base(object):
             self.action.action_status = [HloStatus.active]
             self.manual = False
 
-            # signals the data logger that it got data 
-            # and hlo header was written or not
-            # active.finish_hlo_header should be called 
-            # within the driver before
-            # any data is pushed to avoid a forced header end write
-            self.finished_hlo_header = dict()
             self.file_conn: Dict(str, FileConn) = dict()
             for file_conn_param in activeparams.file_conn_params_list:
                 self.file_conn[file_conn_param.file_conn_key] = \
@@ -837,21 +831,15 @@ class Base(object):
             if json_data_keys is None:
                 json_data_keys = []
 
-            if filename is None:  # generate filename
+            # determine ending of file
+            if file_group == HloFileGroup.helao_files:
+                file_ext = "hlo"
+            else:  # aux_files
                 file_ext = "csv"
-                if file_group == HloFileGroup.helao_files:
-                    file_ext = "hlo"
-                    header_dict = HloHeaderModel(
-                        action_name = self.action.action_abbr 
-                        if self.action.action_abbr is not None
-                        else self.action.action_name,
-                        column_headings = json_data_keys
-                    ).as_dict()
-                    header = pyaml.dump(header_dict, sort_dicts=False) + header
-                else:  # aux_files
-                    pass
 
+            if filename is None:  # generate filename
                 filename = f"{self.action.action_abbr}-{self.action.action_actual_order}.{self.action.action_order}.{self.action.action_retry}.{self.action.action_split}__{filenum}.{file_ext}"
+
 
             if file_sample_label is None:
                 file_sample_label = []
@@ -863,6 +851,7 @@ class Base(object):
                 file_name=filename,
                 data_keys=json_data_keys,
                 sample=file_sample_label,
+                # action ID is here not necessary, or should we still add it?
                 # action_uuid: Optional[UUID]
             )
 
@@ -884,8 +873,7 @@ class Base(object):
                 realtime = self.set_realtime_nowait()
 
             for file_conn_key in file_conn_keys:
-                self.file_conn[file_conn_key].params.header["epoch_ns1"] = realtime
-                self.file_conn[file_conn_key].finished_hlo_header = True
+                self.file_conn[file_conn_key].params.hloheader.epoch_ns = realtime
 
 
         async def add_status(self):
@@ -999,8 +987,30 @@ class Base(object):
 
             self.base.print_message(f"creating file for file conn: "
                                     f"{file_conn_key}")
+
+            # add some missing information to the hloheader
+            if self.action.action_abbr is not None:
+                self.file_conn[file_conn_key].params.hloheader.action_name = \
+                    self.action.action_abbr
+            else:
+                self.file_conn[file_conn_key].params.hloheader.action_name = \
+                    self.action.action_name
+
+            self.file_conn[file_conn_key].params.hloheader.column_headings = \
+                self.file_conn[file_conn_key].params.json_data_keys
+            # epoch_ns should have been set already
+            # else we need to add it now because the header is now written 
+            # before data can be added to the file
+            if self.file_conn[file_conn_key].params.hloheader.epoch_ns is None:
+                self.base.print_message("realtime_ns was not set, "
+                                        "adding it now.")
+                self.file_conn[file_conn_key].params.hloheader.epoch_ns =\
+                    self.set_realtime_nowait()
+
+
+
             header, file_info = self.init_datafile(
-                header=self.file_conn[file_conn_key].params.header,
+                header=self.file_conn[file_conn_key].params.hloheader.clean_dict(),
                 file_type=self.file_conn[file_conn_key].params.file_type,
                 json_data_keys=self.file_conn[file_conn_key].params.json_data_keys,
                 file_sample_label=self.file_conn[file_conn_key].params.sample_global_labels,
@@ -1154,25 +1164,15 @@ class Base(object):
 
                         # write only data if the file connection is open
                         if self.file_conn[file_conn_key].file:
-                            # check if end of hlo header was writen
-                            # else force it here
-                            # e.g. just write the separator
-                            # if not self.finished_hlo_header[file_conn_key]:
-                            if not self.file_conn[file_conn_key].finished_hlo_header:
+                            # check if separator was already written
+                            # else add it
+                            if not self.file_conn[file_conn_key].added_hlo_separator:
                                 self.base.print_message(
                                     f"{self.action.action_abbr} data file "
                                     f"{file_conn_key} is missing hlo "
                                     "separator. Writing it.",
                                     error=True,
                                 )
-                                self.file_conn[file_conn_key].\
-                                    finished_hlo_header = True
-                                await self.write_live_data(
-                                    output_str=pyaml.dump({"epoch_ns": self.set_realtime_nowait()}),
-                                    file_conn_key=file_conn_key,
-                                )
-
-                            if not self.file_conn[file_conn_key].added_hlo_separator:
                                 self.file_conn[file_conn_key].\
                                     added_hlo_separator = True
                                 await self.write_live_data(
