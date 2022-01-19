@@ -259,8 +259,9 @@ class Base(object):
     async def setup_and_contain_action(
                                        self, 
                                        request: Request,
-                                       json_data_keys: List[str],
-                                       action_abbr: Optional[str] = None
+                                       json_data_keys: List[str] = [],
+                                       action_abbr: Optional[str] = None,
+                                       file_type: Optional[str] = "helao__file"
                                       ) -> object:
         """This is a simple shortcut for very basic endpoints
         which just want to return some simple data"""
@@ -272,6 +273,7 @@ class Base(object):
             file_conn_params_list = [FileConnParams(
                                     file_conn_key = self.dflt_file_conn_key(),
                                     json_data_keys=json_data_keys,
+                                    file_type = file_type
                                     )]))
         return active
 
