@@ -4,22 +4,14 @@ from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 from pydantic import BaseModel, Field
-from enum import Enum
 
 
+from .hlostatus import HloStatus
 from .sample import SampleUnion
 from .fileinfo import FileInfo
 from ..version import get_hlo_version
 from ..helper.helaodict import HelaoDict
 
-class ActionStatus(str, Enum):
-    active = "active"
-    finished = "finished"
-    errored = "errored"
-    aborted = "aborted"
-    skipped = "skipped"
-    estopped = "estopped"
-    split = "split"
 
 class ShortActionModel(BaseModel, HelaoDict):
     action_uuid: Optional[UUID]
@@ -37,7 +29,7 @@ class ActionModel(ShortActionModel):
     experiment_uuid: Optional[UUID]
     experiment_timestamp: Optional[datetime]
     action_timestamp: Optional[datetime]
-    action_status: Optional[str]
+    action_status: List[HloStatus] = Field(default_factory=list)
     action_order: Optional[int] = 0
     action_retry: Optional[int] = 0
     action_split: Optional[int] = 0

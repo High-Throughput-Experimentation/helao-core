@@ -10,9 +10,11 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from .hlostatus import HloStatus
 from .sample import SampleUnion
 from .action import ShortActionModel
 from .fileinfo import FileInfo
+
 from ..version import get_hlo_version
 from ..helper.helaodict import HelaoDict
 
@@ -54,7 +56,7 @@ class ExperimentModel(ExperimentTemplate):
     sequence_uuid: Optional[UUID]
     experiment_uuid: Optional[UUID]
     experiment_timestamp: Optional[datetime]
-    experiment_status: Optional[str]
+    experiment_status: List[HloStatus] = Field(default_factory=list)
     output_dir: Optional[str]
     action_list: List[ShortActionModel] = Field(default_factory=list)
     samples_in: List[SampleUnion] = Field(default_factory=list)

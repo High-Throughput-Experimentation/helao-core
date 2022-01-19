@@ -1,20 +1,29 @@
-__all__ = ["Base"]
+__all__ = [
+           "Base",
+           "FileConnParams",
+           "ActiveParams",
+           "make_action_serv"
+          ]
+
 import asyncio
 import json
 import os
 import sys
-from copy import copy
 from socket import gethostname
-from time import ctime, strftime, strptime, time, time_ns
-from typing import List, Optional, Union, Literal
-from datetime import datetime
+from time import ctime, time, time_ns
+from typing import List, Optional, Dict
 from uuid import UUID
+from fastapi import Request
+import hashlib
 
 import aiofiles
 import colorama
 import ntplib
 import numpy as np
 import pyaml
+from enum import Enum
+
+from pydantic import BaseModel, Field, validator
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.openapi.utils import get_flat_params
@@ -22,78 +31,202 @@ from fastapi.openapi.utils import get_flat_params
 
 from .api import HelaoFastAPI
 from .dispatcher import async_private_dispatcher
+from .setup_action import setup_action
 
 from ..helper.helao_dirs import helao_dirs
 from ..helper.multisubscriber_queue import MultisubscriberQueue
 from ..helper.print_message import print_message
 from ..helper import async_copy
 from ..schema import Action
-from ..model.action import ActionStatus
+from ..model.hlostatus import HloStatus
 from ..model.sample import SampleUnion, NoneSample
 from ..model.sample import SampleInheritance, SampleStatus
 from ..model.fileinfo import FileInfo
+from ..model.data import DataModel, DataPackageModel
 from ..helper.file_in_use import file_in_use
+from ..helper.helaodict import HelaoDict
 from ..version import get_hlo_version
 
+
 # ANSI color codes converted to the Windows versions
-colorama.init(strip=not sys.stdout.isatty())  # strip colors if stdout is redirected
+# strip colors if stdout is redirected
+colorama.init(strip=not sys.stdout.isatty())
 # colorama.init()
+
+class HloFileGroup(str, Enum):
+    aux_files = "aux_files"
+    helao_files = "helao_files"
+
+
+class HloHeaderModel(BaseModel, HelaoDict):
+    hlo_version: Optional[str] = get_hlo_version()
+    action_name: str
+    column_headings: List[str] = Field(default_factory=list)
+
+
+class FileConnParams(BaseModel, HelaoDict):
+    # we require a file conn key
+    # cannot be uuid 'object' as we might have more then one file
+    # either use sample_label, or str(action_uuid) (if only one file etc
+    file_conn_key: UUID
+
+    # but samples are optional
+    # only need the global label, but not the full sample basemodel
+    sample_global_labels: List[str] = Field(default_factory=list)
+    json_data_keys: List[str] = Field(default_factory=list)
+    # type of file
+    file_type: str = "helao__file"
+    file_group: Optional[HloFileGroup] = HloFileGroup.helao_files
+    # None will trigger autogeneration of a file name
+    file_name: Optional[str]
+    # the header of the hlo file as dict (will be written as yml)
+    header: Optional[Dict] = Field(default_factory=dict)
+
+
+class FileConn(BaseModel):
+    """This is an internal BaseModel for Base which will hold all 
+    file connections.
+    """
+    params: FileConnParams
+    # signal if a header was written or not
+    finished_hlo_header: bool = False
+    added_hlo_separator: bool = False
+    # holds the file reference
+    file: Optional[object]
+
+
+class ActiveParams(BaseModel, HelaoDict):
+    # the Action object for this action
+    action: Action
+    # a list of data file connection parameters
+    file_conn_params_list: List[FileConnParams] = Field(default_factory=list)
+    aux_listen_uuids: List[UUID] = Field(default_factory=list)
+
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+    @validator("action")
+    def validate_action(cls, v):
+        return v
+
+
+def make_action_serv(config, server_key, server_title, description, version, driver_class=None):
+    app = HelaoFastAPI(config, server_key, title=server_title, description=description, version=version)
+
+    @app.on_event("startup")
+    def startup_event():
+        app.base = Base(app)
+        if driver_class:
+            app.driver = driver_class(app.base)
+
+    @app.websocket("/ws_status")
+    async def websocket_status(websocket: WebSocket):
+        """Broadcast status messages.
+
+        Args:
+        websocket: a fastapi.WebSocket object
+        """
+        await app.base.ws_status(websocket)
+
+    @app.websocket("/ws_data")
+    async def websocket_data(websocket: WebSocket):
+        """Broadcast status dicts.
+
+        Args:
+        websocket: a fastapi.WebSocket object
+        """
+        await app.base.ws_data(websocket)
+
+    @app.post("/get_status")
+    def status_wrapper():
+        return app.base.status
+
+    @app.post("/attach_client")
+    async def attach_client(client_servkey: str):
+        return await app.base.attach_client(client_servkey)
+
+    @app.post("/endpoints")
+    def get_all_urls():
+        """Return a list of all endpoints on this server."""
+        return app.base.get_endpoint_urls(app)
+
+    # @app.post(f"/split")
+    # async def split(target_uuid: Optional[UUID],
+    #                 new_samples_in: Optional[List[SampleUnion]],
+    #                 new_params: Optional[dict] = None,
+    #                 scratch: Optional[List[None]] = [None], # temp fix so swagger still works 
+    #                 ):
+    #     return app.base.split(target_uuid, new_samples_in, new_params)
+
+    return app
+
 
 
 class Base(object):
     """Base class for all HELAO servers.
 
-    Base is a general class which implements message passing, status update, data
-    writing, and data streaming via async tasks. Every instrument and action server
-    should import this class for efficient integration into an orchestrated environment.
+    Base is a general class which implements message passing, 
+    status update, data writing, and data streaming via async tasks. 
+    Every instrument and action server should import this class 
+    for efficient integration into an orchestrated environment.
 
-    A Base initialized within a FastAPI startup event will launch three async tasks
-    to the server's event loop for handling:
-    (1) broadcasting status updates via websocket and http POST requests to an attached
+    A Base initialized within a FastAPI startup event 
+    will launch three async tasks to the server's event loop for handling:
+    (1) broadcasting status updates via websocket and 
+        http POST requests to an attached
         orchestrator's status updater if available,
     (2) data streaming via websocket,
     (3) data writing to local disk.
 
-    Websocket connections are broadcast from a multisubscriber queue in order to handle
-    consumption from multiple clients awaiting a single queue. Self-subscriber tasks are
-    also created as initial subscribers to log all events and prevent queue overflow.
+    Websocket connections are broadcast from a multisubscriber queue 
+    in order to handle consumption from multiple clients 
+    awaiting a single queue. Self-subscriber tasks are
+    also created as initial subscribers 
+    to log all events and prevent queue overflow.
 
-    The data writing method will update a class attribute with the currently open file.
-    For a given root directory, files and folders will be written as follows:
-    {%y.%j}/  # experiment_date year.weeknum
-        {%Y%m%d}/  # experiment_date
-            {%H%M%S}/  # experiment_time
-                {%Y%m%d.%H%M%S}__{action_server_name}__{action_name}__{action_uuid}/
-                    {filename}.{ext}
-                    {%Y%m%d.%H%M%S%f}.prc  # action_datetime
-                    (aux_files)
+    The data writing method will update a class attribute 
+    with the currently open file.
+    For a given root directory, files 
+    and folders will be written as follows:
+        TBD
     """
 
     def __init__(self, fastapp: HelaoFastAPI, calibration: dict = {}):
         self.server_name = fastapp.helao_srv
         self.server_cfg = fastapp.helao_cfg["servers"][self.server_name]
-        self.server_params = fastapp.helao_cfg["servers"][self.server_name].get("params", dict())
+        self.server_params = \
+            fastapp.helao_cfg["servers"][self.server_name].\
+            get("params", dict())
         self.world_cfg = fastapp.helao_cfg
         self.hostname = gethostname()
         self.technique_name = None
         self.aloop = asyncio.get_running_loop()
 
-        self.root, self.save_root, self.log_root, self.states_root, self.db_root = helao_dirs(self.world_cfg)
+        self.root, \
+        self.save_root, \
+        self.log_root, \
+        self.states_root, \
+        self.db_root = helao_dirs(self.world_cfg)
 
         if self.root is None:
             raise ValueError(
-                "Warning: root directory was not defined. Logs, PRCs, PRGs, and data will not be written.",
+                "Warning: root directory was not defined. "
+                "Logs, PRCs, PRGs, and data will not be written.",
                 error=True,
             )
 
         if "technique_name" in self.world_cfg:
             self.print_message(
-                f"Found technique_name in config: {self.world_cfg['technique_name']}",
+                f"Found technique_name in config: "
+                f"{self.world_cfg['technique_name']}",
             )
             self.technique_name = self.world_cfg["technique_name"]
         else:
             raise ValueError(
-                "Missing 'technique_name' in config, cannot create server object.",
+                "Missing 'technique_name' in config, "
+                "cannot create server object.",
                 error=True,
             )
 
@@ -111,7 +244,10 @@ class Base(object):
 
         self.ntp_last_sync_file = None
         if self.root is not None:
-            self.ntp_last_sync_file = os.path.join(self.states_root, "ntpLastSync.txt")
+            self.ntp_last_sync_file = os.path.join(
+                                                   self.states_root, 
+                                                   "ntpLastSync.txt"
+                                                  )
             if os.path.exists(self.ntp_last_sync_file):
                 with open(self.ntp_last_sync_file, "r") as f:
                     tmps = f.readline().strip().split(",")
@@ -126,16 +262,27 @@ class Base(object):
         self.status_logger = self.aloop.create_task(self.log_status_task())
         self.ntp_syncer = self.aloop.create_task(self.sync_ntp_task())
 
+
     def print_message(self, *args, **kwargs):
-        print_message(self.server_cfg, self.server_name, log_dir=self.log_root, *args, **kwargs)
+        print_message(
+                      self.server_cfg, 
+                      self.server_name, 
+                      log_dir=self.log_root, 
+                      *args, 
+                      **kwargs
+                     )
+
 
     def init_endpoint_status(self, app: FastAPI):
-        "Populate status dict with FastAPI server endpoints for monitoring."
+        """Populate status dict 
+           with FastAPI server endpoints for monitoring."""
         for route in app.routes:
             if route.path.startswith(f"/{self.server_name}"):
                 self.status[route.name] = []
                 self.endpoints.append(route.name)
-        self.print_message(f"Found {len(self.status)} endpoints for status monitoring on {self.server_name}.")
+        self.print_message(f"Found {len(self.status)} endpoints "
+                           f"for status monitoring on {self.server_name}.")
+
 
     def get_endpoint_urls(self, app: HelaoFastAPI):
         """Return a list of all endpoints on this server."""
@@ -164,38 +311,59 @@ class Base(object):
             url_list.append(routeD)
         return url_list
 
+
+    async def setup_and_contain_action(
+                                       self, 
+                                       request: Request,
+                                       json_data_keys: List[str],
+                                       action_abbr: Optional[str] = None
+                                      ) -> object:
+        """This is a simple shortcut for very basic endpoints
+        which just want to return some simple data"""
+        A = await setup_action(request)
+        if action_abbr is not None:
+            A.action_abbr = action_abbr
+        active = await self.contain_action(ActiveParams(
+            action = A,
+            file_conn_params_list = [FileConnParams(
+                                    file_conn_key = self.dflt_file_conn_key(),
+                                    json_data_keys=json_data_keys
+                                    )]))
+        return active
+
+
     async def contain_action(
         self,
-        action: Action,
-        file_type: str = "helao__file",
-        file_data_keys: Optional[str] = None,  # this is also keyd by file_sample_keys
-        file_sample_label: Optional[str] = None,  # this is also keyd by file_sample_keys
-        file_sample_keys: Optional[
-            list
-        ] = None,  # I need one key per datafile, but each datafile can still be based on multiple samples
-        header: Optional[str] = None,  # this is also keyd by file_sample_keys
-        aux_listen_uuids: List[str] = [],
-    ):
-        self.actives[str(action.action_uuid)] = Base.Active(
+        activeparams: ActiveParams
+    ) -> object:
+        """return an active Action:
+            file_type: type of output data file
+            json_data_keys: data keys for json encoded data (dict)
+            file_sample_label: list of sample labels  
+            file_conn_keys: 
+            header: header for data file
+        """
+        self.actives[str(activeparams.action.action_uuid)] = Base.Active(
             self,
-            action=action,
-            file_type=file_type,
-            file_data_keys=file_data_keys,
-            file_sample_label=file_sample_label,
-            file_sample_keys=file_sample_keys,
-            header=header,
-            aux_listen_uuids=aux_listen_uuids,
+            activeparams = activeparams
         )
-        await self.actives[str(action.action_uuid)].myinit()
-        return self.actives[str(action.action_uuid)]
+        await self.actives[str(activeparams.action.action_uuid)].myinit()
+        return self.actives[str(activeparams.action.action_uuid)]
+
 
     async def get_active_info(self, action_uuid: UUID):
         if action_uuid in self.actives:
-            action_dict = await self.actives[str(action_uuid)].active.as_dict()
+            action_dict = \
+                await self.actives[str(action_uuid)].active.as_dict()
             return action_dict
         else:
-            self.print_message(f"Specified action uuid {str(action_uuid)} was not found.", error=True)
+            self.print_message(
+                               f"Specified action uuid "
+                               f"{str(action_uuid)} was not found.", 
+                               error=True
+                              )
             return None
+
 
     async def get_ntp_time(self):
         "Check system clock against NIST clock for trigger operations."
@@ -363,17 +531,29 @@ class Base(object):
 
         # except asyncio.CancelledError:
         except Exception as e:
-            self.print_message(f"status logger task was cancelled with error: {e}", error=True)
+            self.print_message("status logger task was cancelled "
+                               f"with error: {e}", error=True)
+
 
     async def detach_subscribers(self):
         await self.status_q.put(StopAsyncIteration)
         await self.data_q.put(StopAsyncIteration)
         await asyncio.sleep(5)
 
-    async def set_realtime(self, epoch_ns: Optional[float] = None, offset: Optional[float] = None):
+
+    async def set_realtime(
+                           self, 
+                           epoch_ns: Optional[float] = None, 
+                           offset: Optional[float] = None
+                          ) -> float:
         return self.set_realtime_nowait(epoch_ns=epoch_ns, offset=offset)
 
-    def set_realtime_nowait(self, epoch_ns: Optional[float] = None, offset: Optional[float] = None):
+
+    def set_realtime_nowait(
+                            self, 
+                            epoch_ns: Optional[float] = None, 
+                            offset: Optional[float] = None
+                           ) -> float:
         if offset is None:
             if self.ntp_offset is not None:
                 offset_ns = int(np.floor(self.ntp_offset * 1e9))
@@ -386,6 +566,7 @@ class Base(object):
         else:
             real_time = epoch_ns + offset_ns
         return real_time
+
 
     async def sync_ntp_task(self, resync_time: int = 600):
         "Regularly sync with NTP server."
@@ -418,17 +599,21 @@ class Base(object):
         except asyncio.CancelledError:
             self.print_message("ntp sync task was cancelled", info=True)
 
+
     async def shutdown(self):
         await self.detach_subscribers()
         self.status_logger.cancel()
         self.ntp_syncer.cancel()
+
 
     async def write_act(self, action):
         "Create new prc if it doesn't exist."
         if action.save_act:
             act_dict = action.get_act().clean_dict()
             output_path = os.path.join(self.save_root,action.output_dir)
-            output_file = os.path.join(output_path, f"{action.action_timestamp.strftime('%Y%m%d.%H%M%S%f')}.yml")
+            output_file = os.path.join(
+                                       output_path, 
+                                       f"{action.action_timestamp.strftime('%Y%m%d.%H%M%S%f')}.yml")
     
             self.print_message(f"writing to act meta file: {output_path}")
 
@@ -440,6 +625,7 @@ class Base(object):
                 await f.write(pyaml.dump(act_dict, sort_dicts=False))
         else:
             self.print_message(f"writing meta file for action '{action.action_name}' is disabled.", info=True)
+
 
     async def write_prc(self, experiment):
         prc_dict = experiment.get_prc().clean_dict()
@@ -461,6 +647,7 @@ class Base(object):
                 output_str += "\n"
             await f.write(output_str)
 
+
     async def write_seq(self, sequence):
         seq_dict = sequence.get_seq().clean_dict()
         sequence_dir = self.get_sequence_dir(sequence)
@@ -473,7 +660,6 @@ class Base(object):
         if not os.path.exists(output_path):
             os.makedirs(output_path, exist_ok=True)
 
-        # async with aiofiles.open(output_file, mode="a+") as f:
         async with aiofiles.open(output_file, mode="w+") as f:
             await f.write(pyaml.dump({"file_type": "sequence"}))
             if not output_str.endswith("\n"):
@@ -491,6 +677,7 @@ class Base(object):
             f"{HMS}__{sequence.sequence_name}__{sequence.sequence_label}",
         )
 
+
     def get_experiment_dir(self, experiment):
         """accepts action or experiment object"""
         experiment_time = experiment.experiment_timestamp.strftime("%H%M%S%f")
@@ -500,6 +687,7 @@ class Base(object):
             f"{experiment_time}__{experiment.experiment_name}",
         )
 
+
     def get_action_dir(self, action):
         experiment_dir = self.get_experiment_dir(action)
         return os.path.join(
@@ -507,51 +695,73 @@ class Base(object):
             f"{action.action_actual_order}__{action.action_timestamp.strftime('%Y%m%d.%H%M%S%f')}__{action.action_server_name}__{action.action_name}",
         )
 
+
+    def new_file_conn_key(self, key: str) -> UUID:
+        # return shortuuid.decode(key)
+        # Instansiate new md5_hash
+        md5_hash = hashlib.md5()
+        # Pass the_string to the md5_hash as bytes
+        md5_hash.update(key.encode("utf-8"))
+        # Generate the hex md5 hash of all the read bytes
+        the_md5_hex_str = md5_hash.hexdigest()
+        # Return a String repersenation of the uuid of the md5 hash
+        return UUID(the_md5_hex_str)
+
+
+    def dflt_file_conn_key(self):
+        """simply return a default None"""
+        return self.new_file_conn_key(str(None))
+
+    def replace_status(
+                       self, 
+                       status_list: List[HloStatus], 
+                       old_status: HloStatus, 
+                       new_status: HloStatus
+                      ):
+        if old_status in status_list:
+            idx = status_list.index(old_status)
+            status_list[idx] = new_status
+        else:
+            status_list.append(new_status)
+
+
     class Active(object):
         """Active action holder which wraps data queing and prc writing."""
 
         def __init__(
             self,
             base,  # outer instance
-            action: Action,
-            file_type: str = "helao__file",
-            file_data_keys: Optional[str] = None,
-            file_sample_label: Optional[str] = None,
-            file_sample_keys: Optional[list] = None,
-            header: Optional[str] = None,
-            aux_listen_uuids: List[str] = [],
+            activeparams: ActiveParams
+
         ):
             self.base = base
-            self.action = action
-            self.action.file_type = file_type
-            self.action.file_group = "helao_files"
-            self.action.file_data_keys = file_data_keys
-            self.action.file_sample_label = file_sample_label
-            self.action.action_status = "active"
-            self.action.header = header
+            self.action = activeparams.action
+            self.listen_uuids = []
+            
+            
+            # better call this function instead of directly adding it
+            # in case we modify the way the uuids are saved
+            # self.add_new_listen_uuid(self.action.action_uuid)
+            # action_uuid is added after action is init
+            for aux_uuid in activeparams.aux_listen_uuids:
+                self.add_new_listen_uuid(aux_uuid)
+                
+
+
+            self.action.action_status = [HloStatus.active]
             self.manual = False
 
-            if file_sample_keys is None:
-                self.action.file_sample_keys = ["None"]
-                self.action.file_sample_label = {"None": self.action.file_sample_label}
-                self.action.file_data_keys = {"None": self.action.file_data_keys}
-                self.action.header = {"None": self.action.header}
-            else:
-                self.action.file_sample_keys = file_sample_keys
-                if type(self.action.file_sample_keys) is not list:
-                    self.action.file_sample_keys = [self.action.file_sample_keys]
-                if self.action.file_sample_label is None:
-                    self.action.file_sample_label = {
-                        f"{file_sample_key}": None for file_sample_key in self.action.file_sample_keys
-                    }
-                if self.action.file_data_keys is None:
-                    self.action.file_data_keys = {
-                        f"{file_sample_key}": None for file_sample_key in self.action.file_sample_keys
-                    }
-                if self.action.header is None:
-                    self.action.header = {
-                        f"{file_sample_key}": None for file_sample_key in self.action.file_sample_keys
-                    }
+            # signals the data logger that it got data 
+            # and hlo header was written or not
+            # active.finish_hlo_header should be called 
+            # within the driver before
+            # any data is pushed to avoid a forced header end write
+            self.finished_hlo_header = dict()
+            self.file_conn: Dict(str, FileConn) = dict()
+            for file_conn_param in activeparams.file_conn_params_list:
+                self.file_conn[file_conn_param.file_conn_key] = \
+                    FileConn(params = file_conn_param)
+
 
             # need to remove swagger workaround value if present
             if "scratch" in self.action.action_params:
@@ -560,41 +770,47 @@ class Base(object):
             # this updates timestamp and uuid
             # only if they are None
             # They are None in manual, but already set in orch mode
-            self.action.init_act(machine_name=self.base.hostname, time_offset=self.base.ntp_offset)
+            self.action.init_act(
+                                 machine_name=self.base.hostname, 
+                                 time_offset=self.base.ntp_offset
+                                )
+            self.add_new_listen_uuid(self.action.action_uuid)
             # if manual:
             self.action.action_server_name = self.base.server_name
 
-            # signals the data logger that it got data and hlo header was written or not
-            # active.finish_hlo_header should be called within the driver before
-            # any data is pushed to avoid a forced header end write
-            self.finished_hlo_header = dict()
-            self.file_conn = dict()
 
             # check if its swagger submission
-            if self.action.sequence_timestamp is None or self.action.experiment_timestamp is None:
+            if self.action.sequence_timestamp is None \
+            or self.action.experiment_timestamp is None:
                 self.manual = True
                 self.base.print_message("Manual Action.", info=True)
                 self.action.access = "manual"
 
                 # -- (1) -- set missing sequence parameters
                 self.action.sequence_name = "manual_swagger_seq"
-                self.action.init_seq(machine_name=self.base.ntp_offset, time_offset=self.base.ntp_offset)
-                self.action.sequence_output_dir = self.base.get_sequence_dir(self.action)
-                self.action.sequence_status = "active"
+                self.action.init_seq(
+                                     machine_name=self.base.ntp_offset, 
+                                     time_offset=self.base.ntp_offset
+                                    )
+                self.action.sequence_output_dir = \
+                    self.base.get_sequence_dir(self.action)
+                self.action.sequence_status = [HloStatus.active]
 
                 # -- (2) -- set missing experiment parameters
                 self.action.experiment_name = "MANUAL"
                 self.action.set_dtime(offset=self.base.ntp_offset)
                 self.action.gen_uuid_experiment(self.base.hostname)
-                self.action.experiment_output_dir = self.base.get_experiment_dir(self.action)
-                self.action.experiment_status = "active"
+                self.action.experiment_output_dir = \
+                    self.base.get_experiment_dir(self.action)
+                self.action.experiment_status = [HloStatus.finished]
                 # these are set in setup_action
                 # self.action.technique_name = "MANUAL"
                 # self.action.orchestrator = "MANUAL"
                 # machine name is set above
 
             if not self.base.save_root:
-                self.base.print_message("Root save directory not specified, cannot save action results.")
+                self.base.print_message("Root save directory not specified, "
+                                        "cannot save action results.")
                 self.action.save_data = False
                 self.action.save_act = False
                 self.action.output_dir = None
@@ -617,11 +833,13 @@ class Base(object):
             )
 
             self.data_logger = self.base.aloop.create_task(
-                self.log_data_task(aux_listen_uuids=aux_listen_uuids)
+                self.log_data_task()
             )
+
 
         async def update_act_file(self):
             await self.base.write_act(self.action)
+
 
         async def myinit(self):
 
@@ -631,68 +849,61 @@ class Base(object):
                     exist_ok=True,
                 )
                 await self.update_act_file()
-
+    
                 if self.manual:
                     # create and write seq file for manual action
                     await self.base.write_seq(self.action)
                     # create and write prc file for manual action
                     await self.base.write_prc(self.action)
 
-                if self.action.save_data:
-                    for file_sample_key in self.action.file_sample_keys:
-                        # no file yet created
-                        self.file_conn[file_sample_key] = None
-                        # no header finished
-                        self.finished_hlo_header[file_sample_key] = False
 
             await self.add_status()
+
 
         def init_datafile(
             self,
             header,
             file_type,
-            file_data_keys,
+            json_data_keys,
             file_sample_label,
             filename,
-            file_group,
-            file_sample_key: Optional[str] = None,
+            file_group: HloFileGroup,
+            file_conn_key: Optional[str] = None,
         ):
             filenum = 0
-            if file_sample_key in self.action.file_sample_keys:
-                filenum = self.action.file_sample_keys.index(file_sample_key)
+            if file_conn_key in self.file_conn:
+                # filenum = self.action.file_conn_keys.index(file_conn_key)
+                # filenum = self.file_conn[file_conn_key].file_num
+                filenum = list(self.file_conn.keys()).index(file_conn_key)
 
-            if header:
-                if isinstance(header, dict):
-                    header_dict = copy(header)
+            if isinstance(header, dict):
+                # {} is "{}\n" if not filtered
+                if header:
                     header = pyaml.dump(header, sort_dicts=False)
-                    # header_lines = len(header_dict)
                 else:
-                    if isinstance(header, list):
-                        # header_lines = len(header)
-                        header = "\n".join(header)
-                    # else:
-                    #     header_lines = len(header.split("\n"))
+                    header = ""
+            elif isinstance(header, list):
+                if header:
+                    header = "\n".join(header) + "\n"
+                else:
+                    header = ""
+            elif header is None:
+                header = ""
 
-            if file_data_keys is None:
-                file_data_keys = []
+            if json_data_keys is None:
+                json_data_keys = []
 
             if filename is None:  # generate filename
                 file_ext = "csv"
-                if file_group == "helao_files":
+                if file_group == HloFileGroup.helao_files:
                     file_ext = "hlo"
-
-                    header_dict = {
-                        "hlo_version": get_hlo_version(),
-                        "action_name": self.action.action_abbr
+                    header_dict = HloHeaderModel(
+                        action_name = self.action.action_abbr 
                         if self.action.action_abbr is not None
                         else self.action.action_name,
-                        "column_headings": file_data_keys,
-                    }
-
-                    if header is None:
-                        header = pyaml.dump(header_dict, sort_dicts=False)
-                    else:
-                        header = pyaml.dump(header_dict, sort_dicts=False) + header
+                        column_headings = json_data_keys
+                    ).as_dict()
+                    header = pyaml.dump(header_dict, sort_dicts=False) + header
                 else:  # aux_files
                     pass
 
@@ -706,7 +917,7 @@ class Base(object):
             file_info = FileInfo(
                 file_type=file_type,
                 file_name=filename,
-                data_keys=file_data_keys,
+                data_keys=json_data_keys,
                 sample=file_sample_label,
                 # action_uuid: Optional[UUID]
             )
@@ -717,23 +928,21 @@ class Base(object):
 
             return header, file_info
 
-        def finish_hlo_header(self, realtime: Optional[int] = None):
+
+        def finish_hlo_header(
+                              self, 
+                              file_conn_keys: List[UUID],
+                              realtime: Optional[int] = None
+                             ):
+            """this just adds a timestamp for the data"""
             # needs to be a sync function
             if realtime == None:
                 realtime = self.set_realtime_nowait()
 
-            data_dict1 = dict()
-            data_dict2 = dict()
-            file_keys = []
-            for file_key in self.file_conn:
-                data_dict1[file_key] = pyaml.dump({"epoch_ns": realtime})
-                data_dict2[file_key] = "%%"
-                file_keys.append(file_key)
-                # before we push the header end onto the dataq, need to set the flag
-                self.finished_hlo_header[file_key] = True
+            for file_conn_key in file_conn_keys:
+                self.file_conn[file_conn_key].params.header["epoch_ns1"] = realtime
+                self.file_conn[file_conn_key].finished_hlo_header = True
 
-            self.enqueue_data_nowait(data_dict1, file_sample_keys=file_keys)
-            self.enqueue_data_nowait(data_dict2, file_sample_keys=file_keys)
 
         async def add_status(self):
             self.base.status[self.action.action_name].append(str(self.action.action_uuid))
@@ -768,25 +977,37 @@ class Base(object):
                 }
             )
 
+
         async def set_estop(self):
-            self.base.status[self.action.action_name].remove(str(self.action.action_uuid))
-            self.base.status[self.action.action_name].append(f"{str(self.action.action_uuid)}__estop")
+            self.base.status[self.action.action_name]\
+                .remove(str(self.action.action_uuid))
+            self.base.status[self.action.action_name]\
+                .append(f"{str(self.action.action_uuid)}__estop")
             self.base.print_message(
-                f"E-STOP {str(self.action.action_uuid)} on {self.action.action_name} status.",
+                f"E-STOP {str(self.action.action_uuid)} on "
+                f"{self.action.action_name} status.",
                 error=True,
             )
             await self.base.status_q.put(
                 {
-                    self.action.action_name: self.base.status[self.action.action_name],
+                    self.action.action_name: \
+                        self.base.status[self.action.action_name],
                     "act": self.action.get_act().as_dict(),
                 }
             )
 
-        async def set_error(self, err_msg: Optional[str] = None):
-            self.base.status[self.action.action_name].remove(str(self.action.action_uuid))
-            self.base.status[self.action.action_name].append(f"{str(self.action.action_uuid)}__error")
+
+        async def set_error(
+                            self, 
+                            err_msg: Optional[str] = None
+                           ):
+            self.base.status[self.action.action_name].\
+                remove(str(self.action.action_uuid))
+            self.base.status[self.action.action_name].\
+                append(f"{str(self.action.action_uuid)}__error")
             self.base.print_message(
-                f"ERROR {str(self.action.action_uuid)} on {self.action.action_name} status.",
+                f"ERROR {str(self.action.action_uuid)} on "
+                f"{self.action.action_name} status.",
                 error=True,
             )
             if err_msg:
@@ -795,29 +1016,53 @@ class Base(object):
                 self.action.error_code = "-1 unspecified error"
             await self.base.status_q.put(
                 {
-                    self.action.action_name: self.base.status[self.action.action_name],
+                    self.action.action_name: \
+                        self.base.status[self.action.action_name],
                     "act": self.action.get_act().as_dict(),
                 }
             )
 
-        async def set_realtime(self, epoch_ns: Optional[float] = None, offset: Optional[float] = None):
-            # return self.set_realtime_nowait(epoch_ns=epoch_ns, offset=offset)
-            return self.base.set_realtime_nowait(epoch_ns=epoch_ns, offset=offset)
 
-        def set_realtime_nowait(self, epoch_ns: Optional[float] = None, offset: Optional[float] = None):
-            return self.base.set_realtime_nowait(epoch_ns=epoch_ns, offset=offset)
+        async def set_realtime(
+                               self, 
+                               epoch_ns: Optional[float] = None, 
+                               offset: Optional[float] = None
+                              ) -> float:
+            return self.base.set_realtime_nowait(
+                                                 epoch_ns=epoch_ns, 
+                                                 offset=offset
+                                                )
 
-        async def set_output_file(self, file_sample_key: str):
+
+        def set_realtime_nowait(
+                                self, 
+                                epoch_ns: Optional[float] = None, 
+                                offset: Optional[float] = None
+                               ) -> float:
+            return self.base.set_realtime_nowait(
+                                                 epoch_ns=epoch_ns, 
+                                                 offset=offset
+                                                )
+
+
+        async def key_to_fileconn(self, file_conn_key: str):
+            """gets the FileConn Basemodel for a given file_conn_key"""
+            pass
+        
+
+        async def set_output_file(self, file_conn_key: UUID):
             "Set active save_path, write header if supplied."
 
+            self.base.print_message(f"creating file for file conn: "
+                                    f"{file_conn_key}")
             header, file_info = self.init_datafile(
-                header=self.action.header.get(file_sample_key, None),
-                file_type=self.action.file_type,
-                file_data_keys=self.action.file_data_keys.get(file_sample_key, []),
-                file_sample_label=self.action.file_sample_label.get(file_sample_key, None),
+                header=self.file_conn[file_conn_key].params.header,
+                file_type=self.file_conn[file_conn_key].params.file_type,
+                json_data_keys=self.file_conn[file_conn_key].params.json_data_keys,
+                file_sample_label=self.file_conn[file_conn_key].params.sample_global_labels,
                 filename=None,  # always autogen a filename
-                file_group=self.action.file_group,
-                file_sample_key=file_sample_key,
+                file_group=self.file_conn[file_conn_key].params.file_group,
+                file_conn_key=file_conn_key,
             )
 
             if self.action.file_dict is None:
@@ -825,145 +1070,230 @@ class Base(object):
             self.action.file_dict.append(file_info)
             filename = file_info.file_name
 
-            output_path = os.path.join(self.base.save_root, self.action.output_dir, filename)
+            output_path = os.path.join(
+                                       self.base.save_root, 
+                                       self.action.output_dir, filename
+                                      )
             self.base.print_message(f"writing data to: {output_path}")
             # create output file and set connection
-            self.file_conn[file_sample_key] = await aiofiles.open(output_path, mode="a+")
+            self.file_conn[file_conn_key].file = \
+                await aiofiles.open(output_path, mode="a+")
+
             if header:
+                self.base.print_message("adding header to new file")
                 if not header.endswith("\n"):
                     header += "\n"
-                await self.file_conn[file_sample_key].write(header)
+                await self.file_conn[file_conn_key].file.write(header)
 
-        async def write_live_data(self, output_str: str, file_conn_key):
+
+        async def write_live_data(
+                                  self, 
+                                  output_str: str, 
+                                  file_conn_key: UUID
+                                 ):
             """Appends lines to file_conn."""
             if file_conn_key in self.file_conn:
-                if self.file_conn[file_conn_key]:
+                if self.file_conn[file_conn_key].file:
                     if not output_str.endswith("\n"):
                         output_str += "\n"
-                    await self.file_conn[file_conn_key].write(output_str)
+                    await self.file_conn[file_conn_key].file.write(output_str)
 
-        async def enqueue_data(self, data, errors: list = [], file_sample_keys: Optional[list] = None):
+
+        async def enqueue_data_dflt(
+                                   self, 
+                                   datadict: dict
+                                   ):
+            """This is a simple wrapper for simple endpoints which just
+            push data to a single file using a default data conn key
+            """
+            await self.enqueue_data(
+                datamodel = DataModel(
+                    data = {self.base.dflt_file_conn_key():datadict}
+                                     )
+            )
+
+
+        async def enqueue_data(
+                               self, 
+                               datamodel: DataModel
+                              ):
             await self.base.data_q.put(
-                self.assemble_data_msg(data=data, errors=errors, file_sample_keys=file_sample_keys)
+                self.assemble_data_msg(
+                    datamodel = datamodel
+                )
             )
 
-        def enqueue_data_nowait(self, data, errors: list = [], file_sample_keys: Optional[list] = None):
+
+        def enqueue_data_nowait(
+                                self, 
+                                datamodel: DataModel
+                               ):
             self.base.data_q.put_nowait(
-                self.assemble_data_msg(data=data, errors=errors, file_sample_keys=file_sample_keys)
+                self.assemble_data_msg(
+                    datamodel = datamodel
+                )
             )
 
-        def assemble_data_msg(self, data, errors: list = [], file_sample_keys: list = None):
-            data_dict = dict()
-            if file_sample_keys is None:
-                data_dict["None"] = data
-            else:
-                if type(file_sample_keys) is not list:
-                    file_sample_keys = [file_sample_keys]
-                for file_sample_key in file_sample_keys:
-                    data_dict[file_sample_key] = data.get(file_sample_key, dict())
 
-            data_msg = {
-                str(self.action.action_uuid): {
-                    "data": data_dict,
-                    "action_name": self.action.action_name,
-                    "errors": errors,
-                }
-            }
-            return data_msg
+        def assemble_data_msg(
+                              self, 
+                              datamodel: DataModel
+                             ) -> DataPackageModel:
+            return DataPackageModel(
+                action_uuid = self.action.action_uuid,
+                action_name = self.action.action_name,
+                datamodel = datamodel,
+                errors = datamodel.errors
+            )
 
-        async def log_data_task(self, aux_listen_uuids: List[str] = []):
+
+        def add_new_listen_uuid(self, new_uuid: UUID):
+            """adds a new uuid to the current data logger UUID list"""
+            self.listen_uuids.append(new_uuid)
+
+
+        async def log_data_task(self):
             """Self-subscribe to data queue, write to present file path."""
+            if not self.action.save_data:
+                self.base.print_message("data writing disabled")
+                return
+
+
             self.base.print_message("starting data logger")
-            # data_msg should be a dict {uuid: list of values or a list of list of values}
+
             try:
                 async for data_msg in self.base.data_q.subscribe():
-                    listen_uuids = aux_listen_uuids.append(str(self.action.action_uuid))
-                    listen_uuid = [x for x in listen_uuids if x in data_msg.keys()]
-                    if listen_uuid:  # only write data for this action
-                        listen_uuid = listen_uuid[0]
-                        data_dict = data_msg[listen_uuid]
-                        data_val = data_dict["data"]
-                        self.action.data.append(data_val)
-                        for sample, sample_data in data_val.items():
-                            if sample in self.file_conn:
-                                # check if we need to create the file first
-                                if self.file_conn[sample] is None:
-                                    await self.set_output_file(file_sample_key=sample)
+                    # check if the new data_msg is in listen_uuids
+                    if data_msg.action_uuid not in self.listen_uuids:
+                        self.base.print_message("UUID is not in listen_uuids",
+                                                error = True)
+                        continue
+                    # self.base.print_message("UUID is in listen_uuids",
+                    #                             info = True)
 
-                                if self.file_conn[sample]:
-                                    # check if end of hlo header was writen
-                                    # else force it here
-                                    # e.g. just write the separator
-                                    if not self.finished_hlo_header[sample]:
-                                        self.base.print_message(
-                                            f"{self.action.action_abbr} data file {sample} is missing hlo separator. Writing it.",
-                                            error=True,
-                                        )
-                                        self.finished_hlo_header[sample] = True
-                                        await self.write_live_data(
-                                            output_str=pyaml.dump({"epoch_ns": self.set_realtime_nowait()})
-                                            + "%%\n",
-                                            file_conn_key=sample,
-                                        )
+                    data_dict = data_msg.datamodel.data
 
-                                    if type(sample_data) is dict:
-                                        try:
-                                            output_str = json.dumps(sample_data)
-                                        except TypeError:
-                                            self.base.print_message(
-                                                "Data is not json serializable.",
-                                                error=True,
-                                            )
-                                            output_str = "Error: data was not serializable."
-                                        await self.write_live_data(
-                                            output_str=output_str,
-                                            file_conn_key=sample,
-                                        )
-                                    else:
-                                        await self.write_live_data(
-                                            output_str=sample_data, file_conn_key=sample
-                                        )
+                    # todo: do we still need this?
+                    # self.action.data.append(data_dict)
+
+
+                    for file_conn_key, sample_data in data_dict.items():
+                        if not file_conn_key in self.file_conn:
+                            if self.action.save_data:
+                                self.base.print_message(
+                                    f"'{file_conn_key}' does not exist in "
+                                    "file_conn '{self.file_conn}'.",
+                                    error=True,
+                                )
                             else:
-                                if self.action.save_data:
+                                # got data but saving is disabled,
+                                # e.g. no file was created,
+                                # e.g. file_conn_key is not in self.file_conn
+                                self.base.print_message(
+                                    "data logging is disabled for action "
+                                    f"'{self.action.action_name}'",
+                                    info=True,
+                                )
+                            
+                            continue
+
+
+                        # check if we need to create the file first
+                        if self.file_conn[file_conn_key].file is None:
+                            self.base.print_message("creating output file")
+                            # create the file for this data stream
+                            await self.set_output_file(
+                                file_conn_key=file_conn_key
+                            )
+                        # else:
+                        #     self.base.print_message("output file already exists")
+
+                        # write only data if the file connection is open
+                        if self.file_conn[file_conn_key].file:
+                            # check if end of hlo header was writen
+                            # else force it here
+                            # e.g. just write the separator
+                            # if not self.finished_hlo_header[file_conn_key]:
+                            if not self.file_conn[file_conn_key].finished_hlo_header:
+                                self.base.print_message(
+                                    f"{self.action.action_abbr} data file "
+                                    f"{file_conn_key} is missing hlo "
+                                    "separator. Writing it.",
+                                    error=True,
+                                )
+                                self.file_conn[file_conn_key].\
+                                    finished_hlo_header = True
+                                # TODO: add also hlo header (BaseModel)
+                                await self.write_live_data(
+                                    output_str=pyaml.dump({"epoch_ns": self.set_realtime_nowait()}),
+                                    file_conn_key=file_conn_key,
+                                )
+
+                            if not self.file_conn[file_conn_key].added_hlo_separator:
+                                self.file_conn[file_conn_key].\
+                                    added_hlo_separator = True
+                                await self.write_live_data(
+                                    output_str="%%\n",
+                                    file_conn_key=file_conn_key,
+                                )
+
+
+                            
+                            if type(sample_data) is dict:
+                                try:
+                                    output_str = json.dumps(sample_data)
+                                except TypeError:
                                     self.base.print_message(
-                                        f"'{sample}' does not exist in file_conn '{self.file_conn}'.",
+                                        "Data is not json serializable.",
                                         error=True,
                                     )
-                                else:
-                                    # got data but saving is disabled,
-                                    # e.g. no file was created,
-                                    # e.g. sample is not in self.file_conn
-                                    self.base.print_message(
-                                        f"data logging is disabled for action '{self.action.action_name}'",
-                                        info=True,
-                                    )
+                                    output_str = "Error: data was not serializable."
+                                await self.write_live_data(
+                                    output_str=output_str,
+                                    file_conn_key=file_conn_key,
+                                )
+                            else:
+                                await self.write_live_data(
+                                    output_str=sample_data, 
+                                    file_conn_key=file_conn_key
+                                )
+                        else:
+                            self.base.print_message("output file closed?", 
+                                                    error = True)
+
 
             except asyncio.CancelledError:
                 self.base.print_message("data logger task was cancelled", info=True)
 
+
         async def write_file(
-            self,
-            output_str: str,
-            file_type: str,
-            filename: Optional[str] = None,
-            file_group: Optional[str] = "aux_files",
-            header: Optional[str] = None,
-            sample_str: Optional[str] = None,
-            file_sample_label: Optional[str] = None,
-            file_data_keys: Optional[str] = None,
-        ):
-            "Write complete file, not used with queue streaming."
+                             self,
+                             output_str: str,
+                             file_type: str,
+                             filename: Optional[str] = None,
+                             file_group: Optional[HloFileGroup] = HloFileGroup.aux_files,
+                             header: Optional[str] = None,
+                             sample_str: Optional[str] = None,
+                             file_sample_label: Optional[str] = None,
+                             json_data_keys: Optional[str] = None,
+                            ):
+            """Write complete file, not used with queue streaming."""
             if self.action.save_data:
                 header, file_info = self.init_datafile(
                     header=header,
                     file_type=file_type,
-                    file_data_keys=file_data_keys,
+                    json_data_keys=json_data_keys,
                     file_sample_label=file_sample_label,
                     filename=filename,
                     file_group=file_group,
                 )
-                output_path = os.path.join(self.base.save_root, self.action.output_dir, file_info.file_name)
-                self.base.print_message(f"writing non stream data to: {output_path}")
+                output_path = os.path.join(
+                                           self.base.save_root, 
+                                           self.action.output_dir, 
+                                           file_info.file_name
+                                          )
+                self.base.print_message("writing non stream data to: "
+                                        f"{output_path}")
 
                 async with aiofiles.open(output_path, mode="w") as f:
                     await f.write(header + output_str)
@@ -974,29 +1304,35 @@ class Base(object):
             else:
                 return None
 
+
         def write_file_nowait(
-            self,
-            output_str: str,
-            file_type: str,
-            filename: Optional[str] = None,
-            file_group: Optional[str] = "aux_files",
-            header: Optional[str] = None,
-            sample_str: Optional[str] = None,
-            file_sample_label: Optional[str] = None,
-            file_data_keys: Optional[str] = None,
-        ):
-            "Write complete file, not used with queue streaming."
+                              self,
+                              output_str: str,
+                              file_type: str,
+                              filename: Optional[str] = None,
+                              file_group: Optional[HloFileGroup] = HloFileGroup.aux_files,
+                              header: Optional[str] = None,
+                              sample_str: Optional[str] = None,
+                              file_sample_label: Optional[str] = None,
+                              json_data_keys: Optional[str] = None,
+                             ):
+            """Write complete file, not used with queue streaming."""
             if self.action.save_data:
                 header, file_info = self.init_datafile(
                     header=header,
                     file_type=file_type,
-                    file_data_keys=file_data_keys,
+                    json_data_keys=json_data_keys,
                     file_sample_label=file_sample_label,
                     filename=filename,
                     file_group=file_group,
                 )
-                output_path = os.path.join(self.base.save_root, self.action.output_dir, file_info.file_name)
-                self.base.print_message(f"writing non stream data to: {output_path}")
+                output_path = os.path.join(
+                                           self.base.save_root, 
+                                           self.action.output_dir, 
+                                           file_info.file_name
+                                          )
+                self.base.print_message("writing non stream data to: "
+                                        f"{output_path}")
                 with open(output_path, mode="w") as f:
                     f.write(header + output_str)
                     if self.action.file_dict is None:
@@ -1006,8 +1342,13 @@ class Base(object):
             else:
                 return None
 
-        async def append_sample(self, samples: List[SampleUnion], IO: str):
-            "Add sample to samples_out and samples_in dict"
+
+        async def append_sample(
+                                self, 
+                                samples: List[SampleUnion], 
+                                IO: str
+                               ):
+            """Add sample to samples_out and samples_in dict"""
             # check if samples is empty
             if not samples:
                 return
@@ -1019,11 +1360,13 @@ class Base(object):
                     continue
 
                 if sample.inheritance is None:
-                    self.base.print_message("sample.inheritance is None. Using 'allow_both'.")
+                    self.base.print_message("sample.inheritance is None. "
+                                            "Using 'allow_both'.")
                     sample.inheritance = SampleInheritance.allow_both
 
                 if not sample.status:
-                    self.base.print_message(f"sample.status is None. Using '{SampleStatus.preserved}'.")
+                    self.base.print_message("sample.status is None. Using "
+                                            f"'{SampleStatus.preserved}'.")
                     sample.status = [SampleStatus.preserved]
 
                 if IO == "in":
@@ -1035,26 +1378,33 @@ class Base(object):
                         self.action.samples_out
                     self.action.samples_out.append(sample)
 
+
         async def split(
-            self,
-            target_uuid: Optional[UUID],
-            new_samples_in: Optional[List[SampleUnion]],
-            new_params: Optional[dict] = None,
-        ):
-            "Splits active action by writing yml of parent action and mutating self with split action parameters."
+                        self,
+                        target_uuid: Optional[UUID],
+                        new_samples_in: Optional[List[SampleUnion]],
+                        new_params: Optional[dict] = None,
+                       ) -> Action:
+            """Splits active action by writing yml of parent action 
+            and mutating self with split action parameters."""
             if len(self.base.actives)==0:
-                self.base.print_message("There is no active action. Cannot split.")
+                self.base.print_message("There is no active action. "
+                                        "Cannot split.")
                 return False
-            # when target_uuid is specified, check that it exists in base.actives
-            elif target_uuid is not None and target_uuid not in self.base.actives.keys():
-                self.base.print_message("target_uuid not found in list of actives. Cannot split.")
+
+            # when target_uuid is specified, 
+            # check that it exists in base.actives
+            elif target_uuid is not None \
+            and target_uuid not in self.base.actives.keys():
+                self.base.print_message("target_uuid not found "
+                                        "in list of actives. Cannot split.")
                 return False
             else:
             
                 await asyncio.sleep(1)
 
                 # pseudo-finish current active action
-                self.action.action_status = ActionStatus.split
+                self.action.action_status.append(HloStatus.split)
                 old_uuid = self.action.action_uuid
                 await self.base.write_act(self.action)
 
@@ -1071,19 +1421,31 @@ class Base(object):
                 # broadcast new action status as "active"
                 self.base.add_status()
                 # broadcast remove old action
-                _ = self.base.actives.pop(str(old_uuid), None) # consider moving this into clear_status
+                # consider moving this into clear_status
+                _ = self.base.actives.pop(str(old_uuid), None) 
                 await self.clear_status(old_uuid)
 
                 return self.action
 
-        async def finish(self, end_state: ActionStatus = ActionStatus.finished):
-            "Close file_conn, finish prc, copy aux, set endpoint status, and move active dict to past."
+
+        async def finish(
+                         self, 
+                         # end_state: HloStatus = HloStatus.finished
+                        ) -> Action:
+            """Close file_conn, finish prc, copy aux, 
+            set endpoint status, and move active dict to past."""
             await asyncio.sleep(1)
-            self.action.action_status = end_state
+            self.base.replace_status(
+                       status_list = self.action.action_status,
+                       old_status = HloStatus.active,
+                       new_status = HloStatus.finished
+                      )
+            
+            # self.action.action_status = [end_state]
             self.base.print_message("finishing data logging.")
             for filekey in self.file_conn:
-                if self.file_conn[filekey]:
-                    await self.file_conn[filekey].close()
+                if self.file_conn[filekey].file:
+                    await self.file_conn[filekey].file.close()
             self.file_conn = dict()
 
             if self.manual:
@@ -1097,14 +1459,22 @@ class Base(object):
             _ = self.base.actives.pop(str(self.action.action_uuid), None)
             return self.action
 
-        async def track_file(self, file_type: str, file_path: str, samples: List[SampleUnion]):
+
+        async def track_file(
+                             self, 
+                             file_type: str, 
+                             file_path: str, 
+                             samples: List[SampleUnion]
+                            ) -> None:
             "Add auxiliary files to file dictionary."
-            if os.path.dirname(file_path) != os.path.join(self.base.save_root, self.action.output_dir):
-                self.action.file_paths.append(file_path)
+            if os.path.dirname(file_path) != \
+            os.path.join(self.base.save_root, self.action.output_dir):
+                self.action.AUX_file_paths.append(file_path)
+
             file_info = FileInfo(
                 file_type=file_type,
                 file_name=os.path.basename(file_path),
-                # data_keys = file_data_keys,
+                # data_keys = json_data_keys,
                 sample=[sample.get_global_label() for sample in samples],
                 # action_uuid: Optional[UUID]
             )
@@ -1112,24 +1482,35 @@ class Base(object):
             if self.action.file_dict is None:
                 self.action.file_dict = []
             self.action.file_dict.append(file_info)
-            self.base.print_message(f"{file_info.file_name} added to files_technique / aux_files list.")
+            self.base.print_message(
+                f"{file_info.file_name}"
+                " added to files_technique / aux_files list.")
+
 
         async def relocate_files(self):
             "Copy auxiliary files from folder path to prc directory."
-            for x in self.action.file_paths:
-                new_path = os.path.join(self.base.save_root, self.action.output_dir, os.path.basename(x))
+            for x in self.action.AUX_file_paths:
+                new_path = os.path.join(
+                                        self.base.save_root, 
+                                        self.action.output_dir, 
+                                        os.path.basename(x)
+                                       )
                 await async_copy(x, new_path)
 
         async def finish_manual_action(self):
             if self.manual:
-                self.action.experiment_status = "finished"
-                self.action.sequence_status = "finished"
+                self.action.experiment_status = [HloStatus.finished]
+                self.action.sequence_status = [HloStatus.finished]
 
                 # add action to experiment
-                self.action.experiment_action_list.append(self.action.get_act())
+                self.action.experiment_action_list.append(
+                    self.action.get_act()
+                )
 
                 # add experiment to sequence
-                self.action.experimentmodel_list.append(self.action.get_prc())
+                self.action.experimentmodel_list.append(
+                    self.action.get_prc()
+                )
 
                 # this will write the correct
                 # sequence and experiment meta files for

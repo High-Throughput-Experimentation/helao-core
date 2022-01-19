@@ -46,7 +46,7 @@ class Sequence(HelaoDict, object):
         imports.update(inputdict)
         self.sequence_uuid = imports.get("sequence_uuid", None)
         self.sequence_timestamp = _to_datetime(time = imports.get("sequence_timestamp", None)).time
-        self.sequence_status = imports.get("sequence_status", None)
+        self.sequence_status = imports.get("sequence_status", [])
         self.sequence_name = imports.get("sequence_name", None)
         self.sequence_label = imports.get("sequence_label", "noLabel")
         self.sequence_params = imports.get("sequence_params", {})
@@ -130,7 +130,7 @@ class Experiment(Sequence):
 
         # main experiment parameters
         self.experiment_uuid = imports.get("experiment_uuid", None) #
-        self.experiment_status = imports.get("experiment_status", None)
+        self.experiment_status = imports.get("experiment_status", [])
         # main parametes for Action, need to put it into 
         # the new Basemodel in the future
         self.machine_name = imports.get("machine_name", None)
@@ -337,21 +337,29 @@ class Action(Experiment):
         self.file_dict = imports.get("file_dict", [])
         if self.file_dict is None:
             self.file_dict = []
+        # holds paramters for file connections for the data logger
+        # self.file_conn_list: List[FileConn] = Field(default_factory=list)
 
         # TODO: make the following attributes private
         self.save_act = imports.get("save_act", True) # default should be true
         self.save_data = imports.get("save_data", True) # default should be true
-        self.file_paths = imports.get("file_paths", [])
+        self.AUX_file_paths = imports.get("file_paths", [])
+
+
+        # this hold all data for the action
+        # can get really big
         self.data = imports.get("data", [])  # will be written to .hlo file
-        self.column_names = imports.get("column_names", None)  # deprecated in .hlo file format
-        self.header = imports.get("header", None)  # deprecated in .hlo file format
-        self.file_type = imports.get("file_type", None)
-        self.filename = imports.get("filename", None)
-        self.file_data_keys = imports.get("file_data_keys", None)
-        self.file_sample_label = imports.get("file_sample_label", None)
-        self.file_sample_keys = imports.get("file_sample_keys", None)
-        self.file_group = imports.get("file_group", None)
+
+        # self.column_names = imports.get("column_names", None)  # deprecated in .hlo file format
+        # self.header = imports.get("header", None)  # deprecated in .hlo file format
+        # self.file_type = imports.get("file_type", None)
+        # self.filename = imports.get("filename", None)
+        # self.json_data_keys = imports.get("json_data_keys", None)
+        # self.file_sample_label = imports.get("file_sample_label", None)
+        # self.file_conn_keys = imports.get("file_conn_keys", None)
+        # self.file_group = imports.get("file_group", None)
         self.error_code = imports.get("error_code", "0")
+
         self.from_global_params = imports.get("from_global_params", {})
         self.to_global_params = imports.get("to_global_params", [])
 

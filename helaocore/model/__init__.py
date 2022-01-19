@@ -15,3 +15,5 @@ from .sample import SampleStatus
 from .experiment import ExperimentModel
 from .experiment_sequence import ExperimentSequenceModel
 from .fileinfo import FileInfo
+from .data import DataModel, DataPackageModel
+from .status import StatusModel, StatusPackageModel

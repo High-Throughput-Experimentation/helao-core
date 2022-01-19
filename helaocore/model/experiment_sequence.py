@@ -9,7 +9,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from .hlostatus import HloStatus
 from .experiment import ShortExperimentModel
+
 from ..version import get_hlo_version
 from ..helper.helaodict import HelaoDict
 
@@ -36,6 +38,6 @@ class ExperimentSequenceModel(ExperimentSequenceTemplate):
     hlo_version: Optional[str] = get_hlo_version()
     sequence_uuid: Optional[UUID]
     sequence_timestamp: Optional[datetime]
-    sequence_status: Optional[str]
+    sequence_status: List[HloStatus] = Field(default_factory=list)
     output_dir: Optional[str]
     experiment_list: List[ShortExperimentModel] = Field(default_factory=list)

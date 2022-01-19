@@ -11,7 +11,7 @@ from ..model.sample import object_to_sample
 from ..model.action import ActionModel
 
 
-async def setup_action(request: Request):
+async def setup_action(request: Request) -> Action:
     servKey, _, action_name = request.url.path.strip("/").partition("/")
     body_bytes = await request.body()
     if body_bytes == b"":
