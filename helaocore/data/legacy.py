@@ -4,6 +4,7 @@ import json
 import os
 import zipfile
 from re import compile as regexcompile
+from typing import Tuple, Optional, List, Dict
 
 import numpy
 
@@ -30,7 +31,7 @@ class HTELegacyAPI:
         return None
 
     def get_info_plateid(self, plateid: int):
-        infod = self.importinfo(str(plateid))
+        infod = self.importinfo(plateid)
         # 1. checks that the plate_id (info file) exists
         if infod is not None:
             # self.base.print_message(infod)
@@ -52,7 +53,7 @@ class HTELegacyAPI:
             return None
 
     def check_plateid(self, plateid: int):
-        infod = self.importinfo(str(plateid))
+        infod = self.importinfo(plateid)
         # 1. checks that the plate_id (info file) exists
         if infod is not None:
             return True
@@ -60,7 +61,7 @@ class HTELegacyAPI:
             return False
 
     def check_printrecord_plateid(self, plateid: int):
-        infod = self.importinfo(str(plateid))
+        infod = self.importinfo(plateid)
         if infod is not None:
             if not "prints" in infod:
                 return False
@@ -68,19 +69,22 @@ class HTELegacyAPI:
                 return True
 
     def check_annealrecord_plateid(self, plateid: int):
-        infod = self.importinfo(str(plateid))
+        infod = self.importinfo(plateid)
         if infod is not None:
             if not "anneals" in infod:
                 return False
             else:
                 return True
 
+
     def get_platemap_plateid(self, plateid: int):
         pmpath = self.getplatemappath_plateid(plateid)
         if pmpath is None:
             return json.dumps({})
-        pmdlist = self.readsingleplatemaptxt(pmpath)
-        return json.dumps(pmdlist)
+        pmdlist, fid = self.readsingleplatemaptxt(pmpath)
+        # return json.dumps(pmdlist)
+        return pmdlist
+
 
     def get_elements_plateid(
         self,
@@ -209,11 +213,12 @@ class HTELegacyAPI:
         p = os.path.join(pmfold, fns[0])
         return (p, pmidstr) if return_pmidstr else p
 
+
     def importinfo(self, plateid: int):
-        fn = plateid + ".info"
+        fn = str(plateid) + ".info"
         p = self.tryprependpath(
             self.PLATEFOLDERS,
-            os.path.join(plateid, fn),
+            os.path.join(str(plateid), fn),
             testfile=True,
             testdir=False,
         )
@@ -223,6 +228,7 @@ class HTELegacyAPI:
             lines = f.readlines()
         infofiled = self.filedict_lines(lines)
         return infofiled
+
 
     def tryprependpath(self, preppendfolderlist, p, testfile=True, testdir=True):
         # if (testfile and os.path.isfile(p)) or (testdir and os.path.isdir(p)):
@@ -235,9 +241,10 @@ class HTELegacyAPI:
                 return pp
         return ""
 
+
     def getinfopath_plateid(self, plateid: int, erroruifcn=None):
         p = ""
-        fld = os.path.join(self.tryprependpath(self.PLATEFOLDERS, ""), plateid)
+        fld = os.path.join(self.tryprependpath(self.PLATEFOLDERS, ""), str(plateid))
         if os.path.isdir(fld):
             l = [fn for fn in os.listdir(fld) if fn.endswith("info")] + ["None"]
             p = os.path.join(fld, l[0])
@@ -246,6 +253,7 @@ class HTELegacyAPI:
         if not os.path.isfile(p):
             return None
         return p
+
 
     def filedict_lines(self, lines):
         lines = [l for l in lines if len(l.strip()) > 0]
@@ -343,9 +351,11 @@ class HTELegacyAPI:
             return False, (els, numpy.identity(len(els), dtype="float64") * conclist[0])
         return None
 
+
     def partitionlineitem(self, ln):
         a, b, c = ln.strip().partition(":")
         return (a.strip(), c.strip())
+
 
     def myeval(self, c):
         if c == "None":
@@ -360,22 +370,35 @@ class HTELegacyAPI:
                 c = eval(temp)
         return c
 
-    def readsingleplatemaptxt(self, p, returnfiducials=False, erroruifcn=None, lines=None):
+
+    def readsingleplatemaptxt(
+                              self, 
+                              p, 
+                              returnfiducials: Optional[bool] = False, 
+                              erroruifcn = None,
+                              lines: Optional[list] = None
+                             ):
+
+        dlist = []
+        fid = []
         if lines is None:
             try:
                 f = open(p, mode="r")
             except:
                 if erroruifcn is None:
-                    return []
+                    return  dlist, fid
                 p = erroruifcn("bad platemap path")
                 if len(p) == 0:
-                    return []
+                    return  dlist, fid
                 f = open(p, mode="r")
 
             ls = f.readlines()
             f.close()
         else:
             ls = lines
+
+
+
         if returnfiducials:
             s = ls[0].partition("=")[2].partition("mm")[0].strip()
             if (
@@ -434,20 +457,23 @@ class HTELegacyAPI:
                 )
                 self.base.print_message(s)
             fid = eval("[%s]" % s)
-            fid = numpy.array(fid)
+            # fid = numpy.array(fid)
+
         for count, l in enumerate(ls):
             if not l.startswith("%"):
                 break
+
         keys = ls[count - 1][1:].split(",")
         keys = [(k.partition("(")[0]).strip() for k in keys]
-        dlist = []
+
         samplelines = [l for l in ls[count:] if l.count(",") == (len(keys) - 1)]
+
         for l in samplelines:
             sl = l.split(",")
             d = dict([(k, self.myeval(s.strip())) for k, s in zip(keys, sl)])
             dlist += [d]
+
         if not "sample_no" in keys:
             dlist = [dict(d, sample_no=d["Sample"]) for d in dlist]
-        if returnfiducials:
-            return dlist, fid
-        return dlist
+
+        return dlist, fid
