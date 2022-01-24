@@ -8,7 +8,7 @@ __all__ = [
 
 from enum import Enum
 from typing import List, Optional, Dict
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 from uuid import UUID
 
 
@@ -57,6 +57,13 @@ class FileConn(BaseModel, HelaoDict):
     added_hlo_separator: bool = False
     # holds the file reference
     file: Optional[object]
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    @validator("file")
+    def validate_file(cls, v):
+        return v
 
     
 class FileInfo(BaseModel, HelaoDict):
