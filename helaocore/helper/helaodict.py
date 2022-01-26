@@ -15,7 +15,8 @@ class HelaoDict():
         for k, v in dict_in.items():
             if not isinstance(v,types.FunctionType) \
             and not (isinstance(v,str) and k.startswith("__")):
-                clean.update({k: self._serialize_item(val = v)})
+                # keys can also be UUID, datetime etc
+                clean.update({self._serialize_item(val = k): self._serialize_item(val = v)})
         return clean
 
     
