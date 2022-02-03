@@ -6,10 +6,6 @@ from typing import Optional
 # import shortuuid
 import uuid
 
-def gen_uuid(label: str, timestamp: Optional[str] = None, trunc: int = 8):
+def gen_uuid():
     "Generate a uuid, encode with larger character set, and trucate."
-    # if timestamp is None:
-    #     timestamp = time.monotonic_ns()
-    # short = shortuuid.uuid(name=f"{label}_{timestamp}")#[:trunc]
-    # return short
     return uuid.uuid4()

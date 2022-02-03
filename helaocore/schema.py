@@ -30,6 +30,7 @@ from .helper.helaodict import HelaoDict
 from .model.action import ActionModel, ShortActionModel
 from .model.experiment import ExperimentModel, ShortExperimentModel
 from .model.experiment_sequence import ExperimentSequenceModel
+from .model.machine import MachineModel
 from .version import get_hlo_version
 
 
@@ -68,7 +69,7 @@ class Sequence(HelaoDict, object):
         return f"sequence_name:{self.sequence_name}" 
 
 
-    def gen_uuid_sequence(self, machine_name: str):
+    def gen_uuid_sequence(self):
         "server_name can be any string used in generating random uuid"
         if self.sequence_uuid:
             print_message(
@@ -78,7 +79,7 @@ class Sequence(HelaoDict, object):
                 info=True,
             )
         else:
-            self.sequence_uuid = gen_uuid(label=machine_name, timestamp=self.sequence_timestamp)
+            self.sequence_uuid = gen_uuid()
             print_message(
                 {},
                 "sequence",
@@ -108,11 +109,11 @@ class Sequence(HelaoDict, object):
         )
 
     
-    def init_seq(self, machine_name: str, time_offset: float = 0):
+    def init_seq(self, time_offset: float = 0):
         if self.sequence_timestamp is None:
             self.set_sequence_time(offset=time_offset)
         if self.sequence_uuid is None:
-            self.gen_uuid_sequence(machine_name)
+            self.gen_uuid_sequence()
 
 
 
@@ -131,13 +132,11 @@ class Experiment(Sequence):
         # main experiment parameters
         self.experiment_uuid = imports.get("experiment_uuid", None) #
         self.experiment_status = imports.get("experiment_status", [])
-        # main parametes for Action, need to put it into 
-        # the new Basemodel in the future
-        self.machine_name = imports.get("machine_name", None)
         
 
         # others parameter
-        self.orchestrator = imports.get("orchestrator", "orchestrator")
+        self.orchestrator = MachineModel(**imports.get("orchestrator", MachineModel().dict()))
+        
         self.experiment_timestamp = _to_datetime(time = imports.get("experiment_timestamp", None)).time
         self.access = imports.get("access", "hte")
         self.experiment_name = imports.get("experiment_name", None)
@@ -165,7 +164,7 @@ class Experiment(Sequence):
         return f"experiment_name:{self.experiment_name}" 
 
 
-    def gen_uuid_experiment(self, machine_name: str):
+    def gen_uuid_experiment(self):
         "server_name can be any string used in generating random uuid"
         if self.experiment_uuid:
             print_message(
@@ -175,7 +174,7 @@ class Experiment(Sequence):
                 info=True,
             )
         else:
-            self.experiment_uuid = gen_uuid(label=machine_name, timestamp=self.experiment_timestamp)
+            self.experiment_uuid = gen_uuid()
             print_message(
                 {},
                 "experiment",
@@ -192,7 +191,6 @@ class Experiment(Sequence):
         prc = ExperimentModel(
             hlo_version=f"{get_hlo_version()}",
             orchestrator=self.orchestrator,
-            machine_name=self.machine_name,#gethostname(),
             sequence_uuid=self.sequence_uuid,
             access=self.access,
             experiment_uuid=self.experiment_uuid,
@@ -278,9 +276,15 @@ class Experiment(Sequence):
                 isunique = False
 
         if not isunique:
-            print_message({}, "experiment", "\n----------------------------------\nDuplicate but 'unique' samples.\nExperiment needs to be split.\n----------------------------------", error=True)
-            print_message({}, "experiment", f"samples_in labels: {in_labels}", error = True)
-            print_message({}, "experiment", f"samples_out labels: {out_labels}", error = True)
+            print_message({}, "experiment", 
+                          "\n----------------------------------"
+                          "\nDuplicate but 'unique' samples."
+                          "\nExperiment needs to be split."
+                          "\n----------------------------------", error=True)
+            print_message({}, "experiment", 
+                          f"samples_in labels: {in_labels}", error = True)
+            print_message({}, "experiment", 
+                          f"samples_out labels: {out_labels}", error = True)
 
 
 class Action(Experiment):
@@ -300,7 +304,6 @@ class Action(Experiment):
         # usually also in dict (but we want to remove that in the future)
         self.technique_name = act.technique_name
         self.orchestrator = act.orchestrator
-        self.machine_name = act.machine_name
         self.experiment_uuid = act.experiment_uuid
         self.experiment_timestamp = act.experiment_timestamp
         self.access = act.access
@@ -310,14 +313,13 @@ class Action(Experiment):
         self.action_uuid = act.action_uuid
         self.action_timestamp = act.action_timestamp
         self.action_status = act.action_status
-        # machine_name # get it from experiment later
         self.action_order = act.action_order
         self.action_retry = act.action_retry
         self.action_actual_order = act.action_actual_order
         self.action_split = act.action_split
 
         # name of the action server
-        self.action_server_name = act.action_server_name
+        self.action_server = act.action_server
 
         # other parameters
         self.action_name = act.action_name
@@ -372,7 +374,7 @@ class Action(Experiment):
         return f"action_name:{self.action_name}" 
 
 
-    def gen_uuid_action(self, machine_name: str):
+    def gen_uuid_action(self):
         if self.action_uuid:
             print_message(
                 {},
@@ -381,10 +383,7 @@ class Action(Experiment):
                 error=True,
             )
         else:
-            self.action_uuid = gen_uuid(
-                label=f"{machine_name}_{self.action_name}",
-                timestamp=self.action_timestamp,
-            )
+            self.action_uuid = gen_uuid()
             print_message({}, "action", f"action_uuid: {self.action_uuid} assigned", info=True)
 
     def set_atime(self, offset: float = 0.0):
@@ -395,9 +394,8 @@ class Action(Experiment):
         return ActionModel(
             hlo_version=f"{get_hlo_version()}",
             technique_name=self.technique_name,
-            action_server_name=self.action_server_name,
+            action_server=self.action_server,
             orchestrator=self.orchestrator,
-            machine_name=self.machine_name,
             access=self.access,
             output_dir=Path(self.output_dir).as_posix() \
                 if self.output_dir is not None else None,
@@ -417,11 +415,11 @@ class Action(Experiment):
             files = self.file_dict
         )
 
-    def init_act(self, machine_name: str, time_offset: float = 0):
+    def init_act(self, time_offset: float = 0):
         if self.action_timestamp is None:
             self.set_atime(offset=time_offset)
         if self.action_uuid is None:
-            self.gen_uuid_action(machine_name)
+            self.gen_uuid_action()
 
 
 
