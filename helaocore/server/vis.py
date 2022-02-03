@@ -10,7 +10,7 @@ import colorama
 from .api import HelaoBokehAPI
 from ..helper.helao_dirs import helao_dirs
 from ..helper.print_message import print_message
-
+from ..model.machine import MachineModel
 # ANSI color codes converted to the Windows versions
 colorama.init(strip=not sys.stdout.isatty())  # strip colors if stdout is redirected
 # colorama.init()
@@ -20,10 +20,12 @@ class Vis(object):
     """Base class for all HELAO bokeh servers."""
 
     def __init__(self, bokehapp: HelaoBokehAPI):
-        self.server_name = bokehapp.helao_srv
-        self.server_cfg = bokehapp.world_cfg["servers"][self.server_name]
+        self.server = MachineModel(
+                                   server_name = bokehapp.helao_srv,
+                                   machine_name = gethostname()
+                                  )
+        self.server_cfg = bokehapp.world_cfg["servers"][self.server.server_name]
         self.world_cfg = bokehapp.world_cfg
-        self.hostname = gethostname()
         self.doc = bokehapp.doc
         self.root, self.save_root, self.log_root, self.states_root, self.db_root = \
             helao_dirs(self.world_cfg)
@@ -38,4 +40,4 @@ class Vis(object):
         # self.aloop = asyncio.get_running_loop()
 
     def print_message(self, *args, **kwargs):
-        print_message(self.server_cfg, self.server_name, log_dir = self.log_root, *args, **kwargs)
+        print_message(self.server_cfg, self.server.server_name, log_dir = self.log_root, *args, **kwargs)
