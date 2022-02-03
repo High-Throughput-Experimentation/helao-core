@@ -14,6 +14,7 @@ from .hlostatus import HloStatus
 from .sample import SampleUnion
 from .action import ShortActionModel
 from .file import FileInfo
+from .machine import MachineModel
 
 from ..version import get_hlo_version
 from ..helper.helaodict import HelaoDict
@@ -33,8 +34,7 @@ class ExperimentTemplate(BaseModel, HelaoDict):
 
     def make_experiment(
                      self, 
-                     orchestrator: str, 
-                     machine_name: str, 
+                     orchestrator: MachineModel,
                      sequence_uuid: UUID, 
                      experiment_uuid: UUID, 
                      experiment_timestamp: datetime, 
@@ -42,7 +42,6 @@ class ExperimentTemplate(BaseModel, HelaoDict):
         return ExperimentModel(
                         **self.dict(),
                         orchestrator = orchestrator,
-                        machine_name = machine_name,
                         sequence_uuid = sequence_uuid,
                         experiment_uuid = experiment_uuid,
                         experiment_timestamp = experiment_timestamp
@@ -51,8 +50,7 @@ class ExperimentTemplate(BaseModel, HelaoDict):
 
 class ExperimentModel(ExperimentTemplate):
     hlo_version: Optional[str] = get_hlo_version()
-    orchestrator: Optional[str]
-    machine_name: Optional[str]
+    orchestrator: MachineModel = MachineModel()
     sequence_uuid: Optional[UUID]
     experiment_uuid: Optional[UUID]
     experiment_timestamp: Optional[datetime]

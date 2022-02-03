@@ -22,9 +22,10 @@ class ExperimentSequenceTemplate(BaseModel, HelaoDict):
     sequence_label: Optional[str]
     experiment_plan_list: List[str] = Field(default_factory=list)
 
+
     def make_sequence(
                       self, 
-                      sequence_timestamp: datetime, 
+                      sequence_timestamp: datetime,
                       sequence_uuid: UUID
                      ):
         return ExperimentSequenceModel(
