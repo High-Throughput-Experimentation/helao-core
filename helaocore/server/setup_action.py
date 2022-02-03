@@ -9,6 +9,7 @@ from fastapi import Request
 from ..schema import Action
 from ..model.sample import object_to_sample
 from ..model.action import ActionModel
+from ..model.machine import MachineModel
 
 
 async def setup_action(request: Request) -> Action:
@@ -37,7 +38,10 @@ async def setup_action(request: Request) -> Action:
                 val = v
             action_dict["action_params"][k] = val
 
-    action_dict["action_server_name"] = servKey
+    action_dict["action_server"] = MachineModel(
+                                                server_name = servKey,
+                                                machine_name = gethostname()
+                                               ).dict()
     action_dict["action_name"] = action_name
     A = Action(
                inputdict=action_dict,
@@ -56,10 +60,11 @@ async def setup_action(request: Request) -> Action:
         A.action_abbr = A.action_name
 
     # setting some default values if action was not submitted via orch
-    if A.machine_name is None:
-        A.machine_name = gethostname()
     if A.technique_name is None:
         A.technique_name = "MANUAL"
-        A.orchestrator = "MANUAL"
+        A.orchestrator = MachineModel(
+                                      server_name = "MANUAL",
+                                      machine_name = gethostname()
+                                     )
 
     return A
