@@ -152,7 +152,6 @@ class Experiment(Sequence):
         self.global_params = {}  # TODO: reserved for internal use, do not write to .prg
 
         self.experiment_output_dir = None
-        self.experiment_action_uuid_list: List[UUID] = []#imports.get("action_uuid_list", None)
         self.experiment_action_list: List[ActionModel] = []
 
 

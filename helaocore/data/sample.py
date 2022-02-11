@@ -131,7 +131,7 @@ class _BaseSampleAPI(object):
             counts = self._cur.fetchone()[0]
             sample.sample_no = counts + 1
             if sample.machine_name is None:
-                sample.machine_name = self._base.hostname
+                sample.machine_name = self._base.server.machine_name
             if sample.server_name is None:
                 sample.server_name = self._base.server_name
             # if sample.action_timestamp is None:

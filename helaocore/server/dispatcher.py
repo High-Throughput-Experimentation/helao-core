@@ -10,15 +10,16 @@ async def async_action_dispatcher(world_config_dict: dict, A: Action):
     Send action object to action server for experimenting.
 
     Args:
-        A: an action type object contain action server name, endpoint, parameters
+        A: an action type object contain action server name, 
+           endpoint, parameters
 
     Returns:
         Response string from http POST request to action server
     """
-    actd = world_config_dict["servers"][A.action_server_name]
+    actd = world_config_dict["servers"][A.action_server.server_name]
     act_addr = actd["host"]
     act_port = actd["port"]
-    url = f"http://{act_addr}:{act_port}/{A.action_server_name}/{A.action_name}"
+    url = f"http://{act_addr}:{act_port}/{A.action_server.server_name}/{A.action_name}"
     async with aiohttp.ClientSession() as session:
         async with session.post(
             url,

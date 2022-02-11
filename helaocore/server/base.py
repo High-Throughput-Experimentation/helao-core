@@ -12,7 +12,7 @@ from socket import gethostname
 from time import ctime, time, time_ns
 from typing import List, Optional, Dict
 from uuid import UUID
-from fastapi import Request
+from fastapi import Request, Body
 import hashlib
 
 import aiofiles
@@ -21,8 +21,9 @@ import ntplib
 import numpy as np
 import pyaml
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import Body, FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.openapi.utils import get_flat_params
+from pydantic import BaseModel, validator, root_validator, Field
 
 
 from .api import HelaoFastAPI
@@ -35,19 +36,23 @@ from ..helper.print_message import print_message
 from ..helper import async_copy
 from ..schema import Action
 from ..model.hlostatus import HloStatus
-from ..model.sample import SampleUnion, NoneSample
+from ..model.sample import SampleUnion, NoneSample, LiquidSample
 from ..model.sample import SampleInheritance, SampleStatus
 from ..model.data import DataModel, DataPackageModel
+from ..model.machine import MachineModel
+from ..model.server import (
+                            StatusModel, 
+                            ActionServerModel, 
+                            EndpointModel
+                           )
 from ..model.active import ActiveParams
 from ..model.file import (
                           FileConn, 
                           FileConnParams,
                           HloFileGroup,
-                          HloHeaderModel,
                           FileInfo
                          )
 from ..helper.file_in_use import file_in_use
-from ..helper.helaodict import HelaoDict
 
 
 # ANSI color codes converted to the Windows versions
@@ -56,14 +61,29 @@ colorama.init(strip=not sys.stdout.isatty())
 # colorama.init()
 
 
-def makeActionServ(config, server_key, server_title, description, version, driver_class=None):
-    app = HelaoFastAPI(config, server_key, title=server_title, description=description, version=version)
+def makeActionServ(
+                   config, 
+                   server_key, 
+                   server_title, 
+                   description, 
+                   version, 
+                   driver_class=None
+                  ):
+
+    app = HelaoFastAPI(
+                       helao_cfg=config, 
+                       helao_srv=server_key, 
+                       title=server_title, 
+                       description=description, 
+                       version=version
+                      )
 
     @app.on_event("startup")
     def startup_event():
         app.base = Base(app)
         if driver_class:
             app.driver = driver_class(app.base)
+
 
     @app.websocket("/ws_status")
     async def websocket_status(websocket: WebSocket):
@@ -74,6 +94,7 @@ def makeActionServ(config, server_key, server_title, description, version, drive
         """
         await app.base.ws_status(websocket)
 
+
     @app.websocket("/ws_data")
     async def websocket_data(websocket: WebSocket):
         """Broadcast status dicts.
@@ -83,13 +104,16 @@ def makeActionServ(config, server_key, server_title, description, version, drive
         """
         await app.base.ws_data(websocket)
 
+
     @app.post("/get_status")
     def status_wrapper():
-        return app.base.status
+        return app.base.actionserver
+
 
     @app.post("/attach_client")
     async def attach_client(client_servkey: str):
         return await app.base.attach_client(client_servkey)
+
 
     @app.post("/endpoints")
     def get_all_urls():
@@ -98,9 +122,8 @@ def makeActionServ(config, server_key, server_title, description, version, drive
 
     # @app.post(f"/split")
     # async def split(target_uuid: Optional[UUID],
-    #                 new_samples_in: Optional[List[SampleUnion]],
+    #                 new_samples_in: Body(Optional[List[SampleUnion]], embed=True),
     #                 new_params: Optional[dict] = None,
-    #                 scratch: Optional[List[None]] = [None], # temp fix so swagger still works 
     #                 ):
     #     return app.base.split(target_uuid, new_samples_in, new_params)
 
@@ -138,13 +161,15 @@ class Base(object):
     """
 
     def __init__(self, fastapp: HelaoFastAPI, calibration: dict = {}):
-        self.server_name = fastapp.helao_srv
-        self.server_cfg = fastapp.helao_cfg["servers"][self.server_name]
+        self.server = MachineModel(
+                                   server_name = fastapp.helao_srv,
+                                   machine_name = gethostname()
+                                  )
+        self.server_cfg = fastapp.helao_cfg["servers"][self.server.server_name]
         self.server_params = \
-            fastapp.helao_cfg["servers"][self.server_name].\
+            fastapp.helao_cfg["servers"][self.server.server_name].\
             get("params", dict())
         self.world_cfg = fastapp.helao_cfg
-        self.hostname = gethostname()
         self.technique_name = None
         self.aloop = asyncio.get_running_loop()
 
@@ -176,8 +201,9 @@ class Base(object):
 
         self.calibration = calibration
         self.actives = {}
-        self.status = {}
-        self.endpoints = []
+        # basemodel to describe the full action server        
+        self.actionserver = ActionServerModel(action_server = self.server)
+        
         self.status_q = MultisubscriberQueue()
         self.data_q = MultisubscriberQueue()
         self.status_clients = set()
@@ -210,7 +236,7 @@ class Base(object):
     def print_message(self, *args, **kwargs):
         print_message(
                       self.server_cfg, 
-                      self.server_name, 
+                      self.server.server_name, 
                       log_dir=self.log_root, 
                       *args, 
                       **kwargs
@@ -219,13 +245,18 @@ class Base(object):
 
     def init_endpoint_status(self, app: FastAPI):
         """Populate status dict 
-           with FastAPI server endpoints for monitoring."""
+            with FastAPI server endpoints for monitoring."""
         for route in app.routes:
-            if route.path.startswith(f"/{self.server_name}"):
-                self.status[route.name] = []
-                self.endpoints.append(route.name)
-        self.print_message(f"Found {len(self.status)} endpoints "
-                           f"for status monitoring on {self.server_name}.")
+            if route.path.startswith(f"/{self.server.server_name}"):
+                self.actionserver.endpoints.update(
+                    {route.name:
+                    EndpointModel(
+                        endpoint_name=route.name
+                    )}
+                )
+
+        self.print_message(f"Found {len(self.actionserver.endpoints.keys())} endpoints "
+                            f"for status monitoring on {self.server.server_name}.")
 
 
     def get_endpoint_urls(self, app: HelaoFastAPI):
@@ -312,7 +343,7 @@ class Base(object):
 
 
     async def get_ntp_time(self):
-        "Check system clock against NIST clock for trigger operations."
+        """Check system clock against NIST clock for trigger operations."""
         lock = asyncio.Lock()
         async with lock:
             c = ntplib.NTPClient()
@@ -322,7 +353,9 @@ class Base(object):
                 self.ntp_last_sync = response.orig_time
                 self.ntp_offset = response.offset
                 self.print_message(
-                    f"retrieved time at {ctime(self.ntp_response.tx_timestamp)} from {self.ntp_server}",
+                    f"retrieved time at "
+                    f"{ctime(self.ntp_response.tx_timestamp)} "
+                    f"from {self.ntp_server}",
                 )
             except ntplib.NTPException:
                 self.print_message(f"{self.ntp_server} ntp timeout", error=True)
@@ -339,61 +372,79 @@ class Base(object):
                 async with aiofiles.open(self.ntp_last_sync_file, "w") as f:
                     await f.write(f"{self.ntp_last_sync},{self.ntp_offset}")
 
+
+
+    async def send_statuspackage(
+                          self, 
+                          client_servkey: str,
+                          action_name: Optional[str] = None,
+                         ) -> bool:
+        # needs private dispatcher
+        json_dict = {"actionserver":self.actionserver.get_fastapi_json(action_name=action_name)}
+        response = await async_private_dispatcher(
+            world_config_dict=self.world_cfg,
+            server=client_servkey,
+            private_action="update_status",
+            params_dict={},
+            json_dict=json_dict
+        )
+        return response
+
+
     async def attach_client(self, client_servkey: str, retry_limit=5):
-        "Add client for pushing status updates via HTTP POST."
+        """Add client for pushing status updates via HTTP POST."""
         success = False
 
         if client_servkey in self.world_cfg["servers"]:
 
             if client_servkey in self.status_clients:
                 self.print_message(
-                    f"Client {client_servkey} is already subscribed to {self.server_name} status updates."
+                    f"Client {client_servkey} is already subscribed to "
+                    f"{self.server.server_name} status updates."
                 )
             else:
                 self.status_clients.add(client_servkey)
 
-                current_status = self.status
+                # send current status of all endpoints (action_name = None)
                 for _ in range(retry_limit):
-                    response = await async_private_dispatcher(
-                        world_config_dict=self.world_cfg,
-                        server=client_servkey,
-                        private_action="update_status",
-                        params_dict={
-                            "server": self.server_name,
-                            "status": json.dumps(current_status),
-                            # "act": json.dumps(ActionModel().as_dict())
-                        },
-                        json_dict={},
-                    )
+                    response = await self.send_statuspackage(action_name = None,
+                                                  client_servkey = client_servkey)
                     if response == True:
                         self.print_message(
-                            f"Added {client_servkey} to {self.server_name} status subscriber list."
+                            f"Added {client_servkey} to {self.server.server_name} "
+                            "status subscriber list."
                         )
                         success = True
                         break
                     else:
                         self.print_message(
-                            f"Failed to add {client_servkey} to {self.server_name} status subscriber list.",
+                            f"Failed to add {client_servkey} to "
+                            f"{self.server.server_name} status subscriber list.",
                             error=True,
                         )
 
             if success:
                 self.print_message(
-                    f"Updated {self.server_name} status to {current_status} on {client_servkey}."
+                    f"Attched {client_servkey} to status ws " 
+                    f"on {self.server.server_name}."
                 )
             else:
                 self.print_message(
-                    f"Failed to push status message to {client_servkey} after {retry_limit} attempts.",
+                    f"failed to attch {client_servkey} to status ws " 
+                    f"on {self.server.server_name} "
+                    f"after {retry_limit} attempts.",
                     error=True,
                 )
 
         return success
 
+
     def detach_client(self, client_servkey: str):
-        "Remove client from receiving status updates via HTTP POST"
+        """Remove client from receiving status updates via HTTP POST"""
         if client_servkey in self.status_clients:
             self.status_clients.remove(client_servkey)
-            self.print_message(f"Client {client_servkey} will no longer receive status updates.")
+            self.print_message(f"Client {client_servkey} "
+                               "will no longer receive status updates.")
         else:
             self.print_message(f"Client {client_servkey} is not subscribed.")
 
@@ -406,12 +457,13 @@ class Base(object):
                 await websocket.send_text(json.dumps(status_msg))
         except WebSocketDisconnect:
             self.print_message(
-                f"Status websocket client {websocket.client[0]}:{websocket.client[1]} disconnected.",
+                f"Status websocket client "
+                f"{websocket.client[0]}:{websocket.client[1]} disconnected.",
                 error=True,
             )
 
     async def ws_data(self, websocket: WebSocket):
-        "Subscribe to data queue and send messages to websocket client."
+        """Subscribe to data queue and send messages to websocket client."""
         self.print_message("got new data subscriber")
         await websocket.accept()
         try:
@@ -419,58 +471,70 @@ class Base(object):
                 await websocket.send_text(json.dumps(data_msg))
         except WebSocketDisconnect:
             self.print_message(
-                f"Data websocket client {websocket.client[0]}:{websocket.client[1]} disconnected.",
+                f"Data websocket client "
+                f"{websocket.client[0]}:{websocket.client[1]} disconnected.",
                 error=True,
             )
 
+
     async def log_status_task(self, retry_limit: int = 5):
-        "Self-subscribe to status queue, log status changes, POST to clients."
-        self.print_message(f"{self.server_name} status log task created.")
+        """Self-subscribe to status queue, 
+           log status changes, POST to clients."""
+        self.print_message(f"{self.server.server_name} status log task created.")
 
         try:
             self.print_message("log_status_task started.")
+            # get the new "StatusModel" from the queue
             async for status_msg in self.status_q.subscribe():
-                self.status.update(status_msg)
-                self.print_message(
-                    f"log_status_task sending message {status_msg} to subscribers ({self.status_clients})."
+                # add it to the correct "EndpointModel"
+                # in the "ActionServerModel"
+                self.actionserver.endpoints[status_msg.act.action_name].active_dict.update(
+                    {status_msg.act.action_uuid:status_msg}
                 )
+                # sort the status (finished_dict is empty at this point)
+                self.actionserver.endpoints[status_msg.act.action_name].sort_status()
+                
+                
+                # self.actionserver.update(status_msg)
+                self.print_message(
+                    f"log_status_task sending message {status_msg.clean_dict()} "
+                    f"to subscribers ({self.status_clients}).")
                 for client_servkey in self.status_clients:
-
                     self.print_message(
-                        f"log_status_task sending to {client_servkey}: {json.dumps(status_msg)}."
+                        f"log_status_task sending to {client_servkey}."
                     )
                     success = False
-
-                    for _ in range(retry_limit):
-
-                        response = await async_private_dispatcher(
-                            world_config_dict=self.world_cfg,
-                            server=client_servkey,
-                            private_action="update_status",
-                            params_dict={
-                                "server": self.server_name,
-                                "status": json.dumps(status_msg),
-                                # "act": json.dumps(ActionModel().as_dict())
-                            },
-                            json_dict={},
+                    for idx in range(retry_limit):
+                        response = await self.send_statuspackage(
+                            action_name = status_msg.act.action_name,
+                            client_servkey = client_servkey
                         )
+                        
                         if response == True:
-                            self.print_message(f"send status msg to {client_servkey}.")
+                            self.print_message(f"send status msg to "
+                                               f"{client_servkey}.")
                             success = True
                             break
                         else:
-                            self.print_message(f"Failed to send status msg {client_servkey}.")
-
+                            self.print_message(f"Failed to send status msg "
+                                               f"{client_servkey}.",
+                                               error = True)
                     if success:
                         self.print_message(
-                            f"Updated {self.server_name} status to {status_msg} on {client_servkey}."
+                            f"Updated {self.server.server_name} status to "
+                            f"{status_msg} on {client_servkey}."
                         )
                     else:
                         self.print_message(
-                            f"Failed to push status message to {client_servkey} after {retry_limit} attempts."
-                        )
+                            f"Failed to push status message to "
+                            f"{client_servkey} after {retry_limit} attempts.")
 
-                    # TODO:write to log if save_root exists
+
+                # now delete the errored and finsihed statuses after 
+                # all are send to the subscribers
+                self.actionserver.endpoints[status_msg.act.action_name].clear_finished()
+
+                # TODO:write to log if save_root exists
                 self.print_message("log_status_task message send.")
 
             self.print_message("log_status_task done.")
@@ -638,7 +702,9 @@ class Base(object):
         experiment_dir = self.get_experiment_dir(action)
         return os.path.join(
             experiment_dir,
-            f"{action.action_actual_order}__{action.action_timestamp.strftime('%Y%m%d.%H%M%S%f')}__{action.action_server_name}__{action.action_name}",
+            f"{action.action_actual_order}__"
+            f"{action.action_timestamp.strftime('%Y%m%d.%H%M%S%f')}__"
+            f"{action.action_server.server_name}__{action.action_name}",
         )
 
 
@@ -702,22 +768,13 @@ class Base(object):
                 self.file_conn[file_conn_param.file_conn_key] = \
                     FileConn(params = file_conn_param)
 
-
-            # need to remove swagger workaround value if present
-            if "scratch" in self.action.action_params:
-                del self.action.action_params["scratch"]
-
             # this updates timestamp and uuid
             # only if they are None
             # They are None in manual, but already set in orch mode
-            self.action.init_act(
-                                 machine_name=self.base.hostname, 
-                                 time_offset=self.base.ntp_offset
-                                )
+            self.action.init_act(time_offset=self.base.ntp_offset)
             self.add_new_listen_uuid(self.action.action_uuid)
             # if manual:
-            self.action.action_server_name = self.base.server_name
-
+            self.action.action_server = self.base.server
 
             # check if its swagger submission
             if self.action.sequence_timestamp is None \
@@ -728,10 +785,7 @@ class Base(object):
 
                 # -- (1) -- set missing sequence parameters
                 self.action.sequence_name = "manual_swagger_seq"
-                self.action.init_seq(
-                                     machine_name=self.base.ntp_offset, 
-                                     time_offset=self.base.ntp_offset
-                                    )
+                self.action.init_seq(time_offset=self.base.ntp_offset)
                 self.action.sequence_output_dir = \
                     self.base.get_sequence_dir(self.action)
                 self.action.sequence_status = [HloStatus.active]
@@ -739,14 +793,11 @@ class Base(object):
                 # -- (2) -- set missing experiment parameters
                 self.action.experiment_name = "MANUAL"
                 self.action.set_dtime(offset=self.base.ntp_offset)
-                self.action.gen_uuid_experiment(self.base.hostname)
+                self.action.gen_uuid_experiment()
                 self.action.experiment_output_dir = \
                     self.base.get_experiment_dir(self.action)
                 self.action.experiment_status = [HloStatus.finished]
-                # these are set in setup_action
-                # self.action.technique_name = "MANUAL"
-                # self.action.orchestrator = "MANUAL"
-                # machine name is set above
+
 
             if not self.base.save_root:
                 self.base.print_message("Root save directory not specified, "
@@ -879,55 +930,18 @@ class Base(object):
 
 
         async def add_status(self):
-            self.base.status[self.action.action_name].append(str(self.action.action_uuid))
             self.base.print_message(
                 f"Added {str(self.action.action_uuid)} to {self.action.action_name} status list."
             )
-            await self.base.status_q.put(
-                {
-                    self.action.action_name: self.base.status[self.action.action_name],
-                    "act": self.action.get_act().as_dict(),
-                }
-            )
-
-        async def clear_status(self, clear_uuid: Optional[UUID]=None):
-            if clear_uuid is None:
-                clear_uuid = self.action.action_uuid
-            if str(clear_uuid) in self.base.status[self.action.action_name]:
-                self.base.status[self.action.action_name].remove(str(clear_uuid))
-                self.base.print_message(
-                    f"Removed {str(clear_uuid)} from {self.action.action_name} status list.",
-                    info=True,
-                )
-            else:
-                self.base.print_message(
-                    f"{str(clear_uuid)} did not exist in {self.action.action_name} status list.",
-                    error=True,
-                )
-            await self.base.status_q.put(
-                {
-                    self.action.action_name: self.base.status[self.action.action_name],
-                    "act": self.action.get_act().as_dict(),
-                }
-            )
+            await self.base.status_q.put(StatusModel(act = self.action.get_act().as_dict()))
 
 
         async def set_estop(self):
-            self.base.status[self.action.action_name]\
-                .remove(str(self.action.action_uuid))
-            self.base.status[self.action.action_name]\
-                .append(f"{str(self.action.action_uuid)}__estop")
+            self.action.experiment_status.append(HloStatus.estopped)
             self.base.print_message(
                 f"E-STOP {str(self.action.action_uuid)} on "
                 f"{self.action.action_name} status.",
                 error=True,
-            )
-            await self.base.status_q.put(
-                {
-                    self.action.action_name: \
-                        self.base.status[self.action.action_name],
-                    "act": self.action.get_act().as_dict(),
-                }
             )
 
 
@@ -935,25 +949,17 @@ class Base(object):
                             self, 
                             err_msg: Optional[str] = None
                            ):
-            self.base.status[self.action.action_name].\
-                remove(str(self.action.action_uuid))
-            self.base.status[self.action.action_name].\
-                append(f"{str(self.action.action_uuid)}__error")
-            self.base.print_message(
-                f"ERROR {str(self.action.action_uuid)} on "
-                f"{self.action.action_name} status.",
-                error=True,
-            )
+            self.action.experiment_status.append(HloStatus.errored)
+
             if err_msg:
                 self.action.error_code = err_msg
             else:
                 self.action.error_code = "-1 unspecified error"
-            await self.base.status_q.put(
-                {
-                    self.action.action_name: \
-                        self.base.status[self.action.action_name],
-                    "act": self.action.get_act().as_dict(),
-                }
+
+            self.base.print_message(
+                f"ERROR {str(self.action.action_uuid)} on "
+                f"{self.action.action_name} status.",
+                error=True,
             )
 
 
@@ -1332,7 +1338,7 @@ class Base(object):
                        ) -> Action:
             """Splits active action by writing yml of parent action 
             and mutating self with split action parameters."""
-            if len(self.base.actives)==0:
+            if not self.base.actives:
                 self.base.print_message("There is no active action. "
                                         "Cannot split.")
                 return False
@@ -1364,11 +1370,11 @@ class Base(object):
                 if new_params:
                     self.action.action_params = new_params
                 # broadcast new action status as "active"
-                self.base.add_status()
+                # self.add_status()
                 # broadcast remove old action
                 # consider moving this into clear_status
-                _ = self.base.actives.pop(str(old_uuid), None) 
-                await self.clear_status(old_uuid)
+                # _ = self.base.actives.pop(str(old_uuid), None) 
+                # await self.clear_status(old_uuid)
 
                 return self.action
 
@@ -1380,6 +1386,8 @@ class Base(object):
             """Close file_conn, finish prc, copy aux, 
             set endpoint status, and move active dict to past."""
             await asyncio.sleep(1)
+            # set status to finish
+            # (replace active with finish)
             self.base.replace_status(
                        status_list = self.action.action_status,
                        old_status = HloStatus.active,
@@ -1399,8 +1407,12 @@ class Base(object):
             # write final act meta file (overwrite existing one)
             await self.base.write_act(self.action)
 
-            await self.clear_status()
+            # send the last status
+            await self.add_status()
+            
+            # finish the data writer
             self.data_logger.cancel()
+
             _ = self.base.actives.pop(str(self.action.action_uuid), None)
             return self.action
 
@@ -1441,6 +1453,7 @@ class Base(object):
                                         os.path.basename(x)
                                        )
                 await async_copy(x, new_path)
+
 
         async def finish_manual_action(self):
             if self.manual:

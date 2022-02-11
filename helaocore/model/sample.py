@@ -1,3 +1,4 @@
+from __future__ import annotations
 """ sample.py
 Liquid, Gas, Assembly, and Solid sample type models.
 
@@ -24,10 +25,15 @@ from pydantic import BaseModel, validator, root_validator, Field
 from pydantic.tools import parse_obj_as
 
 from typing import List, Optional, Union, Literal
+from typing import ForwardRef
 
 from ..helper.print_message import print_message
 from ..version import get_hlo_version
 from ..helper.helaodict import HelaoDict
+
+
+SampleUnion = ForwardRef('SampleUnion')
+SamplePartUnion = ForwardRef('SamplePartUnion')
 
 
 class SampleInheritance(str, Enum):
@@ -246,7 +252,8 @@ class GasSample(_BaseSample):
 
 class AssemblySample(_BaseSample):
     sample_type: Literal['assembly'] = "assembly"
-    parts: List['SampleUnion'] = Field(default_factory=list)
+    # parts: List[SampleUnion] = Field(default_factory=list)
+    parts: List[SamplePartUnion] = Field(default_factory=list)
     sample_position: Optional[str] = "cell1_we"  # usual default assembly position
 
     def get_global_label(self):
@@ -291,15 +298,24 @@ class SampleList(BaseModel, HelaoDict):
     """a combi basemodel which can contain all possible samples
     Its also a list and we should enforce samples as being a list"""
 
-    samples: Optional[List['SampleUnion']] = Field(default_factory=list)
+    samples: Optional[List[SampleUnion]] = Field(default_factory=list)
 
 
 SampleUnion = Union[
+                    AssemblySample,
                     NoneSample,
                     LiquidSample,
                     GasSample,
                     SolidSample,
-                    AssemblySample,
+                    ]
+
+
+SamplePartUnion = Union[
+                    # AssemblySample,
+                    NoneSample,
+                    LiquidSample,
+                    GasSample,
+                    SolidSample,
                     ]
 
 

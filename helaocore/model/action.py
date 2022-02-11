@@ -36,7 +36,7 @@ class ActionModel(ShortActionModel):
     action_name: Optional[str]
     action_abbr: Optional[str]
     action_params: dict = Field(default_factory=dict)
-    action_etc: Optional[float]
+    action_etc: Optional[float] # expected time to completion
     samples_in: List[SampleUnion] = Field(default_factory=list)
     samples_out: List[SampleUnion] = Field(default_factory=list)
     files: List[FileInfo] = Field(default_factory=list)
