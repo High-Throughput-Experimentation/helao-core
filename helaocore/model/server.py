@@ -78,7 +78,8 @@ class ActionServerModel(BaseModel, HelaoDict):
     action_server: MachineModel
     # endpoints keyed by the name of the endpoint (action_name)
     endpoints: Dict[str, EndpointModel] = Field(default_factory=dict)
-
+    # signals estop of the action server
+    estop: bool = False
     
     def get_fastapi_json(self, action_name: Optional[str] = None):
         json_dict = {}

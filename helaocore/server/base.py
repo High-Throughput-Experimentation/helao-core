@@ -120,6 +120,28 @@ def makeActionServ(
         """Return a list of all endpoints on this server."""
         return app.base.get_endpoint_urls(app)
 
+
+    @app.post(f"/{server_key}/estop")
+    async def estop(request: Request, switch: Optional[bool] = True):
+        active = await app.base.setup_and_contain_action(
+                                          request = request,
+                                          json_data_keys = ["estop"],
+                                          action_abbr = "estop"
+        )
+        has_estop = getattr(app.driver, "estop", None)
+        if has_estop is not None and callable(has_estop):
+            app.driver.base.print_message("driver has estop function",
+                                          info = True)
+            await active.enqueue_data_dflt(datadict = \
+               {"estop": await app.driver.estop(**active.action.action_params)})
+        else:
+            app.driver.base.print_message("driver has NO estop function",
+                                          info = True)
+            app.driver.base.actionserver.estop = switch
+        finished_action = await active.finish()
+        return finished_action.as_dict()
+
+
     # @app.post(f"/split")
     # async def split(target_uuid: Optional[UUID],
     #                 new_samples_in: Body(Optional[List[SampleUnion]], embed=True),
@@ -128,6 +150,7 @@ def makeActionServ(
     #     return app.base.split(target_uuid, new_samples_in, new_params)
 
     return app
+
 
 
 
@@ -405,7 +428,7 @@ class Base(object):
             else:
                 self.status_clients.add(client_servkey)
 
-                # send current status of all endpoints (action_name = None)
+                # sends current status of all endpoints (action_name = None)
                 for _ in range(retry_limit):
                     response = await self.send_statuspackage(action_name = None,
                                                   client_servkey = client_servkey)
