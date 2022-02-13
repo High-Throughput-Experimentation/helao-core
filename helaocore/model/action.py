@@ -16,7 +16,7 @@ from ..helper.helaodict import HelaoDict
 
 class ShortActionModel(BaseModel, HelaoDict):
     action_uuid: Optional[UUID]
-    output_dir: Optional[str]
+    action_output_dir: Optional[str]
     action_actual_order: Optional[int] = 0
 
 

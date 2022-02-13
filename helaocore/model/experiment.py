@@ -28,6 +28,7 @@ class ShortExperimentModel(BaseModel, HelaoDict):
 
 class ExperimentTemplate(BaseModel, HelaoDict):
     access: Optional[str]
+    # name of "instrument": sdc, anec, adss etc. defined in world config
     technique_name: Optional[str]
     experiment_name: Optional[str]
     experiment_params: Optional[dict]
@@ -55,7 +56,7 @@ class ExperimentModel(ExperimentTemplate):
     experiment_uuid: Optional[UUID]
     experiment_timestamp: Optional[datetime]
     experiment_status: List[HloStatus] = Field(default_factory=list)
-    output_dir: Optional[str]
+    experiment_output_dir: Optional[str]
     action_list: List[ShortActionModel] = Field(default_factory=list)
     samples_in: List[SampleUnion] = Field(default_factory=list)
     samples_out: List[SampleUnion] = Field(default_factory=list)
