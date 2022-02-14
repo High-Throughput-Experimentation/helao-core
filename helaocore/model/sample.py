@@ -311,7 +311,7 @@ SampleUnion = Union[
 
 
 SamplePartUnion = Union[
-                    # AssemblySample,
+                    AssemblySample,
                     NoneSample,
                     LiquidSample,
                     GasSample,

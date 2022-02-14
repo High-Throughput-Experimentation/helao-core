@@ -24,7 +24,7 @@ async def async_action_dispatcher(world_config_dict: dict, A: Action):
         async with session.post(
             url,
             params={},
-            json=A.as_dict(),
+            json={"action":A.json_dict()},
         ) as resp:
             response = await resp.json()
             return response

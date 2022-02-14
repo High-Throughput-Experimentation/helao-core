@@ -38,6 +38,9 @@ class ActionModel(ShortActionModel):
     action_abbr: Optional[str]
     action_params: dict = Field(default_factory=dict)
     action_etc: Optional[float] # expected time to completion
+    parent_action_uuid: Optional[UUID]
+    child_action_uuid: Optional[UUID]
     samples_in: List[SampleUnion] = Field(default_factory=list)
     samples_out: List[SampleUnion] = Field(default_factory=list)
     files: List[FileInfo] = Field(default_factory=list)
+    manual_action: bool = False

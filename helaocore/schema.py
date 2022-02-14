@@ -19,7 +19,7 @@ from typing import Optional
 from pydantic import Field
 from typing import List
 from collections import defaultdict
-
+from uuid import UUID
 
 from .helper.print_message import print_message
 from .helper.gen_uuid import gen_uuid
@@ -215,14 +215,15 @@ class Action(Experiment, ActionModel):
     start_condition: Optional[ActionStartCondition] = ActionStartCondition.wait_for_all
     save_act: Optional[bool] = True # default should be true
     save_data: Optional[bool] = True # default should be true
-    AUX_file_paths: Optional[list] = Field(default_factory=list)
+    AUX_file_paths: Optional[Path] = Field(default_factory=list)
 
     error_code: Optional[str] = "0"
 
     from_global_params: Optional[dict] = Field(default_factory=dict)
     to_global_params: Optional[list] = Field(default_factory=list)
 
-    manual_action: bool = False
+    # internal
+    file_conn_keys: Optional[List[UUID]] = Field(default_factory=list)
 
     def __repr__(self):
         return f"<action_name:{self.action_name}>" 
@@ -250,11 +251,11 @@ class Action(Experiment, ActionModel):
             self.manual_action = True
             self.access = "manual"
             # -- (1) -- set missing sequence parameters
-            self.sequence_name = "manual_swagger_seq"
+            self.sequence_name = "manual_seq"
             self.init_seq(time_offset=time_offset)
             # -- (2) -- set missing experiment parameters
-            self.action.experiment_name = "MANUAL"
-            self.action.init_prc(time_offset=time_offset)
+            self.experiment_name = "MANUAL"
+            self.init_prc(time_offset=time_offset)
 
         if force or self.action_timestamp is None:
             self.action_timestamp = set_time(offset=time_offset)
@@ -271,6 +272,7 @@ class Action(Experiment, ActionModel):
         return os.path.join(
             experiment_dir,
             f"{self.action_actual_order}__"
+            f"{self.action_split}__"
             f"{self.action_timestamp.strftime('%Y%m%d.%H%M%S%f')}__"
             f"{self.action_server.server_name}__{self.action_name}",
         )

@@ -2,7 +2,6 @@ __all__ = [
            "StatusModel",
            "ActionServerModel",
            "GlobalStatusModel",
-           "MachineModel"
           ]
 
 from typing import Dict, Optional, Tuple, List
@@ -44,6 +43,14 @@ class EndpointModel(BaseModel, HelaoDict):
     # todo: - add local queue and priority lists here?
 
 
+    def __repr__(self):
+        return f"<active:{[uuid for uuid in self.active_dict.keys()]}, finished:{[uuid for uuid in self.finished_dict.keys()]}>"
+
+
+    def __str__(self):
+        return f"active:{[uuid for uuid in self.active_dict.keys()]}, finished:{[uuid for uuid in self.finished_dict.keys()]}" 
+
+
     def sort_status(self):
         del_keys = []
         for uuid, status in self.active_dict.items():
@@ -62,6 +69,8 @@ class EndpointModel(BaseModel, HelaoDict):
 
                 # no main substatus, add it under finished key
                 if not is_sub_status:
+                    if HloStatus.finished not in self.finished_dict:
+                        self.finished_dict[HloStatus.finished] = dict()
                     self.finished_dict[HloStatus.finished].update({uuid:status})
 
         # delete all finished actions from active_dict
@@ -80,7 +89,7 @@ class ActionServerModel(BaseModel, HelaoDict):
     endpoints: Dict[str, EndpointModel] = Field(default_factory=dict)
     # signals estop of the action server
     estop: bool = False
-    
+
     def get_fastapi_json(self, action_name: Optional[str] = None):
         json_dict = {}
         if action_name is None:
@@ -120,14 +129,23 @@ class GlobalStatusModel(BaseModel, HelaoDict):
     loop_state: OrchStatus = OrchStatus.stopped
     # the state of the orch
     orch_state: OrchStatus = OrchStatus.none
-    # counter for dispatched actions
-    counter_dispatched_actions = 0
+    # counter for dispatched actions, keyed by experiment uuid
+    counter_dispatched_actions: Dict[UUID, int] = Field(default_factory=dict)
+
+
+    def actions_idle(self) -> bool:
+        """checks if all action servers for this orch are idle"""
+        if self.active_acts:
+            return False
+        else:
+            return True
 
 
     def server_free(
                     self, 
                     action_server: MachineModel, 
                    ) -> bool:
+        """checks if action server is idle for this orch"""
         free = True
         if action_server.as_key() in self.server_dict:
             actionservermodel = self.server_dict[action_server.as_key()]
@@ -198,12 +216,7 @@ class GlobalStatusModel(BaseModel, HelaoDict):
                 {actionserver.action_server.as_key():actionserver}
             )
         else:
-            # cannot update the full active_dict
-            # we need to update each endpoint individually
-            for endpoint_name, endpointmodel in actionserver.endpoints.items():
-                self.server_dict[actionserver.action_server.as_key()].endpoints.update(
-                    {endpoint_name:endpointmodel}
-                )
+            self.server_dict[actionserver.action_server.as_key()].endpoints.update(actionserver.endpoints)
 
         # sort it into active and finished
         self._sort_status()
@@ -245,6 +258,10 @@ class GlobalStatusModel(BaseModel, HelaoDict):
                 del self.finished_acts[HloStatus.finished][key]
 
 
+    def new_experiment(self, exp_uuid: UUID):
+        self.counter_dispatched_actions[exp_uuid] = 0
+
+
     def finish_experiment(self, exp_uuid: UUID) -> List[ActionModel]:
         """ returns all finished experiments"""
         # we don't filter by orch as this should have happened already when they 
@@ -263,6 +280,7 @@ class GlobalStatusModel(BaseModel, HelaoDict):
 
         # clear finished
         self.finished_acts = dict()
-        self.counter_dispatched_actions = 0
+        if exp_uuid in self.counter_dispatched_actions:
+            del self.counter_dispatched_actions[exp_uuid]
 
         return finished_acts

@@ -3,7 +3,7 @@ __all__ = ["Orch", "makeOrchServ"]
 import asyncio
 import sys
 from collections import deque
-from copy import copy, deepcopy
+from copy import deepcopy
 from math import floor
 from typing import Optional, Union, List
 from uuid import UUID
@@ -22,8 +22,8 @@ from .api import HelaoFastAPI
 from .import_experiments import import_experiments
 from .import_sequences import import_sequences
 from .dispatcher import async_private_dispatcher, async_action_dispatcher
-from .action_start_condition import action_start_condition
 
+from ..model.action_start_condition import ActionStartCondition
 from ..helper.multisubscriber_queue import MultisubscriberQueue
 from ..schema import Sequence, Experiment, Action
 from ..model.experiment_sequence import ExperimentSequenceModel
@@ -38,6 +38,16 @@ from ..model.orchstatus import OrchStatus
 colorama.init(strip=not sys.stdout.isatty())  # strip colors if stdout is redirected
 # colorama.init()
 
+hlotags_metadata = [
+    {
+     "name":"public",
+     "description":"prublic orchestrator endpoints"
+    },
+    {
+     "name":"private",
+     "description":"private orchestrator endpoints"
+    },
+    ]
 
 def makeOrchServ(
                  config, 
@@ -69,9 +79,9 @@ def makeOrchServ(
         if driver_class:
             app.driver = driver_class(app.orch)
 
-    @app.post("/update_status")
+    @app.post("/update_status", tags=["private"])
     async def update_status(actionserver: Optional[ActionServerModel] = \
-                            Body(None , embed=True)):
+                            Body({} , embed=True)):
         if actionserver is None:
             return False
 
@@ -81,7 +91,7 @@ def makeOrchServ(
                                 f"{actionserver.endpoints}")
         return await app.orch.update_status(actionserver = actionserver)
 
-    @app.post("/attach_client")
+    @app.post("/attach_client", tags=["private"])
     async def attach_client(client_servkey: str):
         return await app.orch.attach_client(client_servkey)
 
@@ -103,7 +113,7 @@ def makeOrchServ(
         """
         await app.orch.ws_data(websocket)
 
-    @app.post("/start")
+    @app.post("/start", tags=["private"])
     async def start():
         """Begin experimenting experiment and action queues."""
         if app.orch.orchstatusmodel.loop_state == OrchStatus.stopped:
@@ -117,7 +127,7 @@ def makeOrchServ(
             app.orch.print_message("already running")
         return {}
 
-    @app.post("/estop")
+    @app.post("/estop", tags=["private"])
     async def estop():
         """Emergency stop experiment and action queues, interrupt running actions."""
         if app.orch.orchstatusmodel.loop_state == OrchStatus.started:
@@ -128,7 +138,7 @@ def makeOrchServ(
             app.orch.print_message("orchestrator is not running")
         return {}
 
-    @app.post("/stop")
+    @app.post("/stop", tags=["private"])
     async def stop():
         """Stop experimenting experiment and action queues after current actions finish."""
         if app.orch.orchstatusmodel.loop_state == OrchStatus.started:
@@ -139,7 +149,7 @@ def makeOrchServ(
             app.orch.print_message("orchestrator is not running")
         return {}
 
-    @app.post("/clear_estop")
+    @app.post("/clear_estop", tags=["private"])
     async def clear_estop():
         """Remove emergency stop condition."""
         if app.orch.orchstatusmodel.loop_state != OrchStatus.estop:
@@ -147,7 +157,7 @@ def makeOrchServ(
         else:
             await app.orch.clear_estop()
 
-    @app.post("/clear_error")
+    @app.post("/clear_error", tags=["private"])
     async def clear_error():
         """Remove error condition."""
         if app.orch.orchstatusmodel.loop_state != OrchStatus.error:
@@ -155,7 +165,7 @@ def makeOrchServ(
         else:
             await app.orch.clear_error()
 
-    @app.post("/skip")
+    @app.post("/skip", tags=["private"])
     async def skip_experiment():
         """Clear the present action queue while running."""
         if app.orch.orchstatusmodel.loop_state == OrchStatus.started:
@@ -166,7 +176,7 @@ def makeOrchServ(
             app.orch.action_dq.clear()
         return {}
 
-    @app.post("/clear_actions")
+    @app.post("/clear_actions", tags=["private"])
     async def clear_actions():
         """Clear the present action queue while stopped."""
         app.orch.print_message("clearing action queue")
@@ -174,7 +184,7 @@ def makeOrchServ(
         app.orch.action_dq.clear()
         return {}
 
-    @app.post("/clear_experiments")
+    @app.post("/clear_experiments", tags=["private"])
     async def clear_experiments():
         """Clear the present experiment queue while stopped."""
         app.orch.print_message("clearing experiment queue")
@@ -183,7 +193,7 @@ def makeOrchServ(
         return {}
 
 
-    @app.post("/append_sequence")
+    @app.post("/append_sequence", tags=["private"])
     async def append_sequence(
         sequence_uuid: str = None,
         sequence_timestamp: str = None,
@@ -202,6 +212,27 @@ def makeOrchServ(
         )
         return {}
 
+    @app.post(f"/{server_key}/wait")
+    async def wait(
+        action: Optional[Action] = \
+                Body({}, embed=True),
+        waittime: Optional[float] = 0.0
+        ):
+        """Sleep action"""    
+        A = await app.orch.setup_action()
+        active = await app.orch.contain_action(action = A)
+        waittime = A.action_params["waittime"]
+        app.orch.print_message(' ... wait action:', waittime)
+        start_time = time.time()
+        # last_time = start_time
+        while time.time()-start_time < waittime:
+            await asyncio.sleep(1)
+            app.orch.print_message(f" ... orch waited {(time.time()-start_time):.1f} sec / {waittime:.1f} sec")
+        # await asyncio.sleep(waittime)
+        app.orch.print_message(' ... wait action done')
+        finished_action = await active.finish()
+        return finished_action.as_dict()
+
 
     # @app.post("/append_experiment")
     # async def append_experiment(
@@ -213,125 +244,43 @@ def makeOrchServ(
     # ):
     #     """Add a experiment object to the end of the experiment queue.
 
-    #     Args:
-    #     experiment_dict: experiment parameters (optional), as dict.
-    #     orchestrator: Orchestrator server key (optional), as str.
-    #     plate_id: The sample's plate id (no checksum), as int.
-    #     sample_no: A sample number, as int.
-    #     experiment_name: The name of the experiment for building the action list, as str.
-    #     experiment_params: experiment parameters, as dict.
-    #     result_dict: action responses dict.
-    #     access: Access control group, as str.
-
-    #     Returns:
-    #     Nothing.
-    #     """
-    #     await app.orch.add_experiment(
-    #         orchestrator,
-    #         experiment_name,
-    #         experiment_params,
-    #         result_dict,
-    #         access,
-    #         prepend=False,
-    #     )
-    #     return {}
-
     # @app.post("/prepend_experiment")
     # async def prepend_experiment(
-    #     orchestrator: str = None,
-    #     experiment_name: str = None,
-    #     experiment_params: dict = {},
-    #     result_dict: dict = {},
-    #     access: str = "hte",
     # ):
     #     """Add a experiment object to the start of the experiment queue.
 
-    #     Args:
-    #     experiment_dict: experiment parameters (optional), as dict.
-    #     orchestrator: Orchestrator server key (optional), as str.
-    #     plate_id: The sample's plate id (no checksum), as int.
-    #     sample_no: A sample number, as int.
-    #     experiment_name: The name of the experiment for building the action list, as str.
-    #     experiment_params: experiment parameters, as dict.
-    #     result_dict: action responses dict.
-    #     access: Access control group, as str.
-
-    #     Returns:
-    #     Nothing.
-    #     """
-    #     await app.orch.add_experiment(
-    #         orchestrator,
-    #         experiment_name,
-    #         experiment_params,
-    #         result_dict,
-    #         access,
-    #         prepend=True,
-    #     )
-    #     return {}
-
     # @app.post("/insert_experiment")
     # async def insert_experiment(
-    #     idx: int,
-    #     experiment_dict: dict = None,
-    #     orchestrator: str = None,
-    #     experiment_name: str = None,
-    #     experiment_params: dict = {},
-    #     result_dict: dict = {},
-    #     access: str = "hte",
     # ):
     #     """Insert a experiment object at experiment queue index.
 
-    #     Args:
-    #     idx: index in experiment queue for insertion, as int
-    #     experiment_dict: experiment parameters (optional), as dict.
-    #     orchestrator: Orchestrator server key (optional), as str.
-    #     plate_id: The sample's plate id (no checksum), as int.
-    #     sample_no: A sample number, as int.
-    #     experiment_name: The name of the experiment for building the action list, as str.
-    #     experiment_params: experiment parameters, as dict.
-    #     result_dict: action responses dict.
-    #     access: Access control group, as str.
 
-    #     Returns:
-    #     Nothing.
-    #     """
-    #     await app.orch.add_experiment(
-    #         experiment_dict,
-    #         orchestrator,
-    #         experiment_name,
-    #         experiment_params,
-    #         result_dict,
-    #         access,
-    #         at_index=idx,
-    #     )
-    #     return {}
-
-    @app.post("/list_experiments")
+    @app.post("/list_experiments", tags=["private"])
     def list_experiments():
         """Return the current list of experiments."""
         return app.orch.list_experiments()
 
-    @app.post("/active_experiment")
+    @app.post("/active_experiment", tags=["private"])
     def active_experiment():
         """Return the active experiment."""
         return app.orch.get_experiment(last=False)
 
-    @app.post("/last_experiment")
+    @app.post("/last_experiment", tags=["private"])
     def last_experiment():
         """Return the last experiment."""
         return app.orch.get_action_group(last=True)
 
-    @app.post("/list_actions")
+    @app.post("/list_actions", tags=["private"])
     def list_actions():
         """Return the current list of actions."""
         return app.orch.list_actions()
 
-    @app.post("/list_active_actions")
+    @app.post("/list_active_actions", tags=["private"])
     def list_active_actions():
         """Return the current list of actions."""
         return app.orch.list_active_actions()
 
-    @app.post("/endpoints")
+    @app.post("/endpoints", tags=["private"])
     def get_all_urls():
         """Return a list of all endpoints on this server."""
         return app.orch.get_endpoint_urls(app)
@@ -418,41 +367,6 @@ class Orch(Base):
         # if not empty clear it
         while not self.interrupt_q.empty():
             _ = await self.interrupt_q.get()
-
-
-    async def check_all_actions_idle(self) -> bool:
-        """checks if this orch as runnung acts
-           orther orch can still have active acts
-        """
-        global_free = len(self.orchstatusmodel.active_acts) == 0
-        self.print_message(f"check for running acts: "
-                           f"{global_free}")
-        return global_free
-
-
-
-    async def check_server_free(
-                                self, 
-                                action_server: MachineModel
-                               ) -> bool:
-        return self.orchstatusmodel.server_free(
-            action_server = action_server, # MachineModel
-        )
-
-
-    async def check_endpoint_free(
-                                  self, 
-                                  action_server: MachineModel, 
-                                  endpoint_name: str
-                                 ) -> bool:
-        """check if an endpoint can accept new actions for this orch
-           for multiple orch the enpoints need to implement internal queueing
-           TODO
-           """
-        return self.orchstatusmodel.endpoint_free(
-            action_server = action_server, # MachineModel
-            endpoint_name = endpoint_name # name of the endpoint
-        )
 
 
     async def subscribe_all(self, retry_limit: int = 5):
@@ -562,8 +476,6 @@ class Orch(Base):
                 self.print_message("getting new sequence from sequence_dq")
                 self.active_sequence = self.sequence_dq.popleft()
                 self.active_sequence.init_seq(time_offset = self.ntp_offset)
-                self.active_sequence.sequence_status = [HloStatus.active]
-                self.active_sequence.sequence_output_dir = self.get_sequence_dir(self.active_sequence)
     
                 # todo: this is for later, for now the operator needs to unpack the sequence
                 # in order to also use a semi manual op mode
@@ -575,7 +487,7 @@ class Orch(Base):
                 #     unpacked_prcs = []
     
                 # for prc in unpacked_prcs:
-                #     D = Experiment(inputdict=prc)
+                #     D = Experiment(**prc.as_dict())
                 #     self.active_sequence.experiment_plan_list.append(D)
     
     
@@ -626,11 +538,11 @@ class Orch(Base):
 
                     self.active_experiment.technique_name = self.technique_name
                     self.active_experiment.orchestrator = self.server
-                    self.active_experiment.set_dtime(offset=self.ntp_offset)
-                    self.active_experiment.gen_uuid_experiment()
-                    self.active_experiment.access = "hte"
-                    self.active_experiment.experiment_status = [HloStatus.active]
-                    self.active_experiment.experiment_output_dir = self.get_experiment_dir(self.active_experiment)
+                    self.active_experiment.init_prc(time_offset=self.ntp_offset)
+
+                    self.orchstatusmodel.new_experiment(
+                        exp_uuid = self.active_experiment.experiment_uuid)
+
 
                     # additional experiment params should be stored 
                     # in experiment.experiment_params
@@ -691,32 +603,35 @@ class Orch(Base):
 
                         # see async_action_dispatcher for unpacking
 
-                        if A.start_condition == action_start_condition.no_wait:
+                        if A.start_condition == ActionStartCondition.no_wait:
                             self.print_message("orch is dispatching an unconditional action")
                         else:
-                            if A.start_condition == action_start_condition.wait_for_endpoint:
+                            if A.start_condition == ActionStartCondition.wait_for_endpoint:
                                 self.print_message(
                                     "orch is waiting for endpoint to become available"
                                 )
                                 while True:
                                     await self.wait_for_interrupt()
                                     endpoint_free = \
-                                        await self.check_endpoint_free(
-                                            action_server=A.action_server,
-                                            endpoint_name=A.action_name)
+                                        self.orchstatusmodel.endpoint_free(
+                                            action_server = A.action_server,
+                                            endpoint_name = A.action_name
+                                        )
                                     if endpoint_free:
                                         break
-                            elif A.start_condition == action_start_condition.wait_for_server:
+                            elif A.start_condition == ActionStartCondition.wait_for_server:
                                 self.print_message("orch is waiting for "
                                                    "server to become available")
                                 while True:
                                     await self.wait_for_interrupt()
                                     server_free = \
-                                        self.check_server_free(
-                                            check_server_free = A.action_server)
+                                    self.orchstatusmodel.server_free(
+                                                action_server = A.action_server
+                                    )
+
                                     if server_free:
                                         break
-                            elif A.start_condition == action_start_condition.wait_for_all:
+                            elif A.start_condition == ActionStartCondition.wait_for_all:
                                 await self.orch_wait_for_all_actions()
 
                             else:  #unsupported value
@@ -735,8 +650,9 @@ class Orch(Base):
                             f"on server {A.action_server.server_name}"
                         )
                         # keep running counter of dispatched actions
-                        A.action_actual_order = self.orchstatusmodel.counter_dispatched_actions
-                        self.orchstatusmodel.counter_dispatched_actions +=1
+                        A.action_actual_order = \
+                            self.orchstatusmodel.counter_dispatched_actions[self.active_experiment.experiment_uuid]
+                        self.orchstatusmodel.counter_dispatched_actions[self.active_experiment.experiment_uuid] +=1
 
                         A.init_act(time_offset = self.ntp_offset)
                         result = await async_action_dispatcher(self.world_cfg, A)
@@ -790,7 +706,7 @@ class Orch(Base):
     
         self.print_message("orch is waiting for all action_dq to finish")
         
-        if not await self.check_all_actions_idle():
+        if not self.orchstatusmodel.actions_idle():
             # some actions are active
             # we need to wait for them to finish
             while True:
@@ -802,7 +718,7 @@ class Orch(Base):
                 self.print_message("got status update")
                 # we got a status update
                 # check if all actions are idle now
-                if await self.check_all_actions_idle():
+                if self.orchstatusmodel.actions_idle():
                     self.print_message("all actions are idle now")
                     break
         else:
@@ -846,35 +762,30 @@ class Orch(Base):
         elif self.last_experiment is not None:
             active_exp_dict = self.last_experiment.as_dict()
         else:
-            exp = Experiment(inputdict = {})
+            exp = Experiment()
             exp.sequence_name = "orch_estop"
-            exp.init_seq(time_offset=self.base.ntp_offset)
+            # need to set status, else init will set in to active
             exp.sequence_status = [HloStatus.estopped, HloStatus.finished]
-            exp.sequence_output_dir = self.get_sequence_dir(exp)
+            exp.init_seq(time_offset=self.base.ntp_offset)
 
             exp.technique_name = self.technique_name
             exp.orchestrator = self.server
-            exp.set_dtime(offset=self.ntp_offset)
-            exp.gen_uuid_experiment()
-            exp.access = "hte"
             exp.experiment_status = [HloStatus.estopped, HloStatus.finished]
-            exp.experiment_output_dir = self.get_experiment_dir(exp)
+            exp.init_prc(time_offset=self.base.ntp_offset)
             active_exp_dict = exp.as_dict()
 
 
         for action_server, actionservermodel \
         in self.server_dict.items():
-            action_dict = copy(active_exp_dict)
+            action_dict = deepcopy(active_exp_dict)
             action_dict.update({
                 "action_name":"estop",
                 "action_server":actionservermodel.action_server.dict(),
                 "action_params":{"switch":switch},
-                "start_condition":action_start_condition.no_wait
+                "start_condition":ActionStartCondition.no_wait
                 })
 
-            A = Action(inputdict=action_dict,
-                      act=ActionModel(**action_dict)
-                     )
+            A = Action(**action_dict)
             try:
                 self.print_message(f"Sending estop={switch} request to "
                                    f"{actionservermodel.action_server.disp_name()}",
@@ -1096,7 +1007,7 @@ class Orch(Base):
     def append_action(self, sup_action: Action):
         """Add action to end of current action queue."""
         if len(self.action_dq) == 0:
-            last_action_order = self.orchstatusmodel.counter_dispatched_actions - 1
+            last_action_order = self.orchstatusmodel.counter_dispatched_actions[self.active_experiment.experiment_uuid] - 1
             if last_action_order < 0:
                 # no action was dispatched yet
                 last_action_order = 0
@@ -1117,7 +1028,7 @@ class Orch(Base):
                        new_status = HloStatus.finished
                       )
             await self.write_seq(self.active_sequence)
-            self.last_sequence = copy(self.active_sequence)
+            self.last_sequence = deepcopy(self.active_sequence)
             self.active_sequence = None
 
 
@@ -1151,7 +1062,7 @@ class Orch(Base):
             await self.write_prc(self.active_experiment)
 
 
-        self.last_experiment = copy(self.active_experiment)
+        self.last_experiment = deepcopy(self.active_experiment)
         self.active_experiment = None
 
 

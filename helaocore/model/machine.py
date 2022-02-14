@@ -21,5 +21,3 @@ class MachineModel(BaseModel, HelaoDict):
     
     def disp_name(self):
         return f"{self.server_name}@{self.machine_name}"
-    
-    

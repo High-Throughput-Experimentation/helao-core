@@ -10,3 +10,4 @@ class HloStatus(str, Enum):
     skipped = "skipped"
     estopped = "estopped"
     split = "split"
+    busy = "busy"

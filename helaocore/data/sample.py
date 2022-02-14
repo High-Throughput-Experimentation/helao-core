@@ -696,7 +696,6 @@ class UnifiedSampleDataAPI:
         retval = []
 
         for sample in samples:
-            self._base.print_message(f"retrieving sample {sample}")
             self._base.print_message(f"retrieving sample {sample.get_global_label()}")
             if isinstance(sample, LiquidSample):
                 tmp = await self.liquidAPI.get_sample([sample])

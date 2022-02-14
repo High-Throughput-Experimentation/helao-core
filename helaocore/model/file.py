@@ -56,10 +56,14 @@ class FileConn(BaseModel, HelaoDict):
     params: FileConnParams
     added_hlo_separator: bool = False
     # holds the file reference
-    file: Optional[object]
+    file: Optional[object] = None
 
     class Config:
         arbitrary_types_allowed = True
+
+    def reset_file_conn(self):
+        self.added_hlo_separator = False
+        self.file = None
 
     @validator("file")
     def validate_file(cls, v):

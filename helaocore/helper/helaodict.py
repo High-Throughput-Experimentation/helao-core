@@ -6,6 +6,7 @@ import types
 from pydantic import BaseModel
 from typing import Any
 from enum import Enum
+from pathlib import Path
 
 
 class HelaoDict():
@@ -27,7 +28,7 @@ class HelaoDict():
             return val.name
         elif isinstance(val, (int, str, float, bool, type(None))):
             return val
-        elif isinstance(val, (UUID, datetime)):
+        elif isinstance(val, (UUID, datetime, Path)):
             return str(val)
         elif isinstance(val, list):
             return [self._serialize_item(val = item) for item in val]
