@@ -6,6 +6,7 @@ __all__ = [
 from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
+from pathlib import Path
 
 from pydantic import BaseModel, Field
 
@@ -19,7 +20,7 @@ from ..helper.helaodict import HelaoDict
 class ExperimentSequenceTemplate(BaseModel, HelaoDict):
     sequence_name: Optional[str]
     sequence_params: Optional[dict] = Field(default_factory=dict)
-    sequence_label: Optional[str]
+    sequence_label: Optional[str] = "noLabel"
     experiment_plan_list: List[str] = Field(default_factory=list)
 
 
@@ -40,5 +41,5 @@ class ExperimentSequenceModel(ExperimentSequenceTemplate):
     sequence_uuid: Optional[UUID]
     sequence_timestamp: Optional[datetime]
     sequence_status: List[HloStatus] = Field(default_factory=list)
-    sequence_output_dir: Optional[str]
+    sequence_output_dir: Optional[Path]
     experiment_list: List[ShortExperimentModel] = Field(default_factory=list)

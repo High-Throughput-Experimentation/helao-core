@@ -3,6 +3,7 @@ __all__ = ["ActionModel", "ShortActionModel"]
 from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
+from pathlib import Path
 from pydantic import BaseModel, Field
 
 
@@ -16,7 +17,7 @@ from ..helper.helaodict import HelaoDict
 
 class ShortActionModel(BaseModel, HelaoDict):
     action_uuid: Optional[UUID]
-    action_output_dir: Optional[str]
+    action_output_dir: Optional[Path]
     action_actual_order: Optional[int] = 0
 
 
