@@ -35,6 +35,7 @@ class ActionModel(ShortActionModel):
     action_retry: Optional[int] = 0
     action_split: Optional[int] = 0
     action_name: Optional[str]
+    action_sub_name: Optional[str]
     action_abbr: Optional[str]
     action_params: dict = Field(default_factory=dict)
     action_etc: Optional[float] # expected time to completion
