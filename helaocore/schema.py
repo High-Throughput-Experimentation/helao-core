@@ -45,8 +45,6 @@ class Sequence(ExperimentSequenceModel):
 
     def get_seq(self):
         seq = ExperimentSequenceModel(**self.dict())
-        seq.sequence_output_dir = Path(self.sequence_output_dir).as_posix() \
-                          if self.sequence_output_dir is not None else None
         seq.experiment_list = [ShortExperimentModel(**prc.dict()) for prc in self.experimentmodel_list]
         seq.experiment_plan_list = [experiment.experiment_name for experiment in self.experiment_plan_list]
         return seq
@@ -127,8 +125,6 @@ class Experiment(Sequence, ExperimentModel):
 
     def get_prc(self):
         prc = ExperimentModel(**self.dict())
-        prc.experiment_output_dir = Path(self.experiment_output_dir).as_posix() \
-                if self.experiment_output_dir is not None else None
         # now add all actions
         self._experiment_update_from_actlist(prc = prc)
         return prc
@@ -141,8 +137,9 @@ class Experiment(Sequence, ExperimentModel):
 
 
         for actm in self.experiment_action_list:
+            # actm.action_output_dir=Path(actm.action_output_dir).as_posix() \
+            #     if actm.action_output_dir is not None else None
             prc.action_list.append(ShortActionModel(**actm.dict()))
-
             for file in actm.files:
                 if file.action_uuid is None:
                     file.action_uuid = actm.action_uuid
@@ -234,11 +231,7 @@ class Action(Experiment, ActionModel):
 
 
     def get_act(self):
-        actm = ActionModel(**self.dict())
-        # convert path to posix
-        actm.action_output_dir=Path(self.action_output_dir).as_posix() \
-                if self.action_output_dir is not None else None
-        return actm
+        return ActionModel(**self.dict())
 
 
     def init_act(

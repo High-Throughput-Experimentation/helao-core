@@ -28,7 +28,9 @@ class HelaoDict():
             return val.name
         elif isinstance(val, (int, str, float, bool, type(None))):
             return val
-        elif isinstance(val, (UUID, datetime, Path)):
+        elif isinstance(val, (Path)):
+            return str(val.as_posix())
+        elif isinstance(val, (UUID, datetime)):
             return str(val)
         elif isinstance(val, list):
             return [self._serialize_item(val = item) for item in val]
