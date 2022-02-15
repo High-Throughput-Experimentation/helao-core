@@ -564,8 +564,9 @@ class Base(object):
         await websocket.accept()
         try:
             async for status_msg in self.status_q.subscribe():
-                await websocket.send_text(json.dumps(status_msg))
-        except WebSocketDisconnect:
+                await websocket.send_text(json.dumps(status_msg.json_dict()))
+        # except WebSocketDisconnect:
+        except Exception as e:
             self.print_message(
                 f"Status websocket client "
                 f"{websocket.client[0]}:{websocket.client[1]} disconnected.",
@@ -579,8 +580,9 @@ class Base(object):
         await websocket.accept()
         try:
             async for data_msg in self.data_q.subscribe():
-                await websocket.send_text(json.dumps(data_msg))
-        except WebSocketDisconnect:
+                await websocket.send_text(json.dumps(data_msg.json_dict()))
+        # except WebSocketDisconnect:
+        except Exception as e:
             self.print_message(
                 f"Data websocket client "
                 f"{websocket.client[0]}:{websocket.client[1]} disconnected.",
@@ -1083,33 +1085,44 @@ class Base(object):
 
         async def enqueue_data(
                                self, 
-                               datamodel: DataModel
+                               datamodel: DataModel,
+                               action: Optional[Action] = None
                               ):
+            if action is None:
+                action = self.action
             await self.base.data_q.put(
                 self.assemble_data_msg(
-                    datamodel = datamodel
+                    datamodel = datamodel,
+                    action = action
                 )
             )
 
 
         def enqueue_data_nowait(
                                 self, 
-                                datamodel: DataModel
+                                datamodel: DataModel,
+                              action: Optional[Action] = None
                                ):
+            if action is None:
+                action = self.action
             self.base.data_q.put_nowait(
                 self.assemble_data_msg(
-                    datamodel = datamodel
+                    datamodel = datamodel,
+                    action = action
                 )
             )
 
 
         def assemble_data_msg(
                               self, 
-                              datamodel: DataModel
+                              datamodel: DataModel,
+                              action: Optional[Action] = None
                              ) -> DataPackageModel:
+            if action is None:
+                action = self.action
             return DataPackageModel(
-                action_uuid = self.action.action_uuid,
-                action_name = self.action.action_name,
+                action_uuid = action.action_uuid,
+                action_name = action.action_name,
                 datamodel = datamodel,
                 errors = datamodel.errors
             )

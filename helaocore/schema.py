@@ -137,8 +137,6 @@ class Experiment(Sequence, ExperimentModel):
 
 
         for actm in self.experiment_action_list:
-            # actm.action_output_dir=Path(actm.action_output_dir).as_posix() \
-            #     if actm.action_output_dir is not None else None
             prc.action_list.append(ShortActionModel(**actm.dict()))
             for file in actm.files:
                 if file.action_uuid is None:
