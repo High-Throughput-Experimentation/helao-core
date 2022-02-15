@@ -14,3 +14,4 @@ class error_codes(str, Enum):
     ssh_error = "ssh_error"
     not_initialized = "not_initialized"
     bug = "bug"
+    cmd_error = "cmd_error"
