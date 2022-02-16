@@ -83,7 +83,8 @@ def makeActionServ(
                    server_title, 
                    description, 
                    version, 
-                   driver_class=None
+                   driver_class=None,
+                   dyn_endpoints=None
                   ):
 
     app = HelaoFastAPI(
@@ -100,6 +101,10 @@ def makeActionServ(
         app.base = Base(app)
         if driver_class:
             app.driver = driver_class(app.base)
+        
+        # if provided add more dynmaic endpoints after driver initialization
+        if callable(dyn_endpoints):
+            asyncio.gather(dyn_endpoints(app = app))
 
 
     @app.websocket("/ws_status")
@@ -601,14 +606,22 @@ class Base(object):
             async for status_msg in self.status_q.subscribe():
                 # add it to the correct "EndpointModel"
                 # in the "ActionServerModel"
-                self.actionserver.endpoints[status_msg.act.action_name].active_dict.update(
-                    {status_msg.act.action_uuid:status_msg}
-                )
+                if status_msg.act.action_name not in self.actionserver.endpoints:
+                    # a new endpoints became available
+                    self.actionserver.endpoints[status_msg.act.action_name] = \
+                        EndpointModel(
+                            endpoint_name = status_msg.act.action_name
+                        )
+                    self.actionserver.endpoints[status_msg.act.action_name].active_dict.update(
+                        {status_msg.act.action_uuid:status_msg}
+                    )
+                else:
+                    self.actionserver.endpoints[status_msg.act.action_name].active_dict.update(
+                        {status_msg.act.action_uuid:status_msg}
+                    )
+                
                 # sort the status (finished_dict is empty at this point)
                 self.actionserver.endpoints[status_msg.act.action_name].sort_status()
-                
-                
-                # self.actionserver.update(status_msg)
                 self.print_message(
                     f"log_status_task sending status "
                     f"{status_msg.act.action_status} for action "
@@ -640,11 +653,9 @@ class Base(object):
                             f"Failed to push status message to "
                             f"{client_servkey} after {retry_limit} attempts.",
                             error = True)
-
                 # now delete the errored and finsihed statuses after 
                 # all are send to the subscribers
                 self.actionserver.endpoints[status_msg.act.action_name].clear_finished()
-
                 # TODO:write to log if save_root exists
                 self.print_message("all log_status_task messages send.")
 
@@ -1327,8 +1338,8 @@ class Base(object):
 
             # except asyncio.CancelledError:
             except Exception as e:
-                print(e)
-                self.base.print_message("data logger task was cancelled",
+                self.base.print_message(f"data logger task was cancelled "
+                                        f"with error: {e}",
                                         error=True)
 
 
