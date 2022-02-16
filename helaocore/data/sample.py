@@ -24,6 +24,7 @@ from ..model.sample import (AssemblySample,
                             SampleUnion, 
                             GasSample, 
                             SolidSample,
+                            NoneSample,
                             object_to_sample)
 from ..helper.file_in_use import file_in_use
 
@@ -133,7 +134,7 @@ class _BaseSampleAPI(object):
             if sample.machine_name is None:
                 sample.machine_name = self._base.server.machine_name
             if sample.server_name is None:
-                sample.server_name = self._base.server_name
+                sample.server_name = self._base.server.server_name
             # if sample.action_timestamp is None:
             #     atime = datetime.fromtimestamp(datetime.now().timestamp() + self._base.ntp_offset)
             #     sample.action_timestamp = atime.strftime("%Y%m%d.%H%M%S%f")
@@ -709,6 +710,11 @@ class UnifiedSampleDataAPI:
             elif isinstance(sample, AssemblySample):
                 tmp = await self.assemblyAPI.get_sample([sample])
                 for t in tmp: retval.append(t)
+            elif isinstance(sample, NoneSample):
+                self._base.print_message(
+                    "Got None Sample",
+                    error=True,
+                )
             else:
                 self._base.print_message(
                     f"validation error, type '{type(sample)}' is not a valid sample model",
