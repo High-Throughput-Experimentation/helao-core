@@ -142,6 +142,13 @@ class _BaseSample(SampleModel):
                     print_message({}, "model", f"updated sample dilution-factor: {self.dilution_factor}", error=True)
 
 
+    def zero_volume(self):
+        if hasattr(self, "volume_ml"):
+            self.volume_ml = 0
+            if SampleStatus.destroyed not in self.status:
+                self.status.append(SampleStatus.destroyed)
+
+
     def get_vol_ml(self) -> float:
         if hasattr(self, "volume_ml"):
             return self.volume_ml
