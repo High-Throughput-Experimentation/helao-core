@@ -354,7 +354,7 @@ class Base(object):
                  self.print_message(
                     f"local var '{arg}' not found in action, "
                     "addding it.",
-                    error=True,
+                    info=True,
                  )
                  action.action_params.update({arg:_locals.get(arg, None)})
 
