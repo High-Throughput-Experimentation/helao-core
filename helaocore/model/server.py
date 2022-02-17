@@ -14,7 +14,7 @@ from .machine import MachineModel
 from .action import ActionModel
 from .hlostatus import HloStatus
 from ..helper.helaodict import HelaoDict
-from ..error import error_codes
+from ..error import ErrorCodes
 
 
 # additional finished categories which contain one of these

@@ -1,9 +1,9 @@
-__all__ = ["error_codes"]
+__all__ = ["ErrorCodes"]
 
 from enum import Enum
 
 
-class error_codes(str, Enum):
+class ErrorCodes(str, Enum):
     none = "none"
     critical = "critical_error"
     start_timeout = "start_timeout"
