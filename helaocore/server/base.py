@@ -1546,7 +1546,7 @@ class Base(object):
                     self.base.new_file_conn_key(key=str(self.set_realtime_nowait()))
                 if new_fileconnparams is None:
                     # get last file conn
-                    new_file_conn = deepcopy(self.file_conn_dict[file_conn_key])
+                    new_file_conn = self.file_conn_dict[file_conn_key].deepcopy()
                     # modify last file_conn
                     new_file_conn.params.file_conn_key = new_file_conn_key
                     # reset some of the file conn parameters
