@@ -10,7 +10,7 @@ from enum import Enum
 from typing import List, Optional, Dict
 from pydantic import BaseModel, Field, validator
 from uuid import UUID
-
+from copy import copy, deepcopy
 
 from ..version import get_hlo_version
 from ..helper.helaodict import HelaoDict
@@ -64,6 +64,15 @@ class FileConn(BaseModel, HelaoDict):
     def reset_file_conn(self):
         self.added_hlo_separator = False
         self.file = None
+
+
+    def deepcopy(self):
+        newfileconn = FileConn(
+            params = deepcopy(self.params),
+            added_hlo_separator = deepcopy(self.added_hlo_separator),
+            file = None
+        )
+        return newfileconn
 
     @validator("file")
     def validate_file(cls, v):
