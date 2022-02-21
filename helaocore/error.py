@@ -15,3 +15,4 @@ class ErrorCodes(str, Enum):
     not_initialized = "not_initialized"
     bug = "bug"
     cmd_error = "cmd_error"
+    no_sample = "no_sample"
