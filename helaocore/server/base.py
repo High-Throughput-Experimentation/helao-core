@@ -58,7 +58,7 @@ from ..model.file import (
                           FileInfo
                          )
 from ..helper.file_in_use import file_in_use
-
+from ..error import ErrorCodes
 
 # ANSI color codes converted to the Windows versions
 # strip colors if stdout is redirected
@@ -1026,17 +1026,17 @@ class Base(object):
 
         async def set_error(
                             self, 
-                            err_msg: Optional[str] = None,
+                            error_code: Optional[ErrorCodes] = None,
                             action: Optional[Action] = None
                            ):
             if action is None:
                 action = self.action
             action.experiment_status.append(HloStatus.errored)
 
-            if err_msg:
-                action.error_code = err_msg
+            if error_code:
+                action.error_code = error_code
             else:
-                action.error_code = "-1 unspecified error"
+                action.error_code = ErrorCodes.unspecified
 
             self.base.print_message(
                 f"ERROR {str(action.action_uuid)} on "

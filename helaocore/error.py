@@ -16,3 +16,4 @@ class ErrorCodes(str, Enum):
     bug = "bug"
     cmd_error = "cmd_error"
     no_sample = "no_sample"
+    unspecified = "unspecified"
