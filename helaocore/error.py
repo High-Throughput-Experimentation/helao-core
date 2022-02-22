@@ -17,3 +17,8 @@ class ErrorCodes(str, Enum):
     cmd_error = "cmd_error"
     no_sample = "no_sample"
     unspecified = "unspecified"
+    estop = "estop"
+    timeout = "timeout"
+    setup = "setup"
+    numerical = "numerical"
+    motor = "motor"

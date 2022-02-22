@@ -830,6 +830,21 @@ class Base(object):
             status_list.append(new_status)
 
 
+    def get_main_error(self, errors) -> ErrorCodes:
+        """select the main error from a list of errors
+           currently return the first noty none error"""
+        ret_error = ErrorCodes.none
+        if isinstance(errors, list):
+            for error in errors:
+                if error != ErrorCodes.none:
+                    ret_error = error
+                    break
+        else:
+            ret_error = errors
+
+        return ret_error
+
+
     class Active(object):
         """Active action holder which wraps data queing and prc writing."""
 
