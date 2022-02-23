@@ -24,8 +24,8 @@ class Vis(object):
                                    server_name = bokehapp.helao_srv,
                                    machine_name = gethostname()
                                   )
-        self.server_cfg = bokehapp.world_cfg["servers"][self.server.server_name]
-        self.world_cfg = bokehapp.world_cfg
+        self.server_cfg = bokehapp.helao_cfg["servers"][self.server.server_name]
+        self.world_cfg = bokehapp.helao_cfg
         self.doc = bokehapp.doc
         self.root, self.save_root, self.log_root, self.states_root, self.db_root = \
             helao_dirs(self.world_cfg)

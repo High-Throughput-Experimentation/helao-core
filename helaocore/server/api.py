@@ -21,9 +21,10 @@ class HelaoBokehAPI:  # (curdoc):
         # super().__init__(*args, **kwargs)
         # self.helao_cfg = helao_cfg
         self.helao_srv = helao_srv
-        self.world_cfg = helao_cfg
+        self.helao_cfg = helao_cfg
+        self.server_cfg = self.helao_cfg["servers"][self.helao_srv]
+        self.server_params = self.server_cfg.get("params", dict())
 
-        self.srv_config = self.world_cfg["servers"][self.helao_srv]["params"]
-        self.doc_name = self.srv_config.get("doc_name", "Bokeh App")
+        self.doc_name = self.server_cfg.get("doc_name", "Bokeh App")
         self.doc = doc
         self.doc.title = self.doc_name

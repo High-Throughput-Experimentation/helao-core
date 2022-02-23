@@ -25,7 +25,7 @@ from .helper.print_message import print_message
 from .helper.gen_uuid import gen_uuid
 from .helper.set_time import set_time
 from .model.action import ActionModel, ShortActionModel
-from .model.experiment import ExperimentModel, ShortExperimentModel
+from .model.experiment import ExperimentModel, ShortExperimentModel, ExperimentTemplate
 from .model.experiment_sequence import ExperimentSequenceModel
 from .model.hlostatus import HloStatus
 from .model.action_start_condition import ActionStartCondition
@@ -33,6 +33,8 @@ from .error import ErrorCodes
 
 class Sequence(ExperimentSequenceModel):
     # not in ExperimentSequenceModel:
+
+    #this holds experiments from an active sequence
     experimentmodel_list: List[ExperimentModel] = Field(default_factory=list)
 
     def __repr__(self):
@@ -46,7 +48,9 @@ class Sequence(ExperimentSequenceModel):
     def get_seq(self):
         seq = ExperimentSequenceModel(**self.dict())
         seq.experiment_list = [ShortExperimentModel(**prc.dict()) for prc in self.experimentmodel_list]
-        seq.experiment_plan_list = [experiment.experiment_name for experiment in self.experiment_plan_list]
+        # either we have a plan at the beginning or not
+        # don't add it later from the experimentmodel_list
+        # seq.experiment_plan_list = [ExperimentTemplate(**prc.dict()) for prc in self.experimentmodel_list]
         return seq
 
 
@@ -319,8 +323,8 @@ class ExperimentPlanMaker(object):
 
     def add_experiment(self, selected_experiment, experiment_params):
         self.experiment_plan_list.append(
-            Experiment({
-                "experiment_name":selected_experiment,
-                "experiment_params":experiment_params,
-                }).as_dict()
+            ExperimentTemplate(
+                experiment_name = selected_experiment,
+                experiment_params = experiment_params,
+                )
             )

@@ -11,7 +11,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 
 from .hlostatus import HloStatus
-from .experiment import ShortExperimentModel
+from .experiment import ShortExperimentModel, ExperimentTemplate
 
 from ..version import get_hlo_version
 from ..helper.helaodict import HelaoDict
@@ -21,19 +21,7 @@ class ExperimentSequenceTemplate(BaseModel, HelaoDict):
     sequence_name: Optional[str]
     sequence_params: Optional[dict] = Field(default_factory=dict)
     sequence_label: Optional[str] = "noLabel"
-    experiment_plan_list: List[str] = Field(default_factory=list)
-
-
-    def make_sequence(
-                      self, 
-                      sequence_timestamp: datetime,
-                      sequence_uuid: UUID
-                     ):
-        return ExperimentSequenceModel(
-            **self.dict(), 
-            sequence_timestamp=sequence_timestamp, 
-            sequence_uuid=sequence_uuid
-        )
+    experiment_plan_list: List[ExperimentTemplate] = Field(default_factory=list)
 
 
 class ExperimentSequenceModel(ExperimentSequenceTemplate):
