@@ -214,7 +214,7 @@ class Action(Experiment, ActionModel):
     start_condition: Optional[ActionStartCondition] = ActionStartCondition.wait_for_all
     save_act: Optional[bool] = True # default should be true
     save_data: Optional[bool] = True # default should be true
-    AUX_file_paths: Optional[Path] = Field(default_factory=list)
+    AUX_file_paths: Optional[List[Path]] = Field(default_factory=list)
 
     error_code: Optional[ErrorCodes] = ErrorCodes.none
 
