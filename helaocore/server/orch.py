@@ -43,7 +43,6 @@ from .import_sequences import import_sequences
 from .dispatcher import async_private_dispatcher, async_action_dispatcher
 
 from ..model.action_start_condition import ActionStartCondition
-from ..helper.multisubscriber_queue import MultisubscriberQueue
 from ..helper.to_json import to_json
 from ..schema import Sequence, Experiment, Action
 
@@ -59,7 +58,7 @@ from ..model.server import ActionServerModel, GlobalStatusModel
 from ..model.machine import MachineModel
 from ..model.orchstatus import OrchStatus
 from ..data.legacy import HTELegacyAPI
-
+from ..error import ErrorCodes
 
 
 # ANSI color codes converted to the Windows versions
@@ -112,7 +111,6 @@ def makeOrchServ(
                             Body({} , embed=True)):
         if actionserver is None:
             return False
-
         app.orch.print_message(f"orch '{app.orch.server.server_name}' "
                                 f"got status from "
                                 f"'{actionserver.action_server.server_name}': "
@@ -346,7 +344,7 @@ class Orch(Base):
         self.orchstatusmodel = GlobalStatusModel(orchestrator = self.server)
         # this queue is simply used for waiting for any interrupt
         # but it does not do anything with its content
-        self.interrupt_q = MultisubscriberQueue()
+        self.interrupt_q = asyncio.Queue()
 
 
         self.init_success = False  # need to subscribe to all fastapi servers in config
@@ -433,14 +431,15 @@ class Orch(Base):
                 serv_port = serv_dict["port"]
                 for _ in range(retry_limit):
                     try:
-                        response = await async_private_dispatcher(
+                        response, error_code = await async_private_dispatcher(
                             world_config_dict=self.world_cfg,
                             server=serv_key,
                             private_action="attach_client",
                             params_dict={"client_servkey": self.server.server_name},
                             json_dict={},
                         )
-                        if response == True:
+                        if response == True \
+                        and error_code == ErrorCodes.none:
                             success = True
                             break
                     except aiohttp.client_exceptions.ClientConnectorError:
@@ -496,13 +495,13 @@ class Orch(Base):
             await self.estop_loop()
         elif error_uuids and self.orchstatusmodel.loop_state == OrchStatus.started:
             self.orchstatusmodel.orch_state = OrchStatus.error
-        elif not self.orchstatusmodel.active_acts:
+        elif not self.orchstatusmodel.active_dict:
             # no uuids in active action dict
             self.orchstatusmodel.orch_state = OrchStatus.idle
         else:
             self.orchstatusmodel.orch_state = OrchStatus.busy
             self.print_message(f"running_states: "
-                               f"{self.orchstatusmodel.active_acts}")
+                               f"{self.orchstatusmodel.active_dict}")
 
 
         # now push it to the interrupt_q
@@ -569,7 +568,6 @@ class Orch(Base):
             else:
                 self.print_message("sequence queue is empty, "
                                    "cannot start orch loop")
-
 
 
             while self.orchstatusmodel.loop_state == OrchStatus.started and (self.action_dq or self.experiment_dq):
@@ -711,7 +709,7 @@ class Orch(Base):
                         self.orchstatusmodel.counter_dispatched_actions[self.active_experiment.experiment_uuid] +=1
 
                         A.init_act(time_offset = self.ntp_offset)
-                        result = await async_action_dispatcher(self.world_cfg, A)
+                        result, error_code = await async_action_dispatcher(self.world_cfg, A)
 
                         self.active_experiment.result_dict[A.action_actual_order] = result
 
@@ -965,7 +963,7 @@ class Orch(Base):
     ):
         Ddict = experimenttemplate.dict()
         Ddict.update(seq.dict())
-        D = Experiment(Ddict)
+        D = Experiment(**Ddict)
 
         # reminder: experiment_dict values take precedence over keyword args
         if D.orchestrator.server_name is None \
@@ -1006,7 +1004,7 @@ class Orch(Base):
         """Return the current queue running actions."""
         action_list = []
         index = 0
-        for uuid, statusmodel in self.orchstatusmodel.active_acts.items():
+        for uuid, statusmodel in self.orchstatusmodel.active_dict.items():
             action_list.append(
                 {"index":index,
                  "action_uuid":statusmodel.action_uuid,

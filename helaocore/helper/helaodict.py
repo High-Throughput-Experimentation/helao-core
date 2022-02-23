@@ -25,7 +25,10 @@ class HelaoDict():
         
         if isinstance(val, Enum):
             # need to be first to catch also str enums
-            return val.name
+            if isinstance(val, str):
+                return val.name
+            else:
+                return val.value
         elif isinstance(val, (int, str, float, bool, type(None))):
             return val
         elif isinstance(val, (Path)):

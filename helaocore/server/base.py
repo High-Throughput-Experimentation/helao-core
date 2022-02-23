@@ -495,14 +495,14 @@ class Base(object):
                          ) -> bool:
         # needs private dispatcher
         json_dict = {"actionserver":self.actionserver.get_fastapi_json(action_name=action_name)}
-        response = await async_private_dispatcher(
+        response, error_code = await async_private_dispatcher(
             world_config_dict=self.world_cfg,
             server=client_servkey,
             private_action="update_status",
             params_dict={},
             json_dict=json_dict
         )
-        return response
+        return response, error_code
 
 
     async def attach_client(self, client_servkey: str, retry_limit=5):
@@ -521,9 +521,9 @@ class Base(object):
 
                 # sends current status of all endpoints (action_name = None)
                 for _ in range(retry_limit):
-                    response = await self.send_statuspackage(action_name = None,
+                    response, error_code = await self.send_statuspackage(action_name = None,
                                                   client_servkey = client_servkey)
-                    if response == True:
+                    if response == True and error_code == ErrorCodes.none:
                         self.print_message(
                             f"Added {client_servkey} to {self.server.server_name} "
                             "status subscriber list."
@@ -635,12 +635,12 @@ class Base(object):
                     )
                     success = False
                     for idx in range(retry_limit):
-                        response = await self.send_statuspackage(
+                        response, error_code = await self.send_statuspackage(
                             action_name = status_msg.act.action_name,
                             client_servkey = client_servkey
                         )
                         
-                        if response == True:
+                        if response == True and error_code == ErrorCodes.none:
                             success = True
                             break
 

@@ -22,3 +22,4 @@ class ErrorCodes(str, Enum):
     setup = "setup"
     numerical = "numerical"
     motor = "motor"
+    http = "http"
