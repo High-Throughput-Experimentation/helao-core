@@ -80,7 +80,7 @@ class HTELegacyAPI:
     def get_platemap_plateid(self, plateid: int):
         pmpath = self.getplatemappath_plateid(plateid)
         if pmpath is None:
-            return json.dumps({})
+            return []
         pmdlist, fid = self.readsingleplatemaptxt(pmpath)
         # return json.dumps(pmdlist)
         return pmdlist

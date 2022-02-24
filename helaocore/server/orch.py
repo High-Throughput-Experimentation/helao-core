@@ -355,18 +355,9 @@ class Orch(Base):
 
 
     def start_operator(self):
-        # config = import_module(f"helao.config.{confPrefix}").config
-
-
-        # confPrefix = sys.argv[1]
-        # servKey = sys.argv[2]
-        # config = import_module(f"helao.config.{confPrefix}").config
-        # C = config["servers"]
-        # S = C[servKey]
         servHost = self.server_cfg["host"]
         servPort = self.server_params.get("bokeh_port",self.server_cfg["port"]+1000)
         servPy = "Operator"
-
 
         self.bokehapp = Server(
                           {f"/{servPy}": partial(self.makeBokehApp, orch=self)},
@@ -1923,7 +1914,7 @@ class Operator:
 
 
     def get_pm(self, plateid, sender):
-        """"gets plate map from aligner server, sender is the input which did the request"""
+        """"gets plate map"""
         private_input, param_input = self.find_param_private_input(sender)
         if private_input is None or param_input is None:
             return False
