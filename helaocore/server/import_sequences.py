@@ -22,9 +22,10 @@ def import_sequences(world_config_dict: dict, sequence_path: str = None, server_
         )
         return sequence_lib
     sys.path.append(sequence_path)
-    for prglib in world_config_dict["sequence_libraries"]:
-        tempd = import_module(prglib).__dict__
-        sequence_lib.update({func: tempd[func] for func in tempd["SEQUENCES"]})
+    seqlibs =  world_config_dict.get("sequence_libraries", [])
+    for seqlib in seqlibs:
+        tempd = import_module(seqlib).__dict__
+        sequence_lib.update({func: tempd[func] for func in tempd.get("SEQUENCES",[])})
     print_message(
         world_config_dict,
         server_name,

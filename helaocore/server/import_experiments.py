@@ -22,9 +22,10 @@ def import_experiments(world_config_dict: dict, experiment_path: str = None, ser
         )
         return experiment_lib  # False
     sys.path.append(experiment_path)
-    for prclib in world_config_dict["experiment_libraries"]:
-        tempd = import_module(prclib).__dict__
-        experiment_lib.update({func: tempd[func] for func in tempd["EXPERIMENTS"]})
+    explibs = world_config_dict.get("experiment_libraries", [])
+    for explib in explibs:
+        tempd = import_module(explib).__dict__
+        experiment_lib.update({func: tempd[func] for func in tempd.get("EXPERIMENTS",[])})
     print_message(
         world_config_dict,
         server_name,
