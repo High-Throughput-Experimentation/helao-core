@@ -29,6 +29,6 @@ def import_sequences(world_config_dict: dict, sequence_path: str = None, server_
     print_message(
         world_config_dict,
         server_name,
-        f"imported {len(world_config_dict['sequence_libraries'])} sequences specified by config.",
+        f"imported {len(seqlibs)} sequences specified by config.",
     )
     return sequence_lib

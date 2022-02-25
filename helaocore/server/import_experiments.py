@@ -29,6 +29,6 @@ def import_experiments(world_config_dict: dict, experiment_path: str = None, ser
     print_message(
         world_config_dict,
         server_name,
-        f"imported {len(world_config_dict['experiment_libraries'])} experiments specified by config.",
+        f"imported {len(explibs)} experiments specified by config.",
     )
     return experiment_lib
