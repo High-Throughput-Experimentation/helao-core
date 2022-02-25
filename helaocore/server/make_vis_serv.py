@@ -22,4 +22,5 @@ def makeVisServ(
         version=version,
     )
     app.vis = Vis(app)
+    app.vis.doc.title = server_title
     return app
