@@ -1177,16 +1177,23 @@ class return_experiment_lib(BaseModel):
     defaults: list
 
 
-
 class Operator:
     def __init__(self, visServ: Vis, orch):
         self.vis = visServ
         self.orch = orch
         self.dataAPI = HTELegacyAPI(self.vis)
 
-        self.config_dict = self.vis.server_cfg["params"]
-        # self.orchestrator = self.config_dict["orch"]
-        self.pal_name = self.config_dict.get("pal", None)
+        self.config_dict = self.vis.server_cfg.get("params", dict())
+        self.pal_name = None
+        # find pal server if configured in world config
+        for server_name, server_config \
+        in self.vis.world_cfg["servers"].items():
+            if server_config.get("fast", "") == "pal_server":
+                self.pal_name = server_name
+                self.vis.print_message(f"found PAL server: '{self.pal_name}'", 
+                                       info = True)
+                break
+
         self.dev_customitems = []
         if self.pal_name is not None:
             pal_server_params = self.vis.world_cfg["servers"][self.pal_name]["params"]
@@ -1406,7 +1413,8 @@ class Operator:
     def get_sequence_lib(self):
         """Return the current list of sequences."""
         self.sequences = []
-        self.vis.print_message(f"found sequences: {[sequence for sequence in self.sequence_lib]}")
+        self.vis.print_message(f"found sequences: "
+                               f"{[sequence for sequence in self.sequence_lib]}")
         for i, sequence in enumerate(self.sequence_lib):
             tmpdoc = self.sequence_lib[sequence].__doc__ 
             if tmpdoc == None:
