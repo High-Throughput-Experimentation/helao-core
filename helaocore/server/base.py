@@ -281,6 +281,7 @@ class Base(object):
         self.init_endpoint_status()
         self.fast_urls = self.get_endpoint_urls()
         self.status_logger = self.aloop.create_task(self.log_status_task())
+        self.sync_ntp_task_run = False
         self.ntp_syncer = self.aloop.create_task(self.sync_ntp_task())
 
 
@@ -704,8 +705,9 @@ class Base(object):
 
     async def sync_ntp_task(self, resync_time: int = 600):
         "Regularly sync with NTP server."
+        self.sync_ntp_task_run = True
         try:
-            while True:
+            while self.sync_ntp_task_run:
                 await asyncio.sleep(10)
                 lock = asyncio.Lock()
                 async with lock:
@@ -723,7 +725,7 @@ class Base(object):
                     if time() - self.ntp_last_sync > resync_time:
                         self.print_message(
                             f"last time check was more then "
-                            "{resync_time} ago, syncing time again."
+                            f"{resync_time} ago, syncing time again."
                         )
                         await self.get_ntp_time()
                     else:
@@ -736,6 +738,7 @@ class Base(object):
 
 
     async def shutdown(self):
+        self.sync_ntp_task_run = False
         await self.detach_subscribers()
         self.status_logger.cancel()
         self.ntp_syncer.cancel()
