@@ -266,7 +266,7 @@ class Action(Experiment, ActionModel):
         experiment_dir = self.get_experiment_dir()
         return os.path.join(
             experiment_dir,
-            f"{self.action_actual_order}__"
+            f"{self.orch_submit_order}__"
             f"{self.action_split}__"
             f"{self.action_timestamp.strftime('%Y%m%d.%H%M%S%f')}__"
             f"{self.action_server.server_name}__{self.action_name}",

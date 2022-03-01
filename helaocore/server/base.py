@@ -979,7 +979,7 @@ class Base(object):
                 file_ext = "csv"
 
             if filename is None:  # generate filename
-                filename = f"{action.action_abbr}-{action.action_actual_order}.{action.action_order}.{action.action_retry}.{action.action_split}__{filenum}.{file_ext}"
+                filename = f"{action.action_abbr}-{action.orch_submit_order}.{action.action_order}.{action.action_retry}.{action.action_split}__{filenum}.{file_ext}"
 
 
             if file_sample_label is None:

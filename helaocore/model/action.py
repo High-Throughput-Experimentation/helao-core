@@ -6,8 +6,8 @@ from uuid import UUID
 from pathlib import Path
 from pydantic import BaseModel, Field
 
-
 from .hlostatus import HloStatus
+from .process_contrib import ProcessContrib
 from .sample import SampleUnion
 from .file import FileInfo
 from .machine import MachineModel
@@ -19,6 +19,7 @@ class ShortActionModel(BaseModel, HelaoDict):
     action_uuid: Optional[UUID]
     action_output_dir: Optional[Path]
     action_actual_order: Optional[int] = 0
+    orch_submit_order: Optional[int] = 0
 
 
 class ActionModel(ShortActionModel):
@@ -38,10 +39,13 @@ class ActionModel(ShortActionModel):
     action_sub_name: Optional[str]
     action_abbr: Optional[str]
     action_params: dict = Field(default_factory=dict)
-    action_etc: Optional[float] # expected time to completion
+    action_etc: Optional[float]  # expected time to completion
     parent_action_uuid: Optional[UUID]
     child_action_uuid: Optional[UUID]
     samples_in: List[SampleUnion] = Field(default_factory=list)
     samples_out: List[SampleUnion] = Field(default_factory=list)
     files: List[FileInfo] = Field(default_factory=list)
     manual_action: bool = False
+    process_finish: bool = False
+    process_contrib: List[ProcessContrib] = Field(default_factory=list)
+    # process_group_index: Optional[int] = 0 # unnecessary if we rely on process_finish as group terminator

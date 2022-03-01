@@ -608,7 +608,7 @@ class Orch(Base):
                         act.action_order = int(i)
                         # actual order should be the same at the beginning
                         # will be incremented as necessary
-                        act.action_actual_order = int(i)
+                        act.orch_submit_order = int(i)
 
                     # TODO:update experiment code
                     self.print_message("adding unpacked actions to action_dq")
@@ -695,14 +695,14 @@ class Orch(Base):
                             f"on server {A.action_server.server_name}"
                         )
                         # keep running counter of dispatched actions
-                        A.action_actual_order = \
+                        A.orch_submit_order = \
                             self.orchstatusmodel.counter_dispatched_actions[self.active_experiment.experiment_uuid]
                         self.orchstatusmodel.counter_dispatched_actions[self.active_experiment.experiment_uuid] +=1
 
                         A.init_act(time_offset = self.ntp_offset)
                         result, error_code = await async_action_dispatcher(self.world_cfg, A)
 
-                        self.active_experiment.result_dict[A.action_actual_order] = result
+                        self.active_experiment.result_dict[A.orch_submit_order] = result
 
                         self.print_message("copying global vars "
                                            "back to experiment")
