@@ -627,7 +627,7 @@ class Base(object):
                     f"{status_msg.act.action_status} for action "
                     f"{status_msg.act.action_name} "
                     f"with uuid {status_msg.act.action_uuid} on "
-                    f"{status_msg.act.action_server.disp_name()}"
+                    f"{status_msg.act.action_server.disp_name()} "
                     f"to subscribers ({self.status_clients}).")
                 for client_servkey in self.status_clients:
                     self.print_message(
@@ -1314,12 +1314,6 @@ class Base(object):
                             # check if separator was already written
                             # else add it
                             if not self.file_conn_dict[file_conn_key].added_hlo_separator:
-                                self.base.print_message(
-                                    f"{output_action.action_abbr} data file "
-                                    f"{file_conn_key} is missing hlo "
-                                    "separator. Writing it.",
-                                    info=True,
-                                )
                                 self.file_conn_dict[file_conn_key].\
                                     added_hlo_separator = True
                                 await self.write_live_data(
