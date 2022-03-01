@@ -1300,14 +1300,23 @@ class Base(object):
 
                         # check if we need to create the file first
                         if self.file_conn_dict[file_conn_key].file is None:
+                            if not self.file_conn_dict[file_conn_key].params.json_data_keys:
+                                jsonkeys = [key for key in sample_data.keys()]
+                                self.base.print_message("no json_data_keys defined, "
+                                                        f"using keys from first "
+                                                        f"data message: "
+                                                        f"{jsonkeys}", info = True)
+                                
+                                
+                                self.file_conn_dict[file_conn_key].params.json_data_keys = \
+                                    jsonkeys
+
                             self.base.print_message("creating output file "
                                                     f"for {file_conn_key}")
                             # create the file for this data stream
                             await self.log_data_set_output_file(
                                 file_conn_key=file_conn_key
                             )
-                        # else:
-                        #     self.base.print_message("output file already exists")
 
                         # write only data if the file connection is open
                         if self.file_conn_dict[file_conn_key].file:
@@ -1320,8 +1329,6 @@ class Base(object):
                                     output_str="%%\n",
                                     file_conn_key=file_conn_key,
                                 )
-
-
                             
                             if type(sample_data) is dict:
                                 try:
