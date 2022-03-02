@@ -14,8 +14,8 @@ def makeVisServ(
     driver_class=None,
 ):
     app = HelaoBokehAPI(
-        config,
-        server_key,
+        helao_cfg=config,
+        helao_srv=server_key,
         doc=doc,
         title=server_title,
         description=description,
