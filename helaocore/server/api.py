@@ -25,6 +25,6 @@ class HelaoBokehAPI:  # (curdoc):
         self.server_cfg = self.helao_cfg["servers"][self.helao_srv]
         self.server_params = self.server_cfg.get("params", dict())
 
-        self.doc_name = self.server_cfg.get("doc_name", "Bokeh App")
+        self.doc_name = self.server_params.get("doc_name", f"{self.helao_srv} Bokeh App")
         self.doc = doc
         self.doc.title = self.doc_name
