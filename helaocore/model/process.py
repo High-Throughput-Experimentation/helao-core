@@ -7,7 +7,6 @@ __all__ = [
 from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
-from pathlib import Path
 from pydantic import BaseModel, Field
 
 from .sample import SampleUnion
@@ -20,7 +19,6 @@ from ..helper.helaodict import HelaoDict
 class ShortProcessModel(BaseModel, HelaoDict):
     process_uuid: Optional[UUID]
     process_name: Optional[str]
-    process_output_dir: Optional[Path]
 
 
 class ProcessTemplate(BaseModel, HelaoDict):
@@ -36,8 +34,9 @@ class ProcessModel(ProcessTemplate):
     technique_name: Optional[str]
     sequence_uuid: Optional[UUID]
     experiment_uuid: Optional[UUID]
-    experiment_timestamp: Optional[datetime]
-    process_group_index: int
+    process_timestamp: Optional[datetime]
+    process_group_index: Optional[int]
+    process_uuid: Optional[UUID]
     action_list: List[ShortActionModel] = Field(default_factory=list)
     samples_in: List[SampleUnion] = Field(default_factory=list)
     samples_out: List[SampleUnion] = Field(default_factory=list)
