@@ -1009,13 +1009,20 @@ class Base(object):
 
         def finish_hlo_header(
                               self, 
-                              file_conn_keys: List[UUID],
+                              file_conn_keys: Optional[List[UUID]] = None,
                               realtime: Optional[int] = None
                              ):
             """this just adds a timestamp for the data"""
             # needs to be a sync function
             if realtime == None:
                 realtime = self.set_realtime_nowait()
+
+            if file_conn_keys is None:
+                # get all fileconn_keys
+                file_conn_keys = []
+                for action in self.action_list:
+                    for filekey in action.file_conn_keys:
+                        file_conn_keys.append(filekey)
 
             for file_conn_key in file_conn_keys:
                 self.file_conn_dict[file_conn_key].params.hloheader.epoch_ns = realtime
@@ -1260,8 +1267,12 @@ class Base(object):
                 async for data_msg in self.base.data_q.subscribe():
                     # check if the new data_msg is in listen_uuids
                     if data_msg.action_uuid not in self.listen_uuids:
-                        self.base.print_message("UUID is not in listen_uuids",
+                        self.base.print_message(f"UUID {data_msg.action_uuid} "
+                                                f"is not in listen_uuids",
                                                 error = True)
+                        self.base.print_message(f"data_msg: \n{data_msg}",
+                                                error = True)
+                        
                         continue
                     # self.base.print_message("UUID is in listen_uuids",
                     #                             info = True)
