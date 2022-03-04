@@ -36,6 +36,13 @@ SampleUnion = ForwardRef('SampleUnion')
 SamplePartUnion = ForwardRef('SamplePartUnion')
 
 
+class SampleType(str, Enum):
+    liquid = "liquid"
+    gas = "gas"
+    solid = "solid"
+    assembly = "assembly"
+    
+
 class SampleInheritance(str, Enum):
     none = "none"
     give_only = "give_only"
@@ -118,6 +125,11 @@ class _BaseSample(SampleModel):
         }
 
 
+    def prc_dict(self):
+        prc_dict = self.create_initial_prc_dict()
+        return prc_dict
+
+
     def get_global_label(self):
          pass
 
@@ -174,11 +186,17 @@ class NoneSample(SampleModel):
     def get_vol_ml(self):
         return None
 
+    def prc_dict(self):
+        return {
+            "global_label": self.get_global_label(),
+            "sample_type": self.sample_type,
+        }        
+
 
 class LiquidSample(_BaseSample):
     """base class for liquid samples"""
 
-    sample_type: Literal["liquid"] = "liquid"
+    sample_type: Literal[SampleType.liquid] = SampleType.liquid
     volume_ml: Optional[float] = 0.0
     ph: Optional[float] = None
     dilution_factor: Optional[float] = 1.0
@@ -203,7 +221,7 @@ class LiquidSample(_BaseSample):
 class SolidSample(_BaseSample):
     """base class for solid samples"""
 
-    sample_type: Literal["solid"] = "solid"
+    sample_type: Literal[SampleType.solid] = SampleType.solid
     machine_name: Optional[str] = "legacy"
     plate_id: Optional[int] = None
 
@@ -237,7 +255,7 @@ class SolidSample(_BaseSample):
 class GasSample(_BaseSample):
     """base class for gas samples"""
 
-    sample_type: Literal["gas"] = "gas"
+    sample_type: Literal[SampleType.gas] = SampleType.gas
     volume_ml: Optional[float] = 0.0
     dilution_factor: Optional[float] = 1.0
 
@@ -258,7 +276,7 @@ class GasSample(_BaseSample):
 
 
 class AssemblySample(_BaseSample):
-    sample_type: Literal['assembly'] = "assembly"
+    sample_type: Literal[SampleType.assembly] = SampleType.assembly
     # parts: List[SampleUnion] = Field(default_factory=list)
     parts: List[SamplePartUnion] = Field(default_factory=list)
     sample_position: Optional[str] = "cell1_we"  # usual default assembly position

@@ -25,7 +25,8 @@ from ..model.sample import (AssemblySample,
                             GasSample, 
                             SolidSample,
                             NoneSample,
-                            object_to_sample)
+                            object_to_sample,
+                            SampleType)
 from ..helper.file_in_use import file_in_use
 
 
@@ -673,16 +674,16 @@ class UnifiedSampleDataAPI:
         retval = []
 
         for sample in samples:
-            if isinstance(sample, LiquidSample):
+            if sample.sample_type == SampleType.liquid:
                 tmp = await self.liquidAPI.new_sample(samples=[sample])
                 for t in tmp: retval.append(t)
-            elif isinstance(sample, SolidSample):
+            elif sample.sample_type == SampleType.solid:
                 tmp = await self.solidAPI.new_sample(samples=[sample])
                 for t in tmp: retval.append(t)
-            elif isinstance(sample, GasSample):
+            elif sample.sample_type == SampleType.gas:
                 tmp = await self.gasAPI.new_sample(samples=[sample])
                 for t in tmp: retval.append(t)
-            elif isinstance(sample, AssemblySample):
+            elif sample.sample_type == SampleType.assembly:
                 tmp = await self.assemblyAPI.new_sample(samples=[sample])
                 for t in tmp: retval.append(t)
 
@@ -698,19 +699,19 @@ class UnifiedSampleDataAPI:
 
         for sample in samples:
             self._base.print_message(f"retrieving sample {sample.get_global_label()}")
-            if isinstance(sample, LiquidSample):
+            if sample.sample_type == SampleType.liquid:
                 tmp = await self.liquidAPI.get_sample([sample])
                 for t in tmp: retval.append(t)
-            elif isinstance(sample, SolidSample):
+            elif sample.sample_type == SampleType.solid:
                 tmp = await self.solidAPI.get_sample([sample])
                 for t in tmp: retval.append(t)
-            elif isinstance(sample, GasSample):
+            elif sample.sample_type == SampleType.gas:
                 tmp = await self.gasAPI.get_sample([sample])
                 for t in tmp: retval.append(t)
-            elif isinstance(sample, AssemblySample):
+            elif sample.sample_type == SampleType.assembly:
                 tmp = await self.assemblyAPI.get_sample([sample])
                 for t in tmp: retval.append(t)
-            elif isinstance(sample, NoneSample):
+            elif sample.sample_type == None:
                 self._base.print_message(
                     "Got None Sample",
                     error=True,
@@ -727,13 +728,13 @@ class UnifiedSampleDataAPI:
     async def update_sample(self, samples: List[SampleUnion] = []) -> None:
         for sample in samples:
             self._base.print_message(f"updating sample: {sample.global_label}", info=True)
-            if isinstance(sample, LiquidSample):
+            if sample.sample_type == SampleType.liquid:
                 await self.liquidAPI.update_sample([sample])
-            elif isinstance(sample, SolidSample):
+            elif sample.sample_type == SampleType.solid:
                 await self.solidAPI.update_sample([sample])
-            elif isinstance(sample, GasSample):
+            elif sample.sample_type == SampleType.gas:
                 await self.gasAPI.update_sample([sample])
-            elif isinstance(sample, AssemblySample):
+            elif sample.sample_type == SampleType.assembly:
                 # update also the parts
                 await self.update_sample(sample.parts)
                 await self.assemblyAPI.update_sample([sample])

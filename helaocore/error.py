@@ -23,3 +23,4 @@ class ErrorCodes(str, Enum):
     numerical = "numerical"
     motor = "motor"
     http = "http"
+    not_allowed = "not_allowed"
