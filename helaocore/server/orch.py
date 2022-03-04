@@ -283,9 +283,17 @@ def makeOrchServ(
         """Return a list of all endpoints on this server."""
         return app.orch.get_endpoint_urls(app)
 
+
+
+    @app.post("/shutdown", tags=["private"])
+    def post_shutdown():
+        shutdown_event()
+
+
     @app.on_event("shutdown")
-    def disconnect():
+    def shutdown_event():
         """Run shutdown actions."""
+        app.orch.print_message("orch shutdown", info = True)
         # emergencyStop = True
         time.sleep(0.75)
 

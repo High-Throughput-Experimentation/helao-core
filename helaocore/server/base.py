@@ -169,12 +169,25 @@ def makeActionServ(
         return finished_action.as_dict()
 
 
-    # @app.post(f"/split")
-    # async def split(target_uuid: Optional[UUID],
-    #                 new_samples_in: Body(Optional[List[SampleUnion]], embed=True),
-    #                 new_params: Optional[dict] = None,
-    #                 ):
-    #     return app.base.split(target_uuid, new_samples_in, new_params)
+    @app.post("/shutdown", tags=["private"])
+    def post_shutdown():
+        shutdown_event()
+
+
+    @app.on_event("shutdown")
+    def shutdown_event():
+        app.base.print_message("action shutdown", info = True)
+
+        shutdown = getattr(app.driver, "shutdown", None)
+        if shutdown is not None and callable(shutdown):
+            app.driver.base.print_message("driver has shutdown function",
+                                          info = True)
+            shutdown()
+        else:
+            app.driver.base.print_message("driver has NO shutdown function",
+                                          error = True)
+        return {"shutdown"}
+
 
     return app
 
