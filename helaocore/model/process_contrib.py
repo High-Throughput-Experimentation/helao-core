@@ -1,6 +1,6 @@
 __all__ = ["ProcessContrib"]
-
 from enum import Enum
+
 
 class ProcessContrib(str, Enum):
     action_params = "action_params"
