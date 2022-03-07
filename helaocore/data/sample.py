@@ -13,12 +13,13 @@ import sqlite3
 from datetime import datetime
 from socket import gethostname
 import pandas as pd
-from typing import List, Optional, Union, Literal
+from typing import List, Optional, Union, Literal, Tuple
 import aiofiles
 import shortuuid
 from uuid import UUID
 
 
+from .legacy import HTELegacyAPI
 from ..model.sample import (AssemblySample, 
                             LiquidSample, 
                             SampleUnion, 
@@ -28,7 +29,6 @@ from ..model.sample import (AssemblySample,
                             object_to_sample,
                             SampleType)
 from ..helper.file_in_use import file_in_use
-
 
 class _BaseSampleAPI(object):
     def __init__(self, sampleclass, Serv_class, extra_columns: str):
@@ -379,6 +379,18 @@ class _BaseSampleAPI(object):
             self._close_db()
 
 
+    async def get_platemap(self, samples: List[SampleUnion] = []) -> List[list]:
+        self._base.print_message(f"not supported for {self._sample_type}",
+                                 error = True)
+        return []
+        
+        
+    async def get_sample_xy(self, samples: List[SampleUnion] = []) -> List[Tuple[float, float]]:
+        self._base.print_message(f"not supported for {self._sample_type}",
+                                 error = True)
+        return []
+
+
 class LiquidSampleAPI(_BaseSampleAPI):
     def __init__(self, Serv_class):
         super().__init__(
@@ -445,6 +457,35 @@ class SolidSampleAPI(_BaseSampleAPI):
             Serv_class=Serv_class,
             extra_columns="plate_id INTEGER NOT NULL",
         )
+        self.legacyAPI = HTELegacyAPI(self._base)
+
+
+    async def get_platemap(self, samples: List[SampleUnion] = []) -> List[list]:
+        pmlist = []
+        for sample in samples:
+            pmmap = self.legacyAPI.get_platemap_plateid(plateid = sample.plate_id)
+            if not pmmap:
+                self._base.print_message("invalid plate_id",
+                                         error = True)
+            pmlist.append(
+                pmmap
+            )
+        return pmlist
+
+
+    async def get_sample_xy(self, samples: List[SampleUnion] = []) -> List[Tuple[float, float]]:
+        xylist = []
+        for sample in samples:
+            pmdata = self.legacyAPI.get_platemap_plateid(plateid = sample.plate_id)
+            if (sample.sample_no-1) > len(pmdata) or (sample.sample_no-1) < 0:
+                self._base.print_message(f"invalid sample no '{sample.sample_no}'",
+                                         error = True)
+                xylist.append((None, None))
+            else:
+                platex = pmdata[sample.sample_no-1]["x"]
+                platey = pmdata[sample.sample_no-1]["y"]
+                xylist.append((platex, platey))
+        return xylist
 
 
     async def new_sample(self, samples: List[SampleUnion] = []) -> List[SampleUnion]:
@@ -724,7 +765,7 @@ class UnifiedSampleDataAPI:
 
         return retval
 
-    
+
     async def update_sample(self, samples: List[SampleUnion] = []) -> None:
         for sample in samples:
             self._base.print_message(f"updating sample: {sample.global_label}", info=True)
@@ -743,3 +784,52 @@ class UnifiedSampleDataAPI:
                     f"validation error, type '{type(sample)}' is not a valid sample model",
                     error=True,
                 )
+
+
+    async def get_sample_xy(self, samples: List[SampleUnion] = []) -> None:
+        retval = []
+        for sample in samples:
+            self._base.print_message(f"getting sample_xy for: {sample.global_label}", info=True)
+            if sample.sample_type == SampleType.liquid:
+                tmp = await self.liquidAPI.get_sample_xy([sample])
+                for t in tmp: retval.append(t)
+            elif sample.sample_type == SampleType.solid:
+                tmp = await self.solidAPI.get_sample_xy([sample])
+                for t in tmp: retval.append(t)
+            elif sample.sample_type == SampleType.gas:
+                tmp = await self.gasAPI.get_sample_xy([sample])
+                for t in tmp: retval.append(t)
+            elif sample.sample_type == SampleType.assembly:
+                tmp = await self.assemblyAPI.get_sample_xy([sample])
+                print(tmp)
+                for t in tmp: retval.append(t)
+            else:
+                self._base.print_message(
+                    f"validation error, type '{type(sample)}' is not a valid sample model",
+                    error=True,
+                )
+        return retval
+
+
+    async def get_platemap(self, samples: List[SampleUnion] = []) -> None:
+        retval = []
+        for sample in samples:
+            self._base.print_message(f"getting platemap for: {sample.global_label}", info=True)
+            if sample.sample_type == SampleType.liquid:
+                tmp = await self.liquidAPI.get_platemap([sample])
+                for t in tmp: retval.append(t)
+            elif sample.sample_type == SampleType.solid:
+                tmp = await self.solidAPI.get_platemap([sample])
+                for t in tmp: retval.append(t)
+            elif sample.sample_type == SampleType.gas:
+                tmp = await self.gasAPI.get_platemap([sample])
+                for t in tmp: retval.append(t)
+            elif sample.sample_type == SampleType.assembly:
+                tmp = await self.assemblyAPI.get_platemap([sample])
+                for t in tmp: retval.append(t)
+            else:
+                self._base.print_message(
+                    f"validation error, type '{type(sample)}' is not a valid sample model",
+                    error=True,
+                )
+        return retval

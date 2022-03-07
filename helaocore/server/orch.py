@@ -2053,7 +2053,7 @@ class Operator:
             buf = ""
             if PMnum is not None and pmdata:
                 if PMnum[0] is not None: # need to check as this can also happen
-                    self.vis.print_message(f"selected sampleid: {PMnum[0]+1}")
+                    self.vis.print_message(f"selected sample_no: {PMnum[0]+1}")
                     if PMnum[0] > len(pmdata) or PMnum[0] < 0:
                         self.vis.print_message("invalid sample no")
                         self.vis.doc.add_next_tick_callback(partial(self.update_input_value,input_sample_no,""))

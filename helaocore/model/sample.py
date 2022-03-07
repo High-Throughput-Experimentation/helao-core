@@ -57,6 +57,8 @@ class SampleStatus(str, Enum):
     created = "created"
     # also self-explanatory
     destroyed = "destroyed"
+    # merged with another liquid/gas/solid
+    merged = "merged"
     # the sample exists before and after the action. e.g. an echem experiment
     preserved = "preserved"
     # the sample was combined with others in the action. E.g. the creation of an electrode assembly from electrodes and electrolytes

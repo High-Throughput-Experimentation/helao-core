@@ -82,7 +82,6 @@ class HTELegacyAPI:
         if pmpath is None:
             return []
         pmdlist, fid = self.readsingleplatemaptxt(pmpath)
-        # return json.dumps(pmdlist)
         return pmdlist
 
 
