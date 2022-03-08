@@ -140,20 +140,28 @@ class _BaseSample(SampleModel):
         if hasattr(self, "volume_ml"):
             old_vol = self.volume_ml
             tot_vol = old_vol+delta_vol_ml
-            if tot_vol < 0:
-                print_message({}, "model", "new volume is < 0, setting it to zero.", error=True)
+            if tot_vol <= 0:
+                print_message({}, "model", 
+                              "new volume is <= 0, "
+                              "setting it to zero and setting "
+                              "status to destroyed",
+                              error=True)
+                self.zero_volume()
                 tot_vol = 0
             self.volume_ml = tot_vol
             if dilute:
                 if hasattr(self, "dilution_factor"):
                     old_df = self.dilution_factor
                     if old_vol <= 0:
-                        print_message({}, "model", "previous volume is <= 0, setting new df to 0.", error=True)
+                        print_message({}, "model", "previous volume is <= 0, "
+                                      "setting new df to 0.", error=True)
                         new_df = -1
                     else:
                         new_df = tot_vol/(old_vol/old_df)
                     self.dilution_factor = new_df
-                    print_message({}, "model", f"updated sample dilution-factor: {self.dilution_factor}", error=True)
+                    print_message({}, "model", f"updated sample "
+                                  f"dilution-factor: {self.dilution_factor}",
+                                  info=True)
 
 
     def zero_volume(self):
