@@ -358,20 +358,48 @@ class Base(object):
                           frame
                           ) -> Action:
         _args, _varargs, _keywords, _locals = inspect.getargvalues(frame)
-        action = _locals.get("action", Action())
-        if action is None:
-            action = Action()
+        action = None
+        paramdict = dict()
 
         for arg in _args:
-            if arg != "action" \
-            and arg not in action.action_params:
+            argparam = _locals.get(arg, None)
+            if isinstance(argparam, Action):
+                if action is None:
+                    self.print_message(f"found ActionModel under "
+                                       f"parameter '{arg}'",
+                                       info = True)
+                    action = argparam
+                else:
                  self.print_message(
-                    f"local var '{arg}' not found in action, "
-                    "addding it.",
-                    info=True,
+                    f"critical error: found another Action Models"
+                    f" under parameter '{arg}',"
+                    f" skipping it",
+                    error=True,
                  )
-                 action.action_params.update({arg:_locals.get(arg, None)})
+            else:
+                paramdict.update({arg:argparam})
 
+        if action is None:
+            self.print_message(
+               "critical error: no ActionModel was found by setup_action, "
+               "using blank action.",
+               error=True,
+            )
+            action = Action()
+        
+        for key, val in paramdict.items():
+            if key not in action.action_params:
+                self.print_message(
+                  f"local var '{key}' not found in action.action_params, "
+                  "addding it.",
+                  info=True,
+                )
+                action.action_params.update({key:val})
+
+        self.print_message(
+           f"Action.action_params: {action.action_params}",
+          info=True
+        )
 
         # name of the caller function
         calname = sys._getframe().f_back.f_back.f_code.co_name
