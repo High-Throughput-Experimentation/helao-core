@@ -734,7 +734,7 @@ class Orch(Base):
                                            "vars back to experiment")
 
             self.print_message("experiment queue is empty")
-            self.print_message("stopping operator orch")
+            self.print_message("--- stopping operator orch ---", info = True)
 
             # finish the last prc
             # this wait for all actions in active experiment
