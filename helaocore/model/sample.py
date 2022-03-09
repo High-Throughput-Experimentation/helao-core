@@ -169,10 +169,14 @@ class _BaseSample(SampleModel):
             self.volume_ml = 0
             if SampleStatus.destroyed not in self.status:
                 self.status.append(SampleStatus.destroyed)
+            if SampleStatus.preserved in self.status:
+                self.status.remove(SampleStatus.preserved)
 
 
     def destroy_sample(self):
         self.zero_volume()
+        if SampleStatus.preserved in self.status:
+            self.status.remove(SampleStatus.preserved)
         if SampleStatus.destroyed not in self.status:
             self.status.append(SampleStatus.destroyed)
 
