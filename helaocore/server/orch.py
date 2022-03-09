@@ -1833,7 +1833,7 @@ class Operator:
         item = 0
         for idx in range(len(args)):
             def_val = f"{defaults[idx]}"
-            if args[idx] == "pg_Obj":
+            if args[idx] == "experiment":
                 continue
             disabled = False
 
