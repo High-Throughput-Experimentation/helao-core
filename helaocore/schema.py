@@ -29,6 +29,7 @@ from .model.experiment import ExperimentModel, ShortExperimentModel, ExperimentT
 from .model.experiment_sequence import ExperimentSequenceModel
 from .model.hlostatus import HloStatus
 from .model.action_start_condition import ActionStartCondition
+from .model.machine import MachineModel
 # from .error import ErrorCodes
 
 class Sequence(ExperimentSequenceModel):
@@ -315,10 +316,10 @@ class ActionPlanMaker(object):
 
     def add(
         self,
-        action_server: str,
+        action_server: dict,
         action_name: str,
         action_params: dict,
-        start_condition: str = "wait_for_all",
+        start_condition: ActionStartCondition = ActionStartCondition.wait_for_all,
         **kwargs
     ):
         """Shorthand add_action()."""
