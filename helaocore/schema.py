@@ -308,10 +308,27 @@ class ActionPlanMaker(object):
         new_action_dict.update(action_dict)
         self.action_list.append(Action(**new_action_dict))
 
-
     def add_action_list(self, action_list: list):
         for action in action_list:
             self.action_list.append(action)
+
+    def add(
+        self,
+        action_server: str,
+        action_name: str,
+        action_params: dict,
+        start_condition: str = "wait_for_all",
+        **kwargs
+    ):
+        """Shorthand add_action()."""
+        action_dict = {
+            "action_server": action_server,
+            "action_name": action_name,
+            "action_params": action_params,
+            "start_condition": start_condition
+        }
+        action_dict.update(kwargs)
+        self.action_list.append(Action(**action_dict))
 
 
 class ExperimentPlanMaker(object):
