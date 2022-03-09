@@ -18,6 +18,7 @@ class ErrorCodes(str, Enum):
     no_sample = "no_sample"
     unspecified = "unspecified"
     estop = "estop"
+    stop = "stop"
     timeout = "timeout"
     setup = "setup"
     numerical = "numerical"

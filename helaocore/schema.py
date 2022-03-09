@@ -29,7 +29,7 @@ from .model.experiment import ExperimentModel, ShortExperimentModel, ExperimentT
 from .model.experiment_sequence import ExperimentSequenceModel
 from .model.hlostatus import HloStatus
 from .model.action_start_condition import ActionStartCondition
-from .error import ErrorCodes
+# from .error import ErrorCodes
 
 class Sequence(ExperimentSequenceModel):
     # not in ExperimentSequenceModel:
@@ -216,7 +216,8 @@ class Action(Experiment, ActionModel):
     save_data: Optional[bool] = True # default should be true
     AUX_file_paths: Optional[List[Path]] = Field(default_factory=list)
 
-    error_code: Optional[ErrorCodes] = ErrorCodes.none
+    # moved to ActionModel
+    # error_code: Optional[ErrorCodes] = ErrorCodes.none
 
     from_global_params: Optional[dict] = Field(default_factory=dict)
     to_global_params: Optional[list] = Field(default_factory=list)
@@ -276,23 +277,23 @@ class Action(Experiment, ActionModel):
 class ActionPlanMaker(object):
     def __init__(
         self,
-        pg: Experiment,
+        experiment: Experiment,
     ):
         frame = inspect.currentframe().f_back
         _args, _varargs, _keywords, _locals = inspect.getargvalues(frame)
-        self._pg = copy.deepcopy(pg)
+        self._experiment = copy.deepcopy(experiment)
         self.action_list = []
         self.pars = self._C()
-        if self._pg.experiment_params is not None:
-            for key, val in self._pg.experiment_params.items():
+        if self._experiment.experiment_params is not None:
+            for key, val in self._experiment.experiment_params.items():
                 setattr(self.pars, key, val)
 
         for key, val in _locals.items():
-            if key != "pg_Obj" and key not in self._pg.experiment_params.keys():
+            if key != "experiment" and key not in self._experiment.experiment_params.keys():
                 print_message(
                     {},
                     "ActionPlanMaker",
-                    f"local var '{key}' not found in pg_Obj, "
+                    f"local var '{key}' not found in experiment, "
                     "adding it to sq.pars",
                     error=True,
                 )
@@ -304,7 +305,7 @@ class ActionPlanMaker(object):
         pass
 
     def add_action(self, action_dict: dict):
-        new_action_dict = self._pg.as_dict()
+        new_action_dict = self._experiment.as_dict()
         new_action_dict.update(action_dict)
         self.action_list.append(Action(**new_action_dict))
 

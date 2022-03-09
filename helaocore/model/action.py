@@ -13,6 +13,7 @@ from .file import FileInfo
 from .machine import MachineModel
 from ..version import get_hlo_version
 from ..helper.helaodict import HelaoDict
+from ..error import ErrorCodes
 
 
 class ShortActionModel(BaseModel, HelaoDict):
@@ -48,4 +49,6 @@ class ActionModel(ShortActionModel):
     manual_action: bool = False
     process_finish: bool = False
     process_contrib: List[ProcessContrib] = Field(default_factory=list)
+    error_code: Optional[ErrorCodes] = ErrorCodes.none
+
     # process_group_index: Optional[int] = 0 # unnecessary if we rely on process_finish as group terminator

@@ -739,7 +739,9 @@ class UnifiedSampleDataAPI:
         retval = []
 
         for sample in samples:
-            self._base.print_message(f"retrieving sample {sample.get_global_label()}")
+            self._base.print_message(f"retrieving sample {sample.get_global_label()}"
+                                     f"of sample_type {sample.sample_type}",
+                                     info = True)
             if sample.sample_type == SampleType.liquid:
                 tmp = await self.liquidAPI.get_sample([sample])
                 for t in tmp: retval.append(t)
@@ -751,15 +753,20 @@ class UnifiedSampleDataAPI:
                 for t in tmp: retval.append(t)
             elif sample.sample_type == SampleType.assembly:
                 tmp = await self.assemblyAPI.get_sample([sample])
-                for t in tmp: retval.append(t)
+                # first need to get the most recent part info
+                for t in tmp:
+                    t.parts = self.get_sample(samples=t.parts)
+                    # and then add the assembly to the return list
+                    retval.append(t)
             elif sample.sample_type == None:
                 self._base.print_message(
-                    "Got None Sample",
-                    error=True,
+                    "got None sample",
+                    info=True,
                 )
             else:
                 self._base.print_message(
-                    f"validation error, type '{type(sample)}' is not a valid sample model",
+                    f"validation error, type '{type(sample)}' "
+                    "is not a valid sample model",
                     error=True,
                 )
 
@@ -768,7 +775,9 @@ class UnifiedSampleDataAPI:
 
     async def update_sample(self, samples: List[SampleUnion] = []) -> None:
         for sample in samples:
-            self._base.print_message(f"updating sample: {sample.global_label}", info=True)
+            self._base.print_message(f"updating sample: {sample.global_label}"
+                                     f" of sample_type {sample.sample_type}",
+                                     info=True)
             if sample.sample_type == SampleType.liquid:
                 await self.liquidAPI.update_sample([sample])
             elif sample.sample_type == SampleType.solid:
@@ -779,9 +788,15 @@ class UnifiedSampleDataAPI:
                 # update also the parts
                 await self.update_sample(sample.parts)
                 await self.assemblyAPI.update_sample([sample])
+            elif sample.sample_type == None:
+                self._base.print_message(
+                    "got None sample",
+                    info=True,
+                )
             else:
                 self._base.print_message(
-                    f"validation error, type '{type(sample)}' is not a valid sample model",
+                    f"validation error, type '{type(sample)}' "
+                    f"is not a valid sample model",
                     error=True,
                 )
 
@@ -789,7 +804,9 @@ class UnifiedSampleDataAPI:
     async def get_sample_xy(self, samples: List[SampleUnion] = []) -> None:
         retval = []
         for sample in samples:
-            self._base.print_message(f"getting sample_xy for: {sample.global_label}", info=True)
+            self._base.print_message(f"getting sample_xy for: {sample.global_label}"
+                                     f"of sample_type {sample.sample_type}",
+                                     info=True)
             if sample.sample_type == SampleType.liquid:
                 tmp = await self.liquidAPI.get_sample_xy([sample])
                 for t in tmp: retval.append(t)
@@ -803,9 +820,15 @@ class UnifiedSampleDataAPI:
                 tmp = await self.assemblyAPI.get_sample_xy([sample])
                 print(tmp)
                 for t in tmp: retval.append(t)
+            elif sample.sample_type == None:
+                self._base.print_message(
+                    "got None sample",
+                    info=True,
+                )
             else:
                 self._base.print_message(
-                    f"validation error, type '{type(sample)}' is not a valid sample model",
+                    f"validation error, type '{type(sample)}' "
+                    f"is not a valid sample model",
                     error=True,
                 )
         return retval
@@ -814,7 +837,9 @@ class UnifiedSampleDataAPI:
     async def get_platemap(self, samples: List[SampleUnion] = []) -> None:
         retval = []
         for sample in samples:
-            self._base.print_message(f"getting platemap for: {sample.global_label}", info=True)
+            self._base.print_message(f"getting platemap for: {sample.global_label}"
+                                     f"of sample_type {sample.sample_type}",
+                                     info=True)
             if sample.sample_type == SampleType.liquid:
                 tmp = await self.liquidAPI.get_platemap([sample])
                 for t in tmp: retval.append(t)
@@ -827,9 +852,15 @@ class UnifiedSampleDataAPI:
             elif sample.sample_type == SampleType.assembly:
                 tmp = await self.assemblyAPI.get_platemap([sample])
                 for t in tmp: retval.append(t)
+            elif sample.sample_type == None:
+                self._base.print_message(
+                    "got None sample",
+                    info=True,
+                )
             else:
                 self._base.print_message(
-                    f"validation error, type '{type(sample)}' is not a valid sample model",
+                    f"validation error, type '{type(sample)}' "
+                    f"is not a valid sample model",
                     error=True,
                 )
         return retval
