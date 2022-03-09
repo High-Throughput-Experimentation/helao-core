@@ -14,6 +14,7 @@ from enum import Enum
 import inspect
 from pydantic import BaseModel
 import numpy as np
+import json
 
 import aiohttp
 import colorama
@@ -1429,11 +1430,16 @@ class Operator:
             tmpdoc = self.sequence_lib[sequence].__doc__ 
             if tmpdoc == None:
                 tmpdoc = ""
-            tmpargs = inspect.getfullargspec(self.sequence_lib[sequence]).args
-            tmpdef = inspect.getfullargspec(self.sequence_lib[sequence]).defaults
+
+            argspec = inspect.getfullargspec(self.sequence_lib[sequence])
+            tmpargs = argspec.args
+            tmpdef = argspec.defaults
+
             if tmpdef == None:
                 tmpdef = []
             
+            for t in tmpdef:
+                t = json.dumps(t)
             
             self.sequences.append(return_sequence_lib(
                 index=i,
@@ -1455,10 +1461,16 @@ class Operator:
             tmpdoc = self.experiment_lib[experiment].__doc__ 
             if tmpdoc == None:
                 tmpdoc = ""
-            tmpargs = inspect.getfullargspec(self.experiment_lib[experiment]).args
-            tmpdef = inspect.getfullargspec(self.experiment_lib[experiment]).defaults
+
+            argspec = inspect.getfullargspec(self.experiment_lib[experiment])
+            tmpargs = argspec.args
+            tmpdef = argspec.defaults
+            
             if tmpdef == None:
                 tmpdef = []
+
+            for t in tmpdef:
+                t = json.dumps(t)
             
             self.experiments.append(return_experiment_lib(
                 index=i,
@@ -1476,12 +1488,6 @@ class Operator:
         """get experiment list from orch"""
         experiments = self.orch.list_experiments()
         self.experiment_list = dict()
-        # for exp in experiments:
-        #     shortexp = ShortExperimentModel(**exp).as_dict()
-        #     for key, val in shortexp.items():
-        #         if key not in self.experiment_list:
-        #             self.experiment_list[key] = []
-        #         self.experiment_list[key].append(val)
         if experiments:
             for key,val in experiments[0].items():
                 if val is not None:
@@ -2138,6 +2144,4 @@ class Operator:
 
 
     async def IOloop(self):
-        # todo: update to ws
         await self.update_tables()
-
