@@ -171,6 +171,12 @@ class _BaseSample(SampleModel):
                 self.status.append(SampleStatus.destroyed)
 
 
+    def destroy_sample(self):
+        self.zero_volume()
+        if SampleStatus.destroyed not in self.status:
+            self.status.append(SampleStatus.destroyed)
+
+
     def get_vol_ml(self) -> float:
         if hasattr(self, "volume_ml"):
             return self.volume_ml
