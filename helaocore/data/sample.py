@@ -759,7 +759,8 @@ class UnifiedSampleDataAPI:
                 )
             else:
                 self._base.print_message(
-                    f"validation error, type '{type(sample)}' is not a valid sample model",
+                    f"validation error, type '{type(sample)}' "
+                    "is not a valid sample model",
                     error=True,
                 )
 

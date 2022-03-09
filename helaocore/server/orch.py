@@ -1841,7 +1841,15 @@ class Operator:
             # special key params
             if args[idx] == "solid_plate_id":
                 param_input[-1].on_change("value", partial(self.callback_changed_plateid, sender=param_input[-1]))
-                private_input.append(bpl.figure(title="PlateMap", height=300,x_axis_label="X (mm)", y_axis_label="Y (mm)",width = 640))
+                private_input.append(bpl.figure(
+                    title="PlateMap", 
+                    # height=300,
+                    x_axis_label="X (mm)", 
+                    y_axis_label="Y (mm)",
+                    width = 640,
+                    aspect_ratio  = 6/4,
+                    aspect_scale = 1
+                    ))
                 private_input[-1].border_fill_color = self.color_sq_param_inputs
                 private_input[-1].border_fill_alpha = 0.5
                 private_input[-1].background_fill_color = self.color_sq_param_inputs
