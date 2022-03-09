@@ -478,7 +478,9 @@ class SolidSampleAPI(_BaseSampleAPI):
         for sample in samples:
             pmdata = self.legacyAPI.get_platemap_plateid(plateid = sample.plate_id)
             if (sample.sample_no-1) > len(pmdata) or (sample.sample_no-1) < 0:
-                self._base.print_message(f"invalid sample no '{sample.sample_no}'",
+                self._base.print_message(f"get_xy: invalid sample no"
+                                         f" '{sample.sample_no}'"
+                                         f" on plate {sample.plate_id}",
                                          error = True)
                 xylist.append((None, None))
             else:
@@ -497,28 +499,44 @@ class SolidSampleAPI(_BaseSampleAPI):
 
 
     async def get_sample(self, samples: List[SampleUnion] = []) -> List[SampleUnion]:
-
         await asyncio.sleep(0.001)
         ret_samples = []
 
         for i, sample in enumerate(samples):
-            self._base.print_message(f"getting sample {self._sample_type} {sample.sample_no}")
+            self._base.print_message(f"getting sample {self._sample_type} "
+                                     f"{sample.sample_no}"
+                                     f" on plate {sample.plate_id}")
             await asyncio.sleep(0.001)
             if sample.machine_name == "legacy":
-                ret_samples.append(
-                    SolidSample(
-                        plate_id=sample.plate_id,
-                        sample_no=sample.sample_no,
-                        machine_name="legacy",
+                # verify legacy sample by getting its xy coordinates
+                xylist = await self.get_sample_xy(samples = [sample])
+                if xylist != [(None, None)]:
+                    ret_samples.append(
+                        SolidSample(
+                            plate_id=sample.plate_id,
+                            sample_no=sample.sample_no,
+                            machine_name="legacy",
+                        )
                     )
-                )
+                else:
+                    self._base.print_message(f"invalid legacy sample no "
+                                             f"'{sample.sample_no}' "
+                                             f"on plate {sample.plate_id}",
+                                         error = True)
+            else:
+                self._base.print_message("get_sample is not supported yet for"
+                                         " non-legacy solid sample",
+                                         error=True)
 
         return ret_samples
 
 
     async def update_sample(self, samples: List[SampleUnion] = []) -> List[SampleUnion]:
-        self._base.print_message("Update is not supported yet for solid sample", error=True)
+        # self._base.print_message("Update is not supported yet "
+        #                          "for solid sample", error=True)
         await asyncio.sleep(0.001)
+        # only check if its a valid sample
+        return await self.get_sample(samples = samples)
 
 
 class OldLiquidSampleAPI:
