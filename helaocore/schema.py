@@ -29,7 +29,7 @@ from .model.experiment import ExperimentModel, ShortExperimentModel, ExperimentT
 from .model.experiment_sequence import ExperimentSequenceModel
 from .model.hlostatus import HloStatus
 from .model.action_start_condition import ActionStartCondition
-from .error import ErrorCodes
+# from .error import ErrorCodes
 
 class Sequence(ExperimentSequenceModel):
     # not in ExperimentSequenceModel:
@@ -216,7 +216,8 @@ class Action(Experiment, ActionModel):
     save_data: Optional[bool] = True # default should be true
     AUX_file_paths: Optional[List[Path]] = Field(default_factory=list)
 
-    error_code: Optional[ErrorCodes] = ErrorCodes.none
+    # moved to ActionModel
+    # error_code: Optional[ErrorCodes] = ErrorCodes.none
 
     from_global_params: Optional[dict] = Field(default_factory=dict)
     to_global_params: Optional[list] = Field(default_factory=list)
