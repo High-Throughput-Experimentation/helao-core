@@ -431,7 +431,7 @@ class Base(object):
     
         # setting some default values if action was not submitted via orch
         if action.technique_name is None:
-            action.technique_name = "MANUAL"
+            action.technique_name = self.technique_name
             action.orchestrator = MachineModel(
                                           server_name = "MANUAL",
                                           machine_name = gethostname()
