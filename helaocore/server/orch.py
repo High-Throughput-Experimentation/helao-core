@@ -715,8 +715,6 @@ class Orch(Base):
                         A.init_act(time_offset = self.ntp_offset)
                         result, error_code = await async_action_dispatcher(self.world_cfg, A)
 
-                        self.active_experiment.result_dict[A.orch_submit_order] = result
-
                         self.print_message("copying global vars "
                                            "back to experiment")
                         # self.print_message(result)
