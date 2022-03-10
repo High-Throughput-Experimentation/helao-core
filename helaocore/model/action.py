@@ -17,16 +17,16 @@ from ..error import ErrorCodes
 
 
 class ShortActionModel(BaseModel, HelaoDict):
+    hlo_version: Optional[str] = get_hlo_version()
     action_uuid: Optional[UUID]
     action_output_dir: Optional[Path]
     action_actual_order: Optional[int] = 0
     orch_submit_order: Optional[int] = 0
-
-
-class ActionModel(ShortActionModel):
-    hlo_version: Optional[str] = get_hlo_version()
-    technique_name: Optional[str]
     action_server: MachineModel = MachineModel()
+    technique_name: Optional[str]
+
+
+class ActionModel(ShortActionModel):    
     orchestrator: MachineModel = MachineModel()
     access: Optional[str]
     experiment_uuid: Optional[UUID]
