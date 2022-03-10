@@ -37,6 +37,7 @@ from ..helper import async_copy
 from ..schema import Action
 from ..model.hlostatus import HloStatus
 from ..model.sample import (
+                            SampleType,
                             SampleUnion,
                             NoneSample,
                             SampleInheritance,
@@ -1515,6 +1516,13 @@ class Base(object):
                 return None
 
 
+        def set_sample_action_uuid(self, sample: SampleUnion, action_uuid: UUID):
+            sample.action_uuid=[action_uuid]
+            if sample.sample_type == SampleType.assembly:
+                for part in sample.parts:
+                    self.set_sample_action_uuid(sample=part, action_uuid=action_uuid)
+
+
         async def append_sample(
                                 self, 
                                 samples: List[SampleUnion], 
@@ -1533,6 +1541,9 @@ class Base(object):
                 # skip NoneSamples
                 if isinstance(sample, NoneSample):
                     continue
+                # update action_uuid to current one
+                self.set_sample_action_uuid(sample=sample, action_uuid=action.action_uuid)
+                        
 
                 if sample.inheritance is None:
                     self.base.print_message("sample.inheritance is None. "
