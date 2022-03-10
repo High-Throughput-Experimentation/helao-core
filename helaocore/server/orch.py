@@ -222,7 +222,7 @@ def makeOrchServ(
         ):
         """Sleep action"""    
         active = await app.orch.setup_and_contain_action()
-        waittime = active.action_params["waittime"]
+        waittime = active.action.action_params["waittime"]
         app.orch.print_message(' ... wait action:', waittime)
         start_time = time.time()
         # last_time = start_time
