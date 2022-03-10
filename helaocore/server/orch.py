@@ -56,6 +56,7 @@ from ..model.experiment import (
                                 ExperimentTemplate
                                )
 from ..model.action import ActionModel
+from ..model.active import ActiveParams
 from ..model.hlostatus import HloStatus
 from ..model.server import ActionServerModel, GlobalStatusModel
 from ..model.machine import MachineModel
@@ -221,7 +222,7 @@ def makeOrchServ(
         ):
         """Sleep action"""    
         A = await app.orch.setup_action()
-        active = await app.orch.contain_action(action = A)
+        active = await app.orch.contain_action(ActiveParams(action = A))
         waittime = A.action_params["waittime"]
         app.orch.print_message(' ... wait action:', waittime)
         start_time = time.time()
