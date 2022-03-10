@@ -354,13 +354,16 @@ class ActionPlanMaker(object):
             info=True,
         )
 
+
     class _C:
         pass
+
 
     def add_action(self, action_dict: dict):
         new_action_dict = self._experiment.as_dict()
         new_action_dict.update(action_dict)
         self.action_list.append(Action(**new_action_dict))
+
 
     def add_action_list(self, action_list: list):
         for action in action_list:
@@ -375,12 +378,13 @@ class ActionPlanMaker(object):
         **kwargs
     ):
         """Shorthand add_action()."""
-        action_dict = {
+        action_dict = self._experiment.as_dict()
+        action_dict.update({
             "action_server": action_server,
             "action_name": action_name,
             "action_params": action_params,
             "start_condition": start_condition
-        }
+        })
         action_dict.update(kwargs)
         self.action_list.append(Action(**action_dict))
 
