@@ -15,6 +15,8 @@ import inspect
 from pydantic import BaseModel
 import numpy as np
 import json
+import io
+from pybase64 import b64decode
 
 import aiohttp
 import colorama
@@ -33,7 +35,7 @@ from bokeh.models import Button, TextInput
 import bokeh.models.widgets as bmw
 import bokeh.plotting as bpl
 from bokeh.events import ButtonClick, DoubleTap
-
+from bokeh.models.widgets import FileInput
 
 from .base import Base
 from .api import HelaoFastAPI
@@ -1603,6 +1605,12 @@ class Operator:
             self.vis.doc.add_next_tick_callback(partial(self.update_input_value,sender,""))
 
 
+    def callback_plate_sample_no_list_file(self, attr, old, new, sender, inputfield):
+        f = io.BytesIO(b64decode(sender.value))
+        sample_nos = json.dumps(np.loadtxt(f).astype(int).tolist())
+        self.vis.doc.add_next_tick_callback(partial(self.update_input_value,inputfield,sample_nos))
+
+
     def callback_changed_sampleno(self, attr, old, new, sender):
         """callback for sampleno text input"""
         def to_int(val):
@@ -1924,6 +1932,17 @@ class Operator:
                             [param_input[-1]],
                             Spacer(height=10),
                             ],background=self.color_sq_param_inputs,width=640)
+
+            elif args[idx] == "plate_sample_no_list":
+                private_input.append(FileInput(width=200,accept=".txt"))
+                param_layout.append(layout([
+                            [private_input[-1]],
+                            Spacer(height=10),
+                            ],background=self.color_sq_param_inputs,width=640))
+                private_input[-1].on_change("value", 
+                                            partial(self.callback_plate_sample_no_list_file, 
+                                                    sender=private_input[-1], 
+                                                    inputfield=param_input[-1]))
 
 
     def update_seq_doc(self, value):
