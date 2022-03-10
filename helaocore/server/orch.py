@@ -1464,12 +1464,29 @@ class Operator:
 
             argspec = inspect.getfullargspec(self.experiment_lib[experiment])
             tmpargs = argspec.args
-            tmpdef = argspec.defaults
-            
-            if tmpdef == None:
-                tmpdef = []
+            tmpdefs = argspec.defaults
+            if tmpdefs == None:
+                tmpdefs = []
 
-            for t in tmpdef:
+            # filter the Experiment BaseModel
+            idxlist = []
+            for idx, tmparg in enumerate(argspec.args):
+                if argspec.annotations.get(tmparg, None) == Experiment:
+                    idxlist.append(idx)
+
+            tmpargs = list(tmpargs)
+            tmpdefs = list(tmpdefs)
+            for i, idx in enumerate(idxlist):
+                if len(tmpargs) == len(tmpdefs):
+                    tmpargs.pop(idx-i)
+                    tmpdefs.pop(idx-i)
+                else:
+                    tmpargs.pop(idx-i)
+            tmpargs = tuple(tmpargs)
+            tmpdefs = tuple(tmpdefs)
+                
+
+            for t in tmpdefs:
                 t = json.dumps(t)
             
             self.experiments.append(return_experiment_lib(
@@ -1477,7 +1494,7 @@ class Operator:
                 experiment_name = experiment,
                 doc = tmpdoc,
                 args = tmpargs,
-                defaults = tmpdef,
+                defaults = tmpdefs,
                ).dict()
             )
         for item in self.experiments:
@@ -1833,8 +1850,8 @@ class Operator:
         item = 0
         for idx in range(len(args)):
             def_val = f"{defaults[idx]}"
-            if args[idx] == "experiment":
-                continue
+            # if args[idx] == "experiment":
+            #     continue
             disabled = False
 
             param_input.append(TextInput(value=def_val, title=args[idx], disabled=disabled, width=400, height=40))

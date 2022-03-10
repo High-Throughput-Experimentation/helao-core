@@ -13,7 +13,7 @@ __all__ = [
 
 import os
 import inspect
-import copy
+from copy import deepcopy
 from pathlib import Path
 from typing import Optional
 from pydantic import Field
@@ -25,7 +25,11 @@ from .helper.print_message import print_message
 from .helper.gen_uuid import gen_uuid
 from .helper.set_time import set_time
 from .model.action import ActionModel, ShortActionModel
-from .model.experiment import ExperimentModel, ShortExperimentModel, ExperimentTemplate
+from .model.experiment import (
+                               ExperimentModel, 
+                               ShortExperimentModel, 
+                               ExperimentTemplate
+                              )
 from .model.experiment_sequence import ExperimentSequenceModel
 from .model.hlostatus import HloStatus
 from .model.action_start_condition import ActionStartCondition
@@ -177,7 +181,7 @@ class Experiment(Sequence, ExperimentModel):
 
     def _check_sample(self, new_sample, sample_list):
         for idx, sample in enumerate(sample_list):
-            tmp_sample = copy.deepcopy(sample)
+            tmp_sample = deepcopy(sample)
             tmp_sample.action_uuid = []
             identical = tmp_sample == new_sample
             if identical:
@@ -276,31 +280,79 @@ class Action(Experiment, ActionModel):
 
 
 class ActionPlanMaker(object):
-    def __init__(
-        self,
-        experiment: Experiment,
-    ):
+    def __init__(self):
         frame = inspect.currentframe().f_back
         _args, _varargs, _keywords, _locals = inspect.getargvalues(frame)
-        self._experiment = copy.deepcopy(experiment)
+        self.expname = frame.f_code.co_name
+        self._experiment = None
         self.action_list = []
         self.pars = self._C()
+
+        exp_paramdict = dict()
+
+        # find the Experiment Basemodel
+        # and add all other params to a dict
+        for arg in _args:
+            argparam = _locals.get(arg, None)
+            if isinstance(argparam, Experiment):
+                if self._experiment is None:
+                    print_message({}, "actionplanmaker", 
+                                     f"{self.expname}: found Experiment BaseModel under "
+                                     f"parameter '{arg}'",
+                                     info = True)
+                    self._experiment = deepcopy(argparam)
+                else:
+                    print_message({}, "actionplanmaker", 
+                                  f"{self.expname}: critical error: "
+                                  f"found another Experiment BaseModel"
+                                  f" under parameter '{arg}',"
+                                  f" skipping it",
+                                  error=True,
+                                  )
+            else:
+                exp_paramdict.update({arg:argparam})
+
+        # check if an Experiment was detected
+        if self._experiment is None:
+            print_message({}, "actionplanmaker", 
+               f"{self.expname}: critical error: "
+               f"no Experiment BaseModel was found "
+               f"by ActionPlanMaker, "
+               f"using blank Experiment.",
+               error=True,
+            )
+            self._experiment = Experiment()
+
+
+        # add all experiment_params under self.pars
         if self._experiment.experiment_params is not None:
             for key, val in self._experiment.experiment_params.items():
                 setattr(self.pars, key, val)
 
-        for key, val in _locals.items():
-            if key != "experiment" and key not in self._experiment.experiment_params.keys():
+        # add all other params in exp_paramdict which were
+        # not included in experiment_params to self.pars
+        # for key, val in _locals.items():
+        for key, val in exp_paramdict.items():
+            if key not in self._experiment.experiment_params.keys():
                 print_message(
                     {},
                     "ActionPlanMaker",
-                    f"local var '{key}' not found in experiment, "
-                    "adding it to sq.pars",
+                    f"{self.expname}: local var '{key}'"
+                    f" not found in Experiment, "
+                    f"adding it to self.pars",
                     error=True,
                 )
                 setattr(
                     self.pars, key, val
                 )
+
+        print_message(
+            {},
+            "ActionPlanMaker",
+            f"{self.expname}: params in self.pars are:"
+            f" {vars(self.pars)}",
+            info=True,
+        )
 
     class _C:
         pass

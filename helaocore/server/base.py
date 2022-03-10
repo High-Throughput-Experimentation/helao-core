@@ -352,7 +352,6 @@ class Base(object):
         return url_list
 
 
-
     async def _get_action(
                           self,
                           frame
@@ -365,13 +364,13 @@ class Base(object):
             argparam = _locals.get(arg, None)
             if isinstance(argparam, Action):
                 if action is None:
-                    self.print_message(f"found ActionModel under "
+                    self.print_message(f"found Action BaseModel under "
                                        f"parameter '{arg}'",
                                        info = True)
                     action = argparam
                 else:
                  self.print_message(
-                    f"critical error: found another Action Models"
+                    f"critical error: found another Action BaseModel"
                     f" under parameter '{arg}',"
                     f" skipping it",
                     error=True,
@@ -381,8 +380,8 @@ class Base(object):
 
         if action is None:
             self.print_message(
-               "critical error: no ActionModel was found by setup_action, "
-               "using blank action.",
+               "critical error: no Action BaseModel was found by setup_action, "
+               "using blank Action.",
                error=True,
             )
             action = Action()
