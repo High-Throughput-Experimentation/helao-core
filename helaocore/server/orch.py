@@ -1140,9 +1140,12 @@ class Orch(Base):
                       )
             
             # add finished prc to seq
-            self.active_sequence.experiment_list.append(
+            # !!! add to experimentmodel_list
+            # not to experiment_list !!!!
+            self.active_sequence.experimentmodel_list.append(
                 deepcopy(self.active_experiment.get_prc())
             )
+
             # write new updated seq
             await self.write_active_sequence_seq()
 
