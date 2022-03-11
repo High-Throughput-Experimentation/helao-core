@@ -347,6 +347,7 @@ class Orch(Base):
         self.active_sequence = None
         self.last_sequence = None
         self.bokehapp = None
+        self.orch_op = None
         self.op_enabled = self.server_params.get("enable_op", False)
         if self.op_enabled:
             # asyncio.gather(self.init_Gamry(self.Gamry_devid))
@@ -356,7 +357,6 @@ class Orch(Base):
         # this queue is simply used for waiting for any interrupt
         # but it does not do anything with its content
         self.interrupt_q = asyncio.Queue()
-
 
         self.init_success = False  # need to subscribe to all fastapi servers in config
 
@@ -507,6 +507,8 @@ class Orch(Base):
             self.print_message(f"running_states: "
                                f"{self.orchstatusmodel.active_dict}")
 
+        if self.op_enabled and self.orch_op:
+            self.orch_op.vis.doc.add_next_tick_callback(partial(self.orch_op.update_tables))
 
         # now push it to the interrupt_q
         await self.interrupt_q.put(self.orchstatusmodel)
@@ -1009,9 +1011,9 @@ class Orch(Base):
         for uuid, statusmodel in self.orchstatusmodel.active_dict.items():
             action_list.append(
                 {"index":index,
-                 "action_uuid":statusmodel.action_uuid,
-                 "server":statusmodel.action_server.disp_name(),
-                 "action_name":statusmodel.action_name,
+                 "action_uuid":f"{statusmodel.act.action_uuid}",
+                 "server":statusmodel.act.action_server.disp_name(),
+                 "action_name":statusmodel.act.action_name,
                 })
             index = index+1
         return action_list
@@ -1423,6 +1425,7 @@ class Operator:
         if self.sequence_select_list:
             self.sequence_dropdown.value = self.sequence_select_list[0]
 
+        self.orch.orch_op = self
 
     def get_sequence_lib(self):
         """Return the current list of sequences."""
@@ -1509,11 +1512,11 @@ class Operator:
         experiments = self.orch.list_experiments()
         self.experiment_list = dict()
         if experiments:
-            for key,val in experiments[0].items():
+            for key,val in experiments[0].json_dict().items():
                 if val is not None:
                     self.experiment_list[key] = []
             for exp in experiments:
-                for key, value in exp.items():
+                for key, value in exp.json_dict().items():
                     if key in self.experiment_list:
                         self.experiment_list[key].append(value)
         self.vis.print_message(f"current queued experiments: {self.experiment_list}")
@@ -1524,11 +1527,11 @@ class Operator:
         actions = self.orch.list_actions()
         self.action_list = dict()
         if actions:
-            for key,val in actions[0].items():
+            for key,val in actions[0].json_dict().items():
                 if val is not None:
                     self.action_list[key] = []
             for act in actions:
-                for key, value in act.items():
+                for key, value in act.json_dict().items():
                     if key in self.action_list:
                         self.action_list[key].append(value)
         self.vis.print_message(f"current queued actions: {self.action_list}")

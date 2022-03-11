@@ -760,7 +760,7 @@ class UnifiedSampleDataAPI:
         for sample_ in samples:
             sample = object_to_sample(sample_)
             self._base.print_message(f"retrieving sample {sample.get_global_label()}"
-                                     f"of sample_type {sample.sample_type}",
+                                     f" of sample_type {sample.sample_type}",
                                      info = True)
             if sample.sample_type == SampleType.liquid:
                 tmp = await self.liquidAPI.get_sample([sample])
@@ -827,7 +827,7 @@ class UnifiedSampleDataAPI:
         for sample_ in samples:
             sample = object_to_sample(sample_)
             self._base.print_message(f"getting sample_xy for: {sample.global_label}"
-                                     f"of sample_type {sample.sample_type}",
+                                     f" of sample_type {sample.sample_type}",
                                      info=True)
             if sample.sample_type == SampleType.liquid:
                 tmp = await self.liquidAPI.get_sample_xy([sample])
@@ -860,7 +860,7 @@ class UnifiedSampleDataAPI:
         for sample_ in samples:
             sample = object_to_sample(sample_)
             self._base.print_message(f"getting platemap for: {sample.global_label}"
-                                     f"of sample_type {sample.sample_type}",
+                                     f" of sample_type {sample.sample_type}",
                                      info=True)
             if sample.sample_type == SampleType.liquid:
                 tmp = await self.liquidAPI.get_platemap([sample])
