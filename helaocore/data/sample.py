@@ -732,7 +732,8 @@ class UnifiedSampleDataAPI:
     async def new_sample(self, samples: List[SampleUnion] = []) -> List[SampleUnion]:
         retval = []
 
-        for sample in samples:
+        for sample_ in samples:
+            sample = object_to_sample(sample_)
             if sample.sample_type == SampleType.liquid:
                 tmp = await self.liquidAPI.new_sample(samples=[sample])
                 for t in tmp: retval.append(t)
@@ -756,7 +757,8 @@ class UnifiedSampleDataAPI:
         """
         retval = []
 
-        for sample in samples:
+        for sample_ in samples:
+            sample = object_to_sample(sample_)
             self._base.print_message(f"retrieving sample {sample.get_global_label()}"
                                      f"of sample_type {sample.sample_type}",
                                      info = True)
@@ -792,7 +794,8 @@ class UnifiedSampleDataAPI:
 
 
     async def update_sample(self, samples: List[SampleUnion] = []) -> None:
-        for sample in samples:
+        for sample_ in samples:
+            sample = object_to_sample(sample_)
             self._base.print_message(f"updating sample: {sample.global_label}"
                                      f" of sample_type {sample.sample_type}",
                                      info=True)
@@ -821,7 +824,8 @@ class UnifiedSampleDataAPI:
 
     async def get_sample_xy(self, samples: List[SampleUnion] = []) -> None:
         retval = []
-        for sample in samples:
+        for sample_ in samples:
+            sample = object_to_sample(sample_)
             self._base.print_message(f"getting sample_xy for: {sample.global_label}"
                                      f"of sample_type {sample.sample_type}",
                                      info=True)
@@ -854,7 +858,8 @@ class UnifiedSampleDataAPI:
 
     async def get_platemap(self, samples: List[SampleUnion] = []) -> None:
         retval = []
-        for sample in samples:
+        for sample_ in samples:
+            sample = object_to_sample(sample_)
             self._base.print_message(f"getting platemap for: {sample.global_label}"
                                      f"of sample_type {sample.sample_type}",
                                      info=True)
