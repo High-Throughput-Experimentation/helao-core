@@ -979,6 +979,17 @@ class Base(object):
                     await self.base.write_prc(self.action)
 
 
+            self.base.print_message("init active: sending active "
+                                    "data_stream_status package",
+                                    info = True)
+            await self.enqueue_data(datamodel = \
+                   DataModel(
+                             data = {},
+                             errors = [],
+                             status = HloStatus.active
+                            )
+            )
+
             await self.add_status()
 
 
@@ -1179,7 +1190,7 @@ class Base(object):
         def enqueue_data_nowait(
                                 self, 
                                 datamodel: DataModel,
-                              action: Optional[Action] = None
+                                action: Optional[Action] = None
                                ):
             if action is None:
                 action = self.action
@@ -1321,24 +1332,34 @@ class Base(object):
                                                 error = True)
                         
                         continue
-                    # self.base.print_message("UUID is in listen_uuids",
-                    #                             info = True)
 
+                    data_status = data_msg.datamodel.status
                     data_dict = data_msg.datamodel.data
 
+                    self.action.data_stream_status = data_status
+                    # self.base.print_message(f"data_stream_status: "
+                    #                         f"{data_status}",
+                    #                         info = True)
+
+                    if data_status not in (
+                                           None,
+                                           HloStatus.active,
+                                          ):
+                        self.base.print_message("data_stream: skipping package",
+                                                info = True)
+                        continue
 
                     for file_conn_key, sample_data in data_dict.items():
                         
                         output_action = \
                             self._get_action_for_file_conn_key(file_conn_key=file_conn_key)                        
-                        
                         if output_action is None:
                             self.base.print_message("data logger could not "
                                                     "find action for "
                                                     "file_conn_key",
                                                     error = True)
                             continue
-                        
+
                         if not file_conn_key in self.file_conn_dict:
                             if output_action.save_data:
                                 self.base.print_message(
@@ -1595,9 +1616,17 @@ class Base(object):
             # add split status to current action
             if HloStatus.split not in self.action.action_status:
                 self.action.action_status.append(HloStatus.split)
+            # signal to data logger that action was split
+            await self.enqueue_data(datamodel = \
+                   DataModel(
+                             data = {},
+                             errors = [],
+                             status = HloStatus.split
+                            )
+            )
             # make a copy of prev_action
             prev_action = deepcopy(self.action)
-            
+            prev_action.data_stream_status = HloStatus.split
             # increase split counter for new action
             # needs to happen before init_act
             # as its also used in the fodler name
@@ -1735,6 +1764,22 @@ class Base(object):
                     break
                     
             if all_finished:
+                self.base.print_message("finish active: sending finish "
+                                        "data_stream_status package",
+                                        info = True)
+                await self.enqueue_data(datamodel = \
+                       DataModel(
+                                 data = {},
+                                 errors = [],
+                                 status = HloStatus.finished
+                                )
+                )
+                while not all([action.data_stream_status != HloStatus.active for action in self.action_list]):
+                    self.base.print_message(f"At least one data stream "
+                                            f"is still active:"
+                                            f" {[action.data_stream_status for action in self.action_list]}",
+                                            info = True)
+                    await asyncio.sleep(0.5)
 
                 # self.action_list[-1] is the very first action
                 if  self.action_list[-1].manual_action:
@@ -1752,7 +1797,9 @@ class Base(object):
                 # finish the data writer
                 self.data_logger.cancel()
                 _ = self.base.actives.pop(self.active_uuid, None)
-
+                self.base.print_message("all active action are done, "
+                                        "closing active",
+                                         info = True)
 
             # always returns the most recent action of active
             return self.action

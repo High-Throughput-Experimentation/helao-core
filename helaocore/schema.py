@@ -230,6 +230,12 @@ class Action(Experiment, ActionModel):
     # internal
     file_conn_keys: Optional[List[UUID]] = Field(default_factory=list)
 
+    # flag for datalogger
+    # None will signal default behaviour as before
+    # will be updated by data logger only if it finds the status
+    # in the data stream
+    data_stream_status: Optional[HloStatus] = None
+
     def __repr__(self):
         return f"<action_name:{self.action_name}>" 
 
