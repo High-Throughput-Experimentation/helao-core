@@ -775,7 +775,7 @@ class UnifiedSampleDataAPI:
                 tmp = await self.assemblyAPI.get_sample([sample])
                 # first need to get the most recent part info
                 for t in tmp:
-                    t.parts = self.get_sample(samples=t.parts)
+                    t.parts = await self.get_sample(samples=t.parts)
                     # and then add the assembly to the return list
                     retval.append(t)
             elif sample.sample_type == None:
@@ -840,7 +840,6 @@ class UnifiedSampleDataAPI:
                 for t in tmp: retval.append(t)
             elif sample.sample_type == SampleType.assembly:
                 tmp = await self.assemblyAPI.get_sample_xy([sample])
-                print(tmp)
                 for t in tmp: retval.append(t)
             elif sample.sample_type == None:
                 self._base.print_message(
