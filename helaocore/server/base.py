@@ -1616,14 +1616,6 @@ class Base(object):
             # add split status to current action
             if HloStatus.split not in self.action.action_status:
                 self.action.action_status.append(HloStatus.split)
-            # signal to data logger that action was split
-            await self.enqueue_data(datamodel = \
-                   DataModel(
-                             data = {},
-                             errors = [],
-                             status = HloStatus.split
-                            )
-            )
             # make a copy of prev_action
             prev_action = deepcopy(self.action)
             prev_action.data_stream_status = HloStatus.split
@@ -1701,6 +1693,15 @@ class Base(object):
             else:
                 # use the supplied uuid list
                 await self.finish(finish_uuid_list = uuid_list)
+
+            # signal to data logger that action was split
+            await self.enqueue_data(datamodel = \
+                   DataModel(
+                             data = {},
+                             errors = [],
+                             status = HloStatus.split
+                            )
+            )
 
             return new_file_conn_keys
 
