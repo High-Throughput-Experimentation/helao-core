@@ -96,8 +96,10 @@ class _BaseSampleAPI(object):
     def _df_to_sample(self, df):
         """converts db dataframe back to a sample basemodel
         and performs a simply data integrity check"""
+        
+        
         if df.size == 0:
-            return None
+            return NoneSample()
         sampledict = dict(df.iloc[-1, :])
 
         for key in self._jsonkeys:
@@ -124,7 +126,7 @@ class _BaseSampleAPI(object):
         self._con.commit()
 
 
-    async def _append_sample(self, sample):
+    async def _append_sample(self, sample: SampleUnion) -> SampleUnion:
         await asyncio.sleep(0.001)
         lock = asyncio.Lock()
         async with lock:
@@ -195,7 +197,14 @@ class _BaseSampleAPI(object):
                 await asyncio.sleep(0.001)
                 sample = await self._key_checks(sample)
                 added_sample = await self._append_sample(sample=sample)
-                ret_samples.append(added_sample)
+                if added_sample.sample_type != None:
+                    ret_samples.append(added_sample)
+                else:
+                    self._base.print_message(
+                        "crtitical error, new_sample got "
+                        "NoneSample back from dn",
+                        error=True,
+                    )
             else:
                 self._base.print_message(
                     f"wrong sample type {type(sample)}!={self._sample_type}, skipping it",
@@ -269,18 +278,35 @@ class _BaseSampleAPI(object):
                         await asyncio.sleep(0.001)
                         retdf = pd.read_sql_query(f"""select * from {self._sample_type} where idx={counts+sample.sample_no+1};""", con=self._con)
                         retsample = self._df_to_sample(retdf)
-                        ret_samples.append(retsample)
+                        if sample.sample_type != None:
+                            ret_samples.append(retsample)
+                        else:
+                            self._base.print_message(f"sample "
+                                                     f"'{sample.sample_no}' "
+                                                     f"does not exist yet", 
+                                                     info = True)
                     else:
-                        self._base.print_message("sample '{sample.sample_no}' does not exist yet", info = True)
+                        self._base.print_message(f"sample '{sample.sample_no}'"
+                                                 f" does not exist yet",
+                                                 info = True)
                         # ret_samples.append(NoneSample())
                 elif sample.sample_no > 0: # get sample from front
-                    self._base.print_message(f"getting sample: {self._sample_type} {sample.sample_no}")
+                    self._base.print_message(f"getting sample: "
+                                             f"{self._sample_type} "
+                                             f"{sample.sample_no}")
                     await asyncio.sleep(0.001)
                     retdf = pd.read_sql_query(f"""select * from {self._sample_type} where idx={sample.sample_no};""", con=self._con)
                     retsample = self._df_to_sample(retdf)
-                    ret_samples.append(retsample)
+                    if retsample.sample_type != None:
+                        ret_samples.append(retsample)
+                    else:
+                        self._base.print_message(f"sample '{sample.sample_no}'"
+                                                 f" does not exist yet",
+                                                 info = True)
                 else:
-                    self._base.print_message("zero sample_no is not supported", info = True)
+                    self._base.print_message("zero sample_no is "
+                                             "not supported", 
+                                             info = True)
             self._close_db()
         return ret_samples
     
@@ -310,7 +336,9 @@ class _BaseSampleAPI(object):
 
             else:
                 if key != "idx":
-                    self._base.print_message(f"unknown key '{key}' for updating sample", error=True)
+                    self._base.print_message(f"unknown key '{key}' "
+                                             f"for updating sample", 
+                                             error=True)
 
 
     async def update_samples(self, samples: List[SampleUnion] = []):
@@ -325,30 +353,44 @@ class _BaseSampleAPI(object):
             await self._open_db()
 
             for sample in samples:
-                self._base.print_message(f"updating sample {self._sample_type} {sample.sample_no}", info = True)
+                self._base.print_message(f"updating sample {self._sample_type}"
+                                         f" {sample.sample_no}", 
+                                         info = True)
                 if sample.global_label is None:
                     self._base.print_message("No global_label. Skipping sample.", info = True)
                     continue
 
                 if sample.sample_no < 1:
-                    self._base.print_message("Cannot update sample '{sample.sample_no}'", info = True)
+                    self._base.print_message(f"Cannot update sample "
+                                             f"'{sample.sample_no}'", info = True)
                     continue
 
                 sample = await self._key_checks(sample)
 
                 # get the current info from db so we can perform some checks
-                self._base.print_message(f"getting sample {self._sample_type} {sample.sample_no}")
+                self._base.print_message(f"getting sample {self._sample_type} "
+                                         f"{sample.sample_no}")
                 await asyncio.sleep(0.001)
                 retdf = pd.read_sql_query(f"""select * from {self._sample_type} where idx={sample.sample_no};""", con=self._con)
                 prev_sample = self._df_to_sample(retdf)
                 
+                if prev_sample.sample_type != None:
+                    self._base.print_message("invalid sample", error = True)
+                    continue
+                
                 # some safety checks
                 if sample.global_label != prev_sample.global_label:
-                    self._base.print_message("Cannot update sample '{sample.sample_no}', not the same 'global_label'", error = True)
+                    self._base.print_message(f"Cannot update sample "
+                                             f"'{sample.sample_no}', "
+                                             f"not the same 'global_label'", 
+                                             error = True)
                     continue
 
                 if sample.sample_type != prev_sample.sample_type:
-                    self._base.print_message("Cannot update sample '{sample.sample_no}', not the same 'sample_type'", error = True)
+                    self._base.print_message(f"Cannot update sample "
+                                             f"'{sample.sample_no}', "
+                                             f"not the same 'sample_type'",
+                                             error = True)
                     continue
 
                 # update the last_update timecode
