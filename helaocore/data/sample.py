@@ -181,7 +181,7 @@ class _BaseSampleAPI(object):
         return sample
 
 
-    async def new_sample(self, samples: List[SampleUnion] = None) -> List[SampleUnion]:
+    async def new_samples(self, samples: List[SampleUnion] = None) -> List[SampleUnion]:
         if samples is None:
             samples = []
         while not self.ready:
@@ -420,7 +420,7 @@ class LiquidSampleAPI(_BaseSampleAPI):
             sample.global_label = sample.get_global_label()
             sample.sample_creation_timecode = 0
             # sample.action_timestamp = "00000000.000000000000"
-            await self.new_sample([sample])
+            await self.new_samples([sample])
 
 
 class GasSampleAPI(_BaseSampleAPI):
@@ -490,7 +490,7 @@ class SolidSampleAPI(_BaseSampleAPI):
         return xylist
 
 
-    async def new_sample(self, samples: List[SampleUnion] = []) -> List[SampleUnion]:
+    async def new_samples(self, samples: List[SampleUnion] = []) -> List[SampleUnion]:
         self._base.print_message("new_sample is not supported yet for solid sample", error=True)
         await asyncio.sleep(0.001)
         ret_samples = []
@@ -583,7 +583,7 @@ class OldLiquidSampleAPI:
         return counter - self.headerlines
 
 
-    async def new_sample(self, new_sample: LiquidSample):
+    async def new_samples(self, new_sample: LiquidSample):
         async def write_sample_no_jsonfile(filename, datadict):
             """write a separate json file for each new sample_no"""
             self.fjson = await aiofiles.open(os.path.join(self._dbfilepath, filename), "a+")
@@ -729,22 +729,22 @@ class UnifiedSampleDataAPI:
         self.ready = True
 
 
-    async def new_sample(self, samples: List[SampleUnion] = []) -> List[SampleUnion]:
+    async def new_samples(self, samples: List[SampleUnion] = []) -> List[SampleUnion]:
         retval = []
 
         for sample_ in samples:
             sample = object_to_sample(sample_)
             if sample.sample_type == SampleType.liquid:
-                tmp = await self.liquidAPI.new_sample(samples=[sample])
+                tmp = await self.liquidAPI.new_samples(samples=[sample])
                 for t in tmp: retval.append(t)
             elif sample.sample_type == SampleType.solid:
-                tmp = await self.solidAPI.new_sample(samples=[sample])
+                tmp = await self.solidAPI.new_samples(samples=[sample])
                 for t in tmp: retval.append(t)
             elif sample.sample_type == SampleType.gas:
-                tmp = await self.gasAPI.new_sample(samples=[sample])
+                tmp = await self.gasAPI.new_samples(samples=[sample])
                 for t in tmp: retval.append(t)
             elif sample.sample_type == SampleType.assembly:
-                tmp = await self.assemblyAPI.new_sample(samples=[sample])
+                tmp = await self.assemblyAPI.new_samples(samples=[sample])
                 for t in tmp: retval.append(t)
 
         return retval
