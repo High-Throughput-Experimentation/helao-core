@@ -245,7 +245,7 @@ class _BaseSampleAPI(object):
             return counts
 
 
-    async def get_sample(self, samples: List[SampleUnion] = []) -> List[SampleUnion]:
+    async def get_samples(self, samples: List[SampleUnion] = []) -> List[SampleUnion]:
         """this will only use the sample_no for local sample, or global_label for external samples
         and fills in the rest from the db and returns the list again.
         We expect to not have mixed sample types here.
@@ -414,7 +414,7 @@ class LiquidSampleAPI(_BaseSampleAPI):
         self._base.print_message(f"old db sample count: {counts}")
         for i in range(counts):
             sample = LiquidSample(**{"sample_no":i + 1,"machine_name":gethostname()})
-            sample = await old_liquid_sample_db.get_sample(sample)
+            sample = await old_liquid_sample_db.get_samples(sample)
             sample.server_name = "PAL"
             sample.machine_name = gethostname()
             sample.global_label = sample.get_global_label()
@@ -498,7 +498,7 @@ class SolidSampleAPI(_BaseSampleAPI):
         return ret_samples
 
 
-    async def get_sample(self, samples: List[SampleUnion] = []) -> List[SampleUnion]:
+    async def get_samples(self, samples: List[SampleUnion] = []) -> List[SampleUnion]:
         await asyncio.sleep(0.001)
         ret_samples = []
 
@@ -536,7 +536,7 @@ class SolidSampleAPI(_BaseSampleAPI):
         #                          "for solid sample", error=True)
         await asyncio.sleep(0.001)
         # only check if its a valid sample
-        return await self.get_sample(samples = samples)
+        return await self.get_samples(samples = samples)
 
 
 class OldLiquidSampleAPI:
@@ -610,7 +610,7 @@ class OldLiquidSampleAPI:
         return new_sample
 
 
-    async def get_sample(self, sample: LiquidSample):
+    async def get_samples(self, sample: LiquidSample):
         """accepts a liquid sample model with minimum information to find it in the db
         and returns its full information
         """
@@ -750,7 +750,7 @@ class UnifiedSampleDataAPI:
         return retval
 
 
-    async def get_sample(self, samples: List[SampleUnion] = []) -> List[SampleUnion]:
+    async def get_samples(self, samples: List[SampleUnion] = []) -> List[SampleUnion]:
         """this will only use the sample_no for local sample, or global_label for external samples
         and fills in the rest from the db and returns the list again.
         We expect to not have mixed sample types here.
@@ -763,19 +763,19 @@ class UnifiedSampleDataAPI:
                                      f" of sample_type {sample.sample_type}",
                                      info = True)
             if sample.sample_type == SampleType.liquid:
-                tmp = await self.liquidAPI.get_sample([sample])
+                tmp = await self.liquidAPI.get_samples([sample])
                 for t in tmp: retval.append(t)
             elif sample.sample_type == SampleType.solid:
-                tmp = await self.solidAPI.get_sample([sample])
+                tmp = await self.solidAPI.get_samples([sample])
                 for t in tmp: retval.append(t)
             elif sample.sample_type == SampleType.gas:
-                tmp = await self.gasAPI.get_sample([sample])
+                tmp = await self.gasAPI.get_samples([sample])
                 for t in tmp: retval.append(t)
             elif sample.sample_type == SampleType.assembly:
-                tmp = await self.assemblyAPI.get_sample([sample])
+                tmp = await self.assemblyAPI.get_samples([sample])
                 # first need to get the most recent part info
                 for t in tmp:
-                    t.parts = await self.get_sample(samples=t.parts)
+                    t.parts = await self.get_samples(samples=t.parts)
                     # and then add the assembly to the return list
                     retval.append(t)
             elif sample.sample_type == None:
