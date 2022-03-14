@@ -313,7 +313,7 @@ class _BaseSampleAPI(object):
                     self._base.print_message(f"unknown key '{key}' for updating sample", error=True)
 
 
-    async def update_sample(self, samples: List[SampleUnion] = []):
+    async def update_samples(self, samples: List[SampleUnion] = []):
         while not self.ready:
             self._base.print_message("db not ready", info = True)
             await asyncio.sleep(0.1)
@@ -531,7 +531,7 @@ class SolidSampleAPI(_BaseSampleAPI):
         return ret_samples
 
 
-    async def update_sample(self, samples: List[SampleUnion] = []) -> List[SampleUnion]:
+    async def update_samples(self, samples: List[SampleUnion] = []) -> List[SampleUnion]:
         # self._base.print_message("Update is not supported yet "
         #                          "for solid sample", error=True)
         await asyncio.sleep(0.001)
@@ -793,22 +793,22 @@ class UnifiedSampleDataAPI:
         return retval
 
 
-    async def update_sample(self, samples: List[SampleUnion] = []) -> None:
+    async def update_samples(self, samples: List[SampleUnion] = []) -> None:
         for sample_ in samples:
             sample = object_to_sample(sample_)
             self._base.print_message(f"updating sample: {sample.global_label}"
                                      f" of sample_type {sample.sample_type}",
                                      info=True)
             if sample.sample_type == SampleType.liquid:
-                await self.liquidAPI.update_sample([sample])
+                await self.liquidAPI.update_samples([sample])
             elif sample.sample_type == SampleType.solid:
-                await self.solidAPI.update_sample([sample])
+                await self.solidAPI.update_samples([sample])
             elif sample.sample_type == SampleType.gas:
-                await self.gasAPI.update_sample([sample])
+                await self.gasAPI.update_samples([sample])
             elif sample.sample_type == SampleType.assembly:
                 # update also the parts
-                await self.update_sample(sample.parts)
-                await self.assemblyAPI.update_sample([sample])
+                await self.update_samples(sample.parts)
+                await self.assemblyAPI.update_samples([sample])
             elif sample.sample_type == None:
                 self._base.print_message(
                     "got None sample",
