@@ -17,7 +17,7 @@ class DataModel(BaseModel, HelaoDict):
     # data is contained in a dict and keyed by file_conn_key
     data: Dict[UUID, dict] = Field(default_factory=dict)
     errors: List[ErrorCodes] = Field(default_factory=list)
-    status: Optional[HloStatus] = None
+    status: Optional[HloStatus] = HloStatus.active
 
 
 class DataPackageModel(BaseModel, HelaoDict):
