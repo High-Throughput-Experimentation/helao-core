@@ -982,13 +982,6 @@ class Base(object):
             self.base.print_message("init active: sending active "
                                     "data_stream_status package",
                                     info = True)
-            await self.enqueue_data(datamodel = \
-                   DataModel(
-                             data = {},
-                             errors = [],
-                             status = HloStatus.active
-                            )
-            )
 
             await self.add_status()
 
@@ -1337,15 +1330,14 @@ class Base(object):
                     data_dict = data_msg.datamodel.data
 
                     self.action.data_stream_status = data_status
-                    # self.base.print_message(f"data_stream_status: "
-                    #                         f"{data_status}",
-                    #                         info = True)
 
                     if data_status not in (
                                            None,
                                            HloStatus.active,
                                           ):
-                        self.base.print_message("data_stream: skipping package",
+                        self.base.print_message(f"data_stream: skipping "
+                                                f"package for status: "
+                                                f"{data_status}",
                                                 info = True)
                         continue
 
@@ -1618,13 +1610,15 @@ class Base(object):
                 self.action.action_status.append(HloStatus.split)
             # make a copy of prev_action
             prev_action = deepcopy(self.action)
+            # set the data_stream_status
             prev_action.data_stream_status = HloStatus.split
+            self.action.data_stream_status = HloStatus.active
             # increase split counter for new action
             # needs to happen before init_act
             # as its also used in the fodler name
             self.action.action_split += 1
 
-            # now reinit current action
+            # now re-init current action
             # force action init (new action uuid and timestamp)
             self.action.init_act(time_offset=self.base.ntp_offset, force = True)
             # add new action uuid to listen_uuids
@@ -1678,6 +1672,7 @@ class Base(object):
             # update other action settings?
             # - sample name
 
+            # add prev_action to action_list to 2nd spot
             if len(self.action_list) == 1:
                 self.action_list.append(prev_action)
             else:
@@ -1686,6 +1681,7 @@ class Base(object):
             # send status for new split action
             await self.add_status()
                 
+            #finish selected actions
             if uuid_list is None:
                 # default: finish all except current one
                 await self.finish(finish_uuid_list = self.action_list[1:])
@@ -1693,15 +1689,6 @@ class Base(object):
             else:
                 # use the supplied uuid list
                 await self.finish(finish_uuid_list = uuid_list)
-
-            # signal to data logger that action was split
-            await self.enqueue_data(datamodel = \
-                   DataModel(
-                             data = {},
-                             errors = [],
-                             status = HloStatus.split
-                            )
-            )
 
             return new_file_conn_keys
 
@@ -1768,19 +1755,20 @@ class Base(object):
                 self.base.print_message("finish active: sending finish "
                                         "data_stream_status package",
                                         info = True)
-                await self.enqueue_data(datamodel = \
-                       DataModel(
-                                 data = {},
-                                 errors = [],
-                                 status = HloStatus.finished
-                                )
-                )
                 while not all([action.data_stream_status != HloStatus.active for action in self.action_list]):
-                    self.base.print_message(f"At least one data stream "
-                                            f"is still active:"
+                    await self.enqueue_data(datamodel = \
+                           DataModel(
+                                     data = {},
+                                     errors = [],
+                                     status = HloStatus.finished
+                                    )
+                    )
+                    await asyncio.sleep(0.5)
+                    self.base.print_message(f"Waiting for data_stream finished"
+                                            f" packge: "
                                             f" {[action.data_stream_status for action in self.action_list]}",
                                             info = True)
-                    await asyncio.sleep(0.5)
+
 
                 # self.action_list[-1] is the very first action
                 if  self.action_list[-1].manual_action:
