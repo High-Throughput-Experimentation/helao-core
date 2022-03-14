@@ -385,7 +385,7 @@ class _BaseSampleAPI(object):
         return []
         
         
-    async def get_sample_xy(self, samples: List[SampleUnion] = []) -> List[Tuple[float, float]]:
+    async def get_samples_xy(self, samples: List[SampleUnion] = []) -> List[Tuple[float, float]]:
         self._base.print_message(f"not supported for {self._sample_type}",
                                  error = True)
         return []
@@ -473,7 +473,7 @@ class SolidSampleAPI(_BaseSampleAPI):
         return pmlist
 
 
-    async def get_sample_xy(self, samples: List[SampleUnion] = []) -> List[Tuple[float, float]]:
+    async def get_samples_xy(self, samples: List[SampleUnion] = []) -> List[Tuple[float, float]]:
         xylist = []
         for sample in samples:
             pmdata = self.legacyAPI.get_platemap_plateid(plateid = sample.plate_id)
@@ -509,7 +509,7 @@ class SolidSampleAPI(_BaseSampleAPI):
             await asyncio.sleep(0.001)
             if sample.machine_name == "legacy":
                 # verify legacy sample by getting its xy coordinates
-                xylist = await self.get_sample_xy(samples = [sample])
+                xylist = await self.get_samples_xy(samples = [sample])
                 if xylist != [(None, None)]:
                     ret_samples.append(
                         SolidSample(
@@ -822,7 +822,7 @@ class UnifiedSampleDataAPI:
                 )
 
 
-    async def get_sample_xy(self, samples: List[SampleUnion] = []) -> None:
+    async def get_samples_xy(self, samples: List[SampleUnion] = []) -> None:
         retval = []
         for sample_ in samples:
             sample = object_to_sample(sample_)
@@ -830,16 +830,16 @@ class UnifiedSampleDataAPI:
                                      f" of sample_type {sample.sample_type}",
                                      info=True)
             if sample.sample_type == SampleType.liquid:
-                tmp = await self.liquidAPI.get_sample_xy([sample])
+                tmp = await self.liquidAPI.get_samples_xy([sample])
                 for t in tmp: retval.append(t)
             elif sample.sample_type == SampleType.solid:
-                tmp = await self.solidAPI.get_sample_xy([sample])
+                tmp = await self.solidAPI.get_samples_xy([sample])
                 for t in tmp: retval.append(t)
             elif sample.sample_type == SampleType.gas:
-                tmp = await self.gasAPI.get_sample_xy([sample])
+                tmp = await self.gasAPI.get_samples_xy([sample])
                 for t in tmp: retval.append(t)
             elif sample.sample_type == SampleType.assembly:
-                tmp = await self.assemblyAPI.get_sample_xy([sample])
+                tmp = await self.assemblyAPI.get_samples_xy([sample])
                 for t in tmp: retval.append(t)
             elif sample.sample_type == None:
                 self._base.print_message(
