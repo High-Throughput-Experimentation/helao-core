@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from typing import Any
 from enum import Enum
 from pathlib import Path
-
+from copy import deepcopy
 
 class HelaoDict():
     """implements dict and serialization methods for helao"""
@@ -56,14 +56,14 @@ class HelaoDict():
         return self.as_dict()
 
     def as_dict(self):
-        d = vars(self)
+        d = deepcopy(vars(self))
         attr_only = self._serialize_dict(dict_in = d)
         return attr_only
 
 
     def fastdict(self):
         """creates dictionaries for FastAPI post request"""
-        d = vars(self)
+        d = deepcopy(vars(self))
 
         params_dict = dict()
         json_dict = dict()
