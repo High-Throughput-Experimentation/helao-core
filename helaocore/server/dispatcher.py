@@ -5,6 +5,8 @@ import aiohttp
 from ..schema import Action
 from ..error import ErrorCodes
 
+from ..helper.print_message import print_message
+
 async def async_action_dispatcher(world_config_dict: dict, A: Action):
     """Request non-blocking action_dq which may run concurrently.
 
@@ -30,7 +32,18 @@ async def async_action_dispatcher(world_config_dict: dict, A: Action):
             error_code = ErrorCodes.none
             if resp.status != 200:
                 error_code = ErrorCodes.http
-            response = await resp.json()
+            try:
+                response = await resp.json()
+            except Exception as e:
+                print_message(
+                              actd,
+                              A.action_server.server_name,
+                              f"async_action_dispatcher "
+                              f"could not decide response: '{resp}',"
+                              f" error={e}",
+                              error = True
+                             )
+                response = None
             return response, error_code
 
 
@@ -62,5 +75,16 @@ async def async_private_dispatcher(
             error_code = ErrorCodes.none
             if resp.status != 200:
                 error_code = ErrorCodes.http
-            response = await resp.json()
+            try:
+                response = await resp.json()
+            except Exception as e:
+                print_message(
+                              actd,
+                              server,
+                              f"async_private_dispatcher "
+                              f"could not decide response: '{resp}',"
+                              f" error={e}",
+                              error = True
+                             )
+                response = None
             return response, error_code
