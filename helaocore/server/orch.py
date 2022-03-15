@@ -1077,6 +1077,7 @@ class Orch(Base):
         for uuid, statusmodel in self.orchstatusmodel.active_dict.items():
             liquid_list, solid_list, gas_list = \
                 self.unpack_samples_helper(samples = statusmodel.act.samples_in)
+            self.print_message(f"solids_in: {[s.get_global_label() for s in solid_list]}", sample=True)
             action_list.append(
                 {"index":index,
                  "action_uuid":f"{statusmodel.act.action_uuid}",
@@ -1732,8 +1733,9 @@ class Operator:
             self.action_list["action_name"].append(
                 actdict.get("action_name", None)
             )
+            tmp = actdict.get("action_server", {}) 
             self.action_list["action_server"].append(
-                actdict.get("action_server", None)
+                ", ".join([f"{v}" for k,v in tmp.items()])
             )
             self.action_list["action_uuid"].append(
                 actdict.get("action_uuid", None)
