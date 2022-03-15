@@ -519,8 +519,7 @@ class Orch(Base):
             self.print_message(f"running_states: "
                                f"{self.orchstatusmodel.active_dict}")
 
-        if self.op_enabled and self.orch_op:
-            self.orch_op.vis.doc.add_next_tick_callback(partial(self.orch_op.update_tables))
+        await self.update_operator(True)
 
         # now push it to the interrupt_q
         await self.interrupt_q.put(self.orchstatusmodel)
@@ -1281,6 +1280,10 @@ class Orch(Base):
         return liquid_list, solid_list, gas_list
 
 
+    async def update_operator(self, msg):
+        if self.op_enabled and self.orch_op:
+            await self.orch_op.update_q.put(msg)
+
 
 class return_sequence_lib(BaseModel):
     """Return class for queried sequence objects."""
@@ -1308,6 +1311,7 @@ class Operator:
 
         self.config_dict = self.vis.server_cfg.get("params", dict())
         self.pal_name = None
+        self.update_q = asyncio.Queue()
         # find pal server if configured in world config
         for server_name, server_config \
         in self.vis.world_cfg["servers"].items():
@@ -1580,7 +1584,18 @@ class Operator:
         if self.sequence_select_list:
             self.sequence_dropdown.value = self.sequence_select_list[0]
 
+        self.IOloop_run = False
+        self.IOtask = asyncio.create_task(self.IOloop())
+        self.vis.doc.on_session_destroyed(self.cleanup_session)
         self.orch.orch_op = self
+
+
+    def cleanup_session(self, session_context):
+        self.vis.print_message("Operator Bokeh session closed",
+                                error = True)
+        self.IOloop_run = False
+        self.IOtask.cancel()
+
 
     def get_sequence_lib(self):
         """Return the current list of sequences."""
@@ -2409,4 +2424,12 @@ class Operator:
 
 
     async def IOloop(self):
-        await self.update_tables()
+        self.IOloop_run = True
+        while self.IOloop_run:
+            try:
+                await asyncio.sleep(0.1)
+                self.vis.doc.add_next_tick_callback(partial(self.update_tables))
+                _ = await self.update_q.get()
+            except Exception as e:
+                self.vis.print_message(f"Operator IOloop error: {e}",
+                       error = True)
