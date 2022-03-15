@@ -4,7 +4,7 @@ import asyncio
 import sys
 from collections import deque
 from copy import deepcopy
-from typing import Optional,List
+from typing import Optional,List, Tuple
 from uuid import UUID
 from socket import gethostname
 import inspect
@@ -52,6 +52,21 @@ from ..model.experiment import (
                                 ShortExperimentModel,
                                 ExperimentTemplate
                                )
+from ..model.sample import (
+                                   SampleType,
+                                   SampleUnion,
+                                   LiquidSample,
+                                   GasSample,
+                                   SolidSample,
+                                   AssemblySample,
+                                   NoneSample,
+                                   SampleStatus,
+                                   SampleInheritance,
+                                   object_to_sample,
+                                   SampleType
+                                  )
+
+
 from ..model.action import ActionModel
 from ..model.active import ActiveParams
 from ..model.hlostatus import HloStatus
@@ -1054,11 +1069,15 @@ class Orch(Base):
         action_list = []
         index = 0
         for uuid, statusmodel in self.orchstatusmodel.active_dict.items():
+            liquid_list, solid_list, gas_list = \
+                self.unpack_samples_helper(samples = statusmodel.act.samples_in)
             action_list.append(
                 {"index":index,
                  "action_uuid":f"{statusmodel.act.action_uuid}",
                  "server":statusmodel.act.action_server.disp_name(),
                  "action_name":statusmodel.act.action_name,
+                 "samples":[s.get_global_label() for s in statusmodel.act.samples_in],
+                 "solids":[s.get_global_label() for s in solid_list],
                 })
             index = index+1
         return action_list
@@ -1219,6 +1238,42 @@ class Orch(Base):
         self.status_subscriber.cancel()
 
 
+    def unpack_samples_helper(self, samples: List[SampleUnion] = []) -> Tuple[List[SampleUnion],List[SampleUnion]]:
+        liquid_list = []
+        solid_list = []
+        gas_list = []
+        # assembly_list = []
+
+        for sample in samples:
+            if sample.sample_type == SampleType.assembly:
+                for part in sample.parts:
+                    if part.sample_type == SampleType.assembly:
+                        # recursive unpacking
+                        tmp_liquid_list, tmp_solid_list, tmp_gas_list = \
+                            self.unpack_samples_helper(samples = [part])
+                        for s in tmp_liquid_list:
+                            liquid_list.append(s)
+                        for s in tmp_gas_list:
+                            gas_list.append(s)
+                        for s in tmp_solid_list:
+                            solid_list.append(s)
+                    elif part.sample_type == SampleType.solid:
+                        solid_list.append(part)
+                    elif part.sample_type == SampleType.liquid:
+                        liquid_list.append(part)
+                    elif part.sample_type == SampleType.gas:
+                        gas_list.append(part)
+
+            elif sample.sample_type == SampleType.solid:
+                solid_list.append(sample)
+            elif sample.sample_type == SampleType.liquid:
+                liquid_list.append(sample)
+            elif sample.sample_type == SampleType.gas:
+                gas_list.append(sample)
+
+        return liquid_list, solid_list, gas_list
+
+
 
 class return_sequence_lib(BaseModel):
     """Return class for queried sequence objects."""
@@ -1265,7 +1320,7 @@ class Operator:
             self.dev_customitems = [key for key in dev_custom.keys()]
 
         self.color_sq_param_inputs = "#BDB76B"
-
+        self.max_width = 1024
         # holds the page layout
         self.layout = []
         self.seq_param_layout = []
@@ -1305,7 +1360,7 @@ class Operator:
         self.experimentplan_table = DataTable(
                                         source=self.experimentplan_source, 
                                         columns=self.columns_expplan, 
-                                        width=620, 
+                                        width=self.max_width-20, 
                                         height=200,
                                         autosize_mode = "fit_columns"
                                         )
@@ -1315,7 +1370,7 @@ class Operator:
         self.sequence_table = DataTable(
                                         source=self.sequence_source,
                                         columns=self.columns_seq, 
-                                        width=620, 
+                                        width=self.max_width-20, 
                                         height=200,
                                         autosize_mode = "fit_columns"
                                       )
@@ -1328,7 +1383,7 @@ class Operator:
         self.experiment_table = DataTable(
                                        source=self.experiment_source, 
                                        columns=self.columns_prc, 
-                                       width=620, 
+                                       width=self.max_width-20, 
                                        height=200,
                                        autosize_mode = "fit_columns"
                                       )
@@ -1338,7 +1393,7 @@ class Operator:
         self.action_table = DataTable(
                                       source=self.action_source, 
                                       columns=self.columns_act, 
-                                      width=620, 
+                                      width=self.max_width-20, 
                                       height=200,
                                       autosize_mode = "fit_columns"
                                      )
@@ -1348,7 +1403,7 @@ class Operator:
         self.active_action_table = DataTable(
                                              source=self.active_action_source, 
                                              columns=self.columns_active_action, 
-                                             width=620, 
+                                             width=self.max_width-20, 
                                              height=200,
                                              autosize_mode = "fit_columns"
                                             )
@@ -1415,54 +1470,54 @@ class Operator:
 
         self.layout0 = layout([
             layout(
-                [Spacer(width=20), bmw.Div(text=f"<b>{self.config_dict.get('doc_name', 'Operator')} on {gethostname()}</b>", width=620, height=32, style={"font-size": "200%", "color": "red"})],
-                background="#C0C0C0",width=640),
+                [Spacer(width=20), bmw.Div(text=f"<b>{self.config_dict.get('doc_name', 'Operator')} on {gethostname()}</b>", width=self.max_width-20, height=32, style={"font-size": "200%", "color": "red"})],
+                background="#C0C0C0",width=self.max_width),
             Spacer(height=10),
             layout(
-                [Spacer(width=20), bmw.Div(text="<b>Sequences:</b>", width=620, height=32, style={"font-size": "150%", "color": "red"})],
-                background="#C0C0C0",width=640),
+                [Spacer(width=20), bmw.Div(text="<b>Sequences:</b>", width=self.max_width-20, height=32, style={"font-size": "150%", "color": "red"})],
+                background="#C0C0C0",width=self.max_width),
             layout([
                 [self.sequence_dropdown],
                 [Spacer(width=10), bmw.Div(text="<b>sequence description:</b>", width=200+50, height=15)],
                 [self.sequence_descr_txt],
                 Spacer(height=10),
-                ],background="#808080",width=640),
+                ],background="#808080",width=self.max_width),
             layout([
                 self.button_append_seq, 
                 self.button_prepend_seq,
-                ],background="#808080",width=640)
+                ],background="#808080",width=self.max_width)
             ])
 
         self.layout2 = layout([
             Spacer(height=10),
             layout(
-                [Spacer(width=20), bmw.Div(text="<b>Experiments:</b>", width=620, height=32, style={"font-size": "150%", "color": "red"})],
-                background="#C0C0C0",width=640),
+                [Spacer(width=20), bmw.Div(text="<b>Experiments:</b>", width=self.max_width-20, height=32, style={"font-size": "150%", "color": "red"})],
+                background="#C0C0C0",width=self.max_width),
             Spacer(height=10),
             layout([
                 [self.experiment_dropdown],
                 [Spacer(width=10), bmw.Div(text="<b>experiment description:</b>", width=200+50, height=15)],
                 [self.experiment_descr_txt],
                 Spacer(height=20),
-                ],background="#808080",width=640),
+                ],background="#808080",width=self.max_width),
                 layout([
                     [self.button_append_prc, self.button_prepend_prc],
-                ],background="#808080",width=640)
+                ],background="#808080",width=self.max_width)
             ])
 
 
         self.layout4 = layout([
                 Spacer(height=10),
                 layout(
-                    [Spacer(width=20), bmw.Div(text="<b>Orch:</b>", width=620, height=32, style={"font-size": "150%", "color": "red"})],
-                    background="#C0C0C0",width=640),
+                    [Spacer(width=20), bmw.Div(text="<b>Orch:</b>", width=self.max_width-20, height=32, style={"font-size": "150%", "color": "red"})],
+                    background="#C0C0C0",width=self.max_width),
                 layout([
                     [
                      self.input_sequence_label, 
-                     self.button_start_orch, 
-                     Spacer(width=10),
                      self.button_add_expplan,
                      Spacer(width=10), 
+                     self.button_start_orch, 
+                     Spacer(width=10),
                      self.button_stop_orch,
                      Spacer(width=10), 
                      self.button_clear_expplan,
@@ -1473,7 +1528,7 @@ class Operator:
                     [Spacer(width=10), bmw.Div(text="<b>Error message:</b>", width=200+50, height=15, style={"font-size": "100%", "color": "black"})],
                     [Spacer(width=10), self.error_txt],
                     Spacer(height=10),
-                    ],background="#808080",width=640),
+                    ],background="#808080",width=self.max_width),
                 layout([
                 [Spacer(width=20), bmw.Div(text="<b>Experiment Plan:</b>", width=200+50, height=15)],
                 [self.experimentplan_table],
@@ -1497,7 +1552,7 @@ class Operator:
                  self.button_update
                 ],
                 Spacer(height=10),
-                ],background="#7fdbff",width=640),
+                ],background="#7fdbff",width=self.max_width),
             ])
 
 
@@ -1740,8 +1795,7 @@ class Operator:
 
 
     def callback_start_orch(self, event):
-        if self.sequence is not None \
-        and self.orch.orchstatusmodel.loop_state == OrchStatus.stopped:
+        if self.orch.orchstatusmodel.loop_state == OrchStatus.stopped:
             self.vis.print_message("starting orch")
             self.vis.doc.add_next_tick_callback(partial(self.orch.start))
         else:
@@ -1750,10 +1804,11 @@ class Operator:
 
     def callback_add_expplan(self, event):
         """add experiment plan as new sequene to orch sequence_dq"""
-        sellabel = self.input_sequence_label.value
-        self.sequence.sequence_label = sellabel
-        self.vis.doc.add_next_tick_callback(partial(self.orch.add_sequence,self.sequence))
-        self.vis.doc.add_next_tick_callback(partial(self.update_tables))
+        if self.sequence is not None:
+            sellabel = self.input_sequence_label.value
+            self.sequence.sequence_label = sellabel
+            self.vis.doc.add_next_tick_callback(partial(self.orch.add_sequence,self.sequence))
+            self.vis.doc.add_next_tick_callback(partial(self.update_tables))
 
 
     def callback_stop_orch(self, event):
@@ -1909,7 +1964,7 @@ class Operator:
         self.seq_param_layout = [
             layout([
                 [Spacer(width=10), bmw.Div(text="<b>Optional sequence parameters:</b>", width=200+50, height=15, style={"font-size": "100%", "color": "black"})],
-                ],background=self.color_sq_param_inputs,width=640),
+                ],background=self.color_sq_param_inputs,width=self.max_width),
             ]
 
 
@@ -1926,7 +1981,7 @@ class Operator:
             self.seq_param_layout.append(
                     layout([
                     [Spacer(width=10), bmw.Div(text="-- none --", width=200+50, height=15, style={"font-size": "100%", "color": "black"})],
-                    ],background=self.color_sq_param_inputs,width=640),
+                    ],background=self.color_sq_param_inputs,width=self.max_width),
                 )
 
         self.dynamic_col.children.insert(1, layout(self.seq_param_layout))
@@ -1947,7 +2002,7 @@ class Operator:
         self.prc_param_layout = [
             layout([
                 [Spacer(width=10), bmw.Div(text="<b>Optional experiment parameters:</b>", width=200+50, height=15, style={"font-size": "100%", "color": "black"})],
-                ],background=self.color_sq_param_inputs,width=640),
+                ],background=self.color_sq_param_inputs,width=self.max_width),
             ]
         self.add_dynamic_inputs(
                                 self.prc_param_input,
@@ -1962,7 +2017,7 @@ class Operator:
             self.prc_param_layout.append(
                     layout([
                     [Spacer(width=10), bmw.Div(text="-- none --", width=200+50, height=15, style={"font-size": "100%", "color": "black"})],
-                    ],background=self.color_sq_param_inputs,width=640),
+                    ],background=self.color_sq_param_inputs,width=self.max_width),
                 )
 
         self.dynamic_col.children.insert(3, layout(self.prc_param_layout))
@@ -1990,7 +2045,7 @@ class Operator:
             param_layout.append(layout([
                         [param_input[item]],
                         Spacer(height=10),
-                        ],background=self.color_sq_param_inputs,width=640))
+                        ],background=self.color_sq_param_inputs,width=self.max_width))
             item = item + 1
 
             # special key params
@@ -2001,7 +2056,7 @@ class Operator:
                     # height=300,
                     x_axis_label="X (mm)", 
                     y_axis_label="Y (mm)",
-                    width = 640,
+                    width = self.max_width,
                     aspect_ratio  = 6/4,
                     aspect_scale = 1
                     ))
@@ -2014,7 +2069,7 @@ class Operator:
                 param_layout.append(layout([
                             [private_input[-1]],
                             Spacer(height=10),
-                            ],background=self.color_sq_param_inputs,width=640))
+                            ],background=self.color_sq_param_inputs,width=self.max_width))
 
                 private_input.append(TextInput(value="", title="elements", disabled=True, width=120, height=40))
                 private_input.append(TextInput(value="", title="code", disabled=True, width=60, height=40))
@@ -2022,7 +2077,7 @@ class Operator:
                 param_layout.append(layout([
                             [private_input[-3], private_input[-2], private_input[-1]],
                             Spacer(height=10),
-                            ],background=self.color_sq_param_inputs,width=640))
+                            ],background=self.color_sq_param_inputs,width=self.max_width))
 
             elif args[idx] == "solid_sample_no":
                 param_input[-1].on_change("value", partial(self.callback_changed_sampleno, sender=param_input[-1]))
@@ -2043,7 +2098,7 @@ class Operator:
                 param_layout[-1] = layout([
                             [param_input[-1]],
                             Spacer(height=10),
-                            ],background=self.color_sq_param_inputs,width=640)
+                            ],background=self.color_sq_param_inputs,width=self.max_width)
 
             elif args[idx] == "liquid_custom_position":
                 param_input[-1] = Select(title=args[idx], value = None, options=self.dev_customitems)
@@ -2055,14 +2110,14 @@ class Operator:
                 param_layout[-1] = layout([
                             [param_input[-1]],
                             Spacer(height=10),
-                            ],background=self.color_sq_param_inputs,width=640)
+                            ],background=self.color_sq_param_inputs,width=self.max_width)
 
             elif args[idx] == "plate_sample_no_list":
                 private_input.append(FileInput(width=200,accept=".txt"))
                 param_layout.append(layout([
                             [private_input[-1]],
                             Spacer(height=10),
-                            ],background=self.color_sq_param_inputs,width=640))
+                            ],background=self.color_sq_param_inputs,width=self.max_width))
                 private_input[-1].on_change("value", 
                                             partial(self.callback_plate_sample_no_list_file, 
                                                     sender=private_input[-1], 
