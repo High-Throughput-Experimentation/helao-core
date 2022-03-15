@@ -4,13 +4,9 @@ import asyncio
 import sys
 from collections import deque
 from copy import deepcopy
-from math import floor
-from typing import Optional, Union, List
+from typing import Optional,List
 from uuid import UUID
-from datetime import datetime
 from socket import gethostname
-from importlib import import_module
-from enum import Enum
 import inspect
 from pydantic import BaseModel
 import numpy as np
@@ -35,7 +31,8 @@ from bokeh.models import Button, TextInput
 import bokeh.models.widgets as bmw
 import bokeh.plotting as bpl
 from bokeh.events import ButtonClick, DoubleTap
-from bokeh.models.widgets import FileInput
+from bokeh.models.widgets import FileInput, Toggle
+
 
 from .base import Base
 from .api import HelaoFastAPI
@@ -523,6 +520,211 @@ class Orch(Base):
             return []
 
 
+
+    async def loop_task_dispatch_sequence(self) -> bool:
+        if self.sequence_dq:
+            self.print_message("finishing last sequence")
+            await self.finish_active_sequence()
+            self.print_message("getting new sequence from sequence_dq")
+            self.active_sequence = self.sequence_dq.popleft()
+            self.active_sequence.init_seq(time_offset = self.ntp_offset)
+
+            # todo: this is for later, for now the operator needs to unpack the sequence
+            # in order to also use a semi manual op mode
+            
+            # self.print_message(f"unpacking experiments for {self.active_sequence.sequence_name}")
+            # if self.active_sequence.sequence_name in self.sequence_lib:
+            #     unpacked_prcs = self.sequence_lib[self.active_sequence.sequence_name](**self.active_sequence.sequence_params)
+            # else:
+            #     unpacked_prcs = []
+
+            # for prc in unpacked_prcs:
+            #     D = Experiment(**prc.as_dict())
+            #     self.active_sequence.experiment_plan_list.append(D)
+
+
+            self.seq_file = self.active_sequence.get_seq()
+            await self.write_seq(self.active_sequence)
+
+            # add all experiments from sequence to experiment queue
+            # todo: use seq model instead to initialize some parameters
+            # of the experiment
+            for experimenttemplate in self.active_sequence.experiment_plan_list:
+                    self.print_message(f"unpack experiment "
+                                       f"{experimenttemplate.experiment_name}")
+                    await self.add_experiment(
+                        seq = self.active_sequence.get_seq(),
+                        experimenttemplate = experimenttemplate,
+                        )
+
+
+            self.orchstatusmodel.loop_state = OrchStatus.started
+            return True
+
+        else:
+            self.print_message("sequence queue is empty, "
+                               "cannot start orch loop")
+
+            self.orchstatusmodel.loop_state = OrchStatus.stopped
+            await self.intend_none()
+            return False
+
+
+
+    async def loop_task_dispatch_experiment(self):
+        self.print_message("action_dq is empty, getting new actions")
+        # wait for all actions in last/active experiment to finish 
+        self.print_message("finishing last active experiment first")
+        await self.finish_active_experiment()
+
+        self.print_message("getting new experiment to fill action_dq")
+        # generate uids when populating, 
+        # generate timestamp when acquring
+        self.active_experiment = self.experiment_dq.popleft()
+        self.print_message(f"new active experiment is {self.active_experiment.experiment_name}")
+
+        self.active_experiment.technique_name = self.technique_name
+        self.active_experiment.orchestrator = self.server
+        self.active_experiment.init_prc(time_offset=self.ntp_offset)
+
+        self.orchstatusmodel.new_experiment(
+            exp_uuid = self.active_experiment.experiment_uuid)
+
+
+        # additional experiment params should be stored 
+        # in experiment.experiment_params
+        self.print_message(f"unpacking actions for {self.active_experiment.experiment_name}")
+        unpacked_acts = self.experiment_lib[
+            self.active_experiment.experiment_name
+                                        ](self.active_experiment)
+        if unpacked_acts is None:
+            self.print_message(
+                "no actions in experiment",
+                error = True
+            )
+            self.action_dq = deque([])
+            return
+
+        self.print_message("setting action order")
+        for i, act in enumerate(unpacked_acts):
+            act.action_order = int(i)
+            # actual order should be the same at the beginning
+            # will be incremented as necessary
+            act.orch_submit_order = int(i)
+
+        # TODO:update experiment code
+        self.print_message("adding unpacked actions to action_dq")
+        self.action_dq = deque(unpacked_acts)
+        self.print_message(f"got: {self.action_dq}")
+        self.print_message(f"optional params: {self.active_experiment.experiment_params}")
+
+
+        # write a temporary prc
+        await self.write_active_experiment_prc()
+
+
+    async def loop_task_dispatch_action(self):
+        self.print_message("actions in action_dq, processing them")
+        if self.orchstatusmodel.loop_intent == OrchStatus.stop:
+            self.print_message("stopping orchestrator")
+            # monitor status of running action_dq, then end loop
+            while self.orchstatusmodel.loop_state != OrchStatus.stopped:
+                # wait for all orch actions to finish first
+                await self.orch_wait_for_all_actions()
+                if self.orchstatusmodel.orch_state == OrchStatus.idle:
+                    await self.intend_none()
+                    self.print_message("got stop")
+                    self.orchstatusmodel.loop_state = OrchStatus.stopped
+                    break
+
+        elif self.orchstatusmodel.loop_intent == OrchStatus.skip:
+            # clear action queue, forcing next experiment
+            self.action_dq.clear()
+            await self.intend_none()
+            self.print_message("skipping to next experiment")
+        else:
+            # all action blocking is handled like preempt, 
+            # check Action requirements
+            A = self.action_dq.popleft()
+
+            # see async_action_dispatcher for unpacking
+
+            if A.start_condition == ActionStartCondition.no_wait:
+                self.print_message("orch is dispatching an unconditional action")
+            else:
+                if A.start_condition == ActionStartCondition.wait_for_endpoint:
+                    self.print_message(
+                        "orch is waiting for endpoint to become available"
+                    )
+                    while True:
+                        await self.wait_for_interrupt()
+                        endpoint_free = \
+                            self.orchstatusmodel.endpoint_free(
+                                action_server = A.action_server,
+                                endpoint_name = A.action_name
+                            )
+                        if endpoint_free:
+                            break
+                elif A.start_condition == ActionStartCondition.wait_for_server:
+                    self.print_message("orch is waiting for "
+                                       "server to become available")
+                    while True:
+                        await self.wait_for_interrupt()
+                        server_free = \
+                        self.orchstatusmodel.server_free(
+                                    action_server = A.action_server
+                        )
+
+                        if server_free:
+                            break
+                elif A.start_condition == ActionStartCondition.wait_for_all:
+                    await self.orch_wait_for_all_actions()
+
+                else:  #unsupported value
+                    await self.orch_wait_for_all_actions()
+
+            self.print_message("copying global vars to action")
+
+            # copy requested global param to action params
+            for k, v in A.from_global_params.items():
+                self.print_message(f"{k}:{v}")
+                if k in self.active_experiment.global_params:
+                    A.action_params.update({v: self.active_experiment.global_params[k]})
+
+            self.print_message(
+                f"dispatching action {A.action_name} "
+                f"on server {A.action_server.server_name}"
+            )
+            # keep running counter of dispatched actions
+            A.orch_submit_order = \
+                self.orchstatusmodel.counter_dispatched_actions[self.active_experiment.experiment_uuid]
+            self.orchstatusmodel.counter_dispatched_actions[self.active_experiment.experiment_uuid] +=1
+
+            A.init_act(time_offset = self.ntp_offset)
+            result, error_code = await async_action_dispatcher(self.world_cfg, A)
+
+            self.print_message("copying global vars "
+                               "back to experiment")
+            # self.print_message(result)
+            if "to_global_params" in result:
+                for k in result["to_global_params"]:
+                    if k in result["action_params"]:
+                        if (
+                            result["action_params"][k] is None
+                            and k in self.active_experiment.global_params
+                        ):
+                            self.active_experiment.global_params.pop(k)
+                        else:
+                            self.active_experiment.global_params.update(
+                                {k: result["action_params"][k]}
+                            )
+            self.print_message("done copying global "
+                               "vars back to experiment")
+        
+
+
+
+
     async def dispatch_loop_task(self):
         """Parse experiment and action queues, 
            and dispatch action_dq while tracking run state flags."""
@@ -533,209 +735,40 @@ class Orch(Base):
         self.print_message(f"current orch descisions: {self.experiment_dq}")
         self.print_message(f"current orch actions: {self.action_dq}")
         self.print_message("--- resuming orch loop now ---")
-        
+
+        self.orchstatusmodel.loop_state = OrchStatus.started
+
         try:
-            if self.sequence_dq:
-                self.print_message("getting new sequence from sequence_dq")
-                self.active_sequence = self.sequence_dq.popleft()
-                self.active_sequence.init_seq(time_offset = self.ntp_offset)
-    
-                # todo: this is for later, for now the operator needs to unpack the sequence
-                # in order to also use a semi manual op mode
-                
-                # self.print_message(f"unpacking experiments for {self.active_sequence.sequence_name}")
-                # if self.active_sequence.sequence_name in self.sequence_lib:
-                #     unpacked_prcs = self.sequence_lib[self.active_sequence.sequence_name](**self.active_sequence.sequence_params)
-                # else:
-                #     unpacked_prcs = []
-    
-                # for prc in unpacked_prcs:
-                #     D = Experiment(**prc.as_dict())
-                #     self.active_sequence.experiment_plan_list.append(D)
-    
-    
-                self.seq_file = self.active_sequence.get_seq()
-                await self.write_seq(self.active_sequence)
-    
-                # add all experiments from sequence to experiment queue
-                # todo: use seq model instead to initialize some parameters
-                # of the experiment
-                for experimenttemplate in self.active_sequence.experiment_plan_list:
-                        self.print_message(f"unpack experiment "
-                                           f"{experimenttemplate.experiment_name}")
-                        await self.add_experiment(
-                            seq = self.active_sequence.get_seq(),
-                            experimenttemplate = experimenttemplate,
-                            )
-
-
-                self.orchstatusmodel.loop_state = OrchStatus.started
-
-            else:
-                self.print_message("sequence queue is empty, "
-                                   "cannot start orch loop")
-
-
-            while self.orchstatusmodel.loop_state == OrchStatus.started and (self.action_dq or self.experiment_dq):
+            while self.orchstatusmodel.loop_state == OrchStatus.started \
+            and (self.action_dq or self.experiment_dq or self.sequence_dq):
                 self.print_message(f"current content of action_dq: {self.action_dq}")
                 self.print_message(f"current content of experiment_dq: {self.experiment_dq}")
+                self.print_message(f"current content of sequence_dq: {self.sequence_dq}")
                 await asyncio.sleep(
                     0.001
                 )  
                 
-                # if status queue is empty get first new actions from new experiment
-                if not self.action_dq:
-                    self.print_message("action_dq is empty, getting new actions")
-                    # wait for all actions in last/active experiment to finish 
-                    self.print_message("finishing last active experiment first")
-                    await self.finish_active_experiment()
 
-                    self.print_message("getting new experiment to fill action_dq")
-                    # generate uids when populating, 
-                    # generate timestamp when acquring
-                    self.active_experiment = self.experiment_dq.popleft()
-                    self.print_message(f"new active experiment is {self.active_experiment.experiment_name}")
+                # if no acts and no exps, disptach next sequence
+                if not self.experiment_dq \
+                and  not self.action_dq:
+                    self.print_message("!!!dispatchinng next sequence", 
+                                       info = True)
+                    await self.loop_task_dispatch_sequence()
 
-                    self.active_experiment.technique_name = self.technique_name
-                    self.active_experiment.orchestrator = self.server
-                    self.active_experiment.init_prc(time_offset=self.ntp_offset)
-
-                    self.orchstatusmodel.new_experiment(
-                        exp_uuid = self.active_experiment.experiment_uuid)
-
-
-                    # additional experiment params should be stored 
-                    # in experiment.experiment_params
-                    self.print_message(f"unpacking actions for {self.active_experiment.experiment_name}")
-                    unpacked_acts = self.experiment_lib[
-                        self.active_experiment.experiment_name
-                                                    ](self.active_experiment)
-                    if unpacked_acts is None:
-                        self.print_message(
-                            "no actions in experiment",
-                            error = True
-                        )
-                        self.action_dq = deque([])
-                        continue
-
-                    self.print_message("setting action order")
-                    for i, act in enumerate(unpacked_acts):
-                        act.action_order = int(i)
-                        # actual order should be the same at the beginning
-                        # will be incremented as necessary
-                        act.orch_submit_order = int(i)
-
-                    # TODO:update experiment code
-                    self.print_message("adding unpacked actions to action_dq")
-                    self.action_dq = deque(unpacked_acts)
-                    self.print_message(f"got: {self.action_dq}")
-                    self.print_message(f"optional params: {self.active_experiment.experiment_params}")
-
-
-                    # write a temporary prc
-                    await self.write_active_experiment_prc()
+                # check if we have still actions to dispatch
+                elif not self.action_dq:
+                    self.print_message("!!!dispatchinng next experiment", 
+                                       info = True)
+                    await self.loop_task_dispatch_experiment()
 
                 else:
-                    self.print_message("actions in action_dq, processing them")
-                    if self.orchstatusmodel.loop_intent == OrchStatus.stop:
-                        self.print_message("stopping orchestrator")
-                        # monitor status of running action_dq, then end loop
-                        while self.orchstatusmodel.loop_state != OrchStatus.stopped:
-                            # wait for all orch actions to finish first
-                            await self.orch_wait_for_all_actions()
-                            if self.orchstatusmodel.orch_state == OrchStatus.idle:
-                                await self.intend_none()
-                                self.print_message("got stop")
-                                self.orchstatusmodel.loop_state = OrchStatus.stopped
-                                break
+                    self.print_message("!!!dispatchinng next action", 
+                                       info = True)
+                    await self.loop_task_dispatch_action()
+                    
 
-                    elif self.orchstatusmodel.loop_intent == OrchStatus.skip:
-                        # clear action queue, forcing next experiment
-                        self.action_dq.clear()
-                        await self.intend_none()
-                        self.print_message("skipping to next experiment")
-                    else:
-                        # all action blocking is handled like preempt, 
-                        # check Action requirements
-                        A = self.action_dq.popleft()
-                        # append previous results to current action
-                        A.result_dict = self.active_experiment.result_dict
-
-                        # see async_action_dispatcher for unpacking
-
-                        if A.start_condition == ActionStartCondition.no_wait:
-                            self.print_message("orch is dispatching an unconditional action")
-                        else:
-                            if A.start_condition == ActionStartCondition.wait_for_endpoint:
-                                self.print_message(
-                                    "orch is waiting for endpoint to become available"
-                                )
-                                while True:
-                                    await self.wait_for_interrupt()
-                                    endpoint_free = \
-                                        self.orchstatusmodel.endpoint_free(
-                                            action_server = A.action_server,
-                                            endpoint_name = A.action_name
-                                        )
-                                    if endpoint_free:
-                                        break
-                            elif A.start_condition == ActionStartCondition.wait_for_server:
-                                self.print_message("orch is waiting for "
-                                                   "server to become available")
-                                while True:
-                                    await self.wait_for_interrupt()
-                                    server_free = \
-                                    self.orchstatusmodel.server_free(
-                                                action_server = A.action_server
-                                    )
-
-                                    if server_free:
-                                        break
-                            elif A.start_condition == ActionStartCondition.wait_for_all:
-                                await self.orch_wait_for_all_actions()
-
-                            else:  #unsupported value
-                                await self.orch_wait_for_all_actions()
-
-                        self.print_message("copying global vars to action")
-
-                        # copy requested global param to action params
-                        for k, v in A.from_global_params.items():
-                            self.print_message(f"{k}:{v}")
-                            if k in self.active_experiment.global_params:
-                                A.action_params.update({v: self.active_experiment.global_params[k]})
-
-                        self.print_message(
-                            f"dispatching action {A.action_name} "
-                            f"on server {A.action_server.server_name}"
-                        )
-                        # keep running counter of dispatched actions
-                        A.orch_submit_order = \
-                            self.orchstatusmodel.counter_dispatched_actions[self.active_experiment.experiment_uuid]
-                        self.orchstatusmodel.counter_dispatched_actions[self.active_experiment.experiment_uuid] +=1
-
-                        A.init_act(time_offset = self.ntp_offset)
-                        result, error_code = await async_action_dispatcher(self.world_cfg, A)
-
-                        self.print_message("copying global vars "
-                                           "back to experiment")
-                        # self.print_message(result)
-                        if "to_global_params" in result:
-                            for k in result["to_global_params"]:
-                                if k in result["action_params"]:
-                                    if (
-                                        result["action_params"][k] is None
-                                        and k in self.active_experiment.global_params
-                                    ):
-                                        self.active_experiment.global_params.pop(k)
-                                    else:
-                                        self.active_experiment.global_params.update(
-                                            {k: result["action_params"][k]}
-                                        )
-                        self.print_message("done copying global "
-                                           "vars back to experiment")
-
-            self.print_message("experiment queue is empty")
+            self.print_message("all queues are empty")
             self.print_message("--- stopping operator orch ---", info = True)
 
             # finish the last prc
@@ -750,9 +783,11 @@ class Orch(Base):
             self.orchstatusmodel.loop_state = OrchStatus.stopped
             await self.intend_none()
             return True
+
         # except asyncio.CancelledError:
         #     self.print_message("serious orch exception occurred",error = True)
         #     return False
+
         except Exception as e:
             self.print_message("serious orch exception occurred", error=True)
             self.print_message(f"ERROR: {e}", error=True)
@@ -931,6 +966,12 @@ class Orch(Base):
         await self.interrupt_q.put("cleared_errored")
 
 
+    async def clear_sequences(self):
+        self.print_message("clearing sequence queue")
+        await asyncio.sleep(0.001)
+        self.sequence_dq.clear()
+
+
     async def clear_experiments(self):
         self.print_message("clearing experiment queue")
         await asyncio.sleep(0.001)
@@ -960,7 +1001,6 @@ class Orch(Base):
         # orchestrator: str = None,
         # experiment_name: str = None,
         # experiment_params: dict = {},
-        # result_dict: dict = {},
         # access: str = "hte",
         prepend: Optional[bool] = False,
         at_index: Optional[int] = None,
@@ -986,6 +1026,11 @@ class Orch(Base):
             self.print_message(f"experiment {D.experiment_name} "
                                "appended to queue")
 
+
+    def list_sequences(self):
+        """Return the current queue of sequence_dq."""
+        return [sequence.get_seq() for sequence in self.sequence_dq]
+        
 
     def list_experiments(self):
         """Return the current queue of experiment_dq."""
@@ -1232,6 +1277,7 @@ class Operator:
 
         self.sequence = None
         self.experiment_plan_list = dict()
+        self.sequence_list = dict()
         self.experiment_list = dict()
         self.action_list = dict()
         self.active_action_list = dict()
@@ -1249,20 +1295,33 @@ class Operator:
         self.get_experiment_lib()
 
 
-
+        self.vis.doc.add_next_tick_callback(partial(self.get_sequences))
         self.vis.doc.add_next_tick_callback(partial(self.get_experiments))
         self.vis.doc.add_next_tick_callback(partial(self.get_actions))
         self.vis.doc.add_next_tick_callback(partial(self.get_active_actions))
 
-        self.sequence_source = ColumnDataSource(data=self.experiment_plan_list)
-        self.columns_seq = [TableColumn(field=key, title=key) for key in self.experiment_plan_list]
+        self.experimentplan_source = ColumnDataSource(data=self.experiment_plan_list)
+        self.columns_expplan = [TableColumn(field=key, title=key) for key in self.experiment_plan_list]
         self.experimentplan_table = DataTable(
-                                        source=self.sequence_source, 
-                                        columns=self.columns_seq, 
+                                        source=self.experimentplan_source, 
+                                        columns=self.columns_expplan, 
                                         width=620, 
                                         height=200,
                                         autosize_mode = "fit_columns"
                                         )
+
+        self.sequence_source = ColumnDataSource(data=self.sequence_list)
+        self.columns_seq = [TableColumn(field=key, title=key) for key in self.sequence_list]
+        self.sequence_table = DataTable(
+                                        source=self.sequence_source,
+                                        columns=self.columns_seq, 
+                                        width=620, 
+                                        height=200,
+                                        autosize_mode = "fit_columns"
+                                      )
+
+
+
 
         self.experiment_source = ColumnDataSource(data=self.experiment_list)
         self.columns_prc = [TableColumn(field=key, title=key) for key in self.experiment_list]
@@ -1310,31 +1369,42 @@ class Operator:
 
 
         # buttons to control orch
-        self.button_start = Button(label="Start Orch", button_type="default", width=70)
-        self.button_start.on_event(ButtonClick, self.callback_start)
-        self.button_stop = Button(label="Stop Orch", button_type="default", width=70)
-        self.button_stop.on_event(ButtonClick, self.callback_stop)
-        self.button_skip = Button(label="Skip prc", button_type="danger", width=70)
-        self.button_skip.on_event(ButtonClick, self.callback_skip_dec)
+        self.button_start_orch = Button(label="Start Orch", button_type="default", width=70)
+        self.button_start_orch.on_event(ButtonClick, self.callback_start_orch)
+        self.button_add_expplan = Button(label="add exp plan", button_type="default", width=100)
+        self.button_add_expplan.on_event(ButtonClick, self.callback_add_expplan)
+        self.button_stop_orch = Button(label="Stop Orch", button_type="default", width=70)
+        self.button_stop_orch.on_event(ButtonClick, self.callback_stop_orch)
+        self.button_skip_exp = Button(label="Skip exp", button_type="danger", width=70)
+        self.button_skip_exp.on_event(ButtonClick, self.callback_skip_exp)
         self.button_update = Button(label="update tables", button_type="default", width=120)
         self.button_update.on_event(ButtonClick, self.callback_update_tables)
-        self.button_clear_seqg = Button(label="clear seqg", button_type="default", width=70)
-        self.button_clear_seqg.on_event(ButtonClick, self.callback_clear_seqg)
+        self.button_clear_expplan = Button(label="clear expplan", button_type="default", width=100)
+        self.button_clear_expplan.on_event(ButtonClick, self.callback_clear_expplan)
+        self.orch_status_button = Toggle(
+                                           label="Disabled", 
+                                           disabled=True, 
+                                           button_type="danger", 
+                                           width=50
+                                          ) #success: green, danger: red
 
-        self.button_clear_prg = Button(label="clear prc", button_type="danger", width=100)
-        self.button_clear_prg.on_event(ButtonClick, self.callback_clear_experiments)
+
+        self.button_clear_seqs = Button(label="clear seqs", button_type="danger", width=100)
+        self.button_clear_seqs.on_event(ButtonClick, self.callback_clear_sequences)
+        self.button_clear_exps = Button(label="clear exp", button_type="danger", width=100)
+        self.button_clear_exps.on_event(ButtonClick, self.callback_clear_experiments)
         self.button_clear_action = Button(label="clear act", button_type="danger", width=100)
         self.button_clear_action.on_event(ButtonClick, self.callback_clear_actions)
 
-        self.button_prepend_prc = Button(label="prepend prc", button_type="default", width=150)
+        self.button_prepend_prc = Button(label="prepend exp to exp plan", button_type="default", width=150)
         self.button_prepend_prc.on_event(ButtonClick, self.callback_prepend_prc)
-        self.button_append_prc = Button(label="append prc", button_type="default", width=150)
+        self.button_append_prc = Button(label="append exp to exp plan", button_type="default", width=150)
         self.button_append_prc.on_event(ButtonClick, self.callback_append_prc)
 
-        self.button_prepend_seqg = Button(label="prepend seqg", button_type="default", width=150)
-        self.button_prepend_seqg.on_event(ButtonClick, self.callback_prepend_seqg)
-        self.button_append_seqg = Button(label="append seqg", button_type="default", width=150)
-        self.button_append_seqg.on_event(ButtonClick, self.callback_append_seqg)
+        self.button_prepend_seq = Button(label="prepend seq to experiment plan list", button_type="default", width=250)
+        self.button_prepend_seq.on_event(ButtonClick, self.callback_prepend_seq)
+        self.button_append_seq = Button(label="append seq to experiment plan list", button_type="default", width=250)
+        self.button_append_seq.on_event(ButtonClick, self.callback_append_seq)
 
 
         self.sequence_descr_txt = bmw.Div(text="""select a sequence item""", width=600)
@@ -1358,7 +1428,8 @@ class Operator:
                 Spacer(height=10),
                 ],background="#808080",width=640),
             layout([
-                [self.button_append_seqg, self.button_prepend_seqg],
+                self.button_append_seq, 
+                self.button_prepend_seq,
                 ],background="#808080",width=640)
             ])
 
@@ -1386,7 +1457,18 @@ class Operator:
                     [Spacer(width=20), bmw.Div(text="<b>Orch:</b>", width=620, height=32, style={"font-size": "150%", "color": "red"})],
                     background="#C0C0C0",width=640),
                 layout([
-                    [self.input_sequence_label, self.button_start, Spacer(width=10), self.button_stop,  Spacer(width=10), self.button_clear_seqg],
+                    [
+                     self.input_sequence_label, 
+                     self.button_start_orch, 
+                     Spacer(width=10),
+                     self.button_add_expplan,
+                     Spacer(width=10), 
+                     self.button_stop_orch,
+                     Spacer(width=10), 
+                     self.button_clear_expplan,
+                     Spacer(width=10), 
+                     self.orch_status_button,
+                    ],
                     Spacer(height=10),
                     [Spacer(width=10), bmw.Div(text="<b>Error message:</b>", width=200+50, height=15, style={"font-size": "100%", "color": "black"})],
                     [Spacer(width=10), self.error_txt],
@@ -1395,6 +1477,8 @@ class Operator:
                 layout([
                 [Spacer(width=20), bmw.Div(text="<b>Experiment Plan:</b>", width=200+50, height=15)],
                 [self.experimentplan_table],
+                [Spacer(width=20), bmw.Div(text="<b>queued sequences:</b>", width=200+50, height=15)],
+                [self.sequence_table],
                 [Spacer(width=20), bmw.Div(text="<b>queued experiments:</b>", width=200+50, height=15)],
                 [self.experiment_table],
                 [Spacer(width=20), bmw.Div(text="<b>queued actions:</b>", width=200+50, height=15)],
@@ -1402,7 +1486,16 @@ class Operator:
                 [Spacer(width=20), bmw.Div(text="<b>Active actions:</b>", width=200+50, height=15)],
                 [self.active_action_table],
                 Spacer(height=10),
-                [self.button_skip, Spacer(width=5), self.button_clear_prg, Spacer(width=5), self.button_clear_action, self.button_update],
+                [
+                 self.button_skip_exp, 
+                 Spacer(width=5), 
+                 self.button_clear_seqs, 
+                 Spacer(width=5), 
+                 self.button_clear_exps, 
+                 Spacer(width=5), 
+                 self.button_clear_action, 
+                 self.button_update
+                ],
                 Spacer(height=10),
                 ],background="#7fdbff",width=640),
             ])
@@ -1505,6 +1598,22 @@ class Operator:
             )
         for item in self.experiments:
             self.experiment_select_list.append(item["experiment_name"])
+
+
+    async def get_sequences(self):
+        """get experiment list from orch"""
+        sequences = self.orch.list_sequences()
+        self.sequence_list = dict()
+        if sequences:
+            for key,val in sequences[0].json_dict().items():
+                if val is not None:
+                    self.sequence_list[key] = []
+            for seq in sequences:
+                for key, value in seq.json_dict().items():
+                    if key in self.sequence_list:
+                        self.sequence_list[key].append(value)
+        self.vis.print_message(f"current queued sequences: {self.sequence_list}")
+
 
 
     async def get_experiments(self):
@@ -1630,33 +1739,44 @@ class Operator:
             self.vis.doc.add_next_tick_callback(partial(self.update_input_value,sender,""))
 
 
-    def callback_start(self, event):
-        if self.sequence is not None:
-            sellabel = self.input_sequence_label.value
-            self.sequence.sequence_label = sellabel
+    def callback_start_orch(self, event):
+        if self.sequence is not None \
+        and self.orch.orchstatusmodel.loop_state == OrchStatus.stopped:
             self.vis.print_message("starting orch")
-            self.vis.doc.add_next_tick_callback(partial(self.orch.add_sequence,self.sequence))
             self.vis.doc.add_next_tick_callback(partial(self.orch.start))
-            self.vis.doc.add_next_tick_callback(partial(self.update_tables))
         else:
             self.vis.print_message("Cannot start orch. Sequence is empty.")
 
 
-    def callback_stop(self, event):
+    def callback_add_expplan(self, event):
+        """add experiment plan as new sequene to orch sequence_dq"""
+        sellabel = self.input_sequence_label.value
+        self.sequence.sequence_label = sellabel
+        self.vis.doc.add_next_tick_callback(partial(self.orch.add_sequence,self.sequence))
+        self.vis.doc.add_next_tick_callback(partial(self.update_tables))
+
+
+    def callback_stop_orch(self, event):
         self.vis.print_message("stopping operator orch")
         self.vis.doc.add_next_tick_callback(partial(self.orch.stop))
         self.vis.doc.add_next_tick_callback(partial(self.update_tables))
 
 
-    def callback_skip_dec(self, event):
+    def callback_skip_exp(self, event):
         self.vis.print_message("skipping experiment")
         self.vis.doc.add_next_tick_callback(partial(self.orch.skip))
         self.vis.doc.add_next_tick_callback(partial(self.update_tables))
 
 
-    def callback_clear_seqg(self, event):
-        self.vis.print_message("clearing seqg table")
+    def callback_clear_expplan(self, event):
+        self.vis.print_message("clearing exp plan table")
         self.sequence = None
+        self.vis.doc.add_next_tick_callback(partial(self.update_tables))
+
+
+    def callback_clear_sequences(self, event):
+        self.vis.print_message("clearing experiments")
+        self.vis.doc.add_next_tick_callback(partial(self.orch.clear_sequences))
         self.vis.doc.add_next_tick_callback(partial(self.update_tables))
 
 
@@ -1672,14 +1792,14 @@ class Operator:
         self.vis.doc.add_next_tick_callback(partial(self.update_tables))
 
 
-    def callback_prepend_seqg(self, event):
+    def callback_prepend_seq(self, event):
         sequence = self.populate_sequence()
         for i, D in enumerate(sequence.experiment_plan_list):
             self.sequence.experiment_plan_list.insert(i,D)
         self.vis.doc.add_next_tick_callback(partial(self.update_tables))
 
 
-    def callback_append_seqg(self, event):
+    def callback_append_seq(self, event):
         sequence = self.populate_sequence()
         for D in sequence.experiment_plan_list:
             self.sequence.experiment_plan_list.append(D)
@@ -2149,6 +2269,7 @@ class Operator:
         
 
     async def update_tables(self):
+        await self.get_sequences()
         await self.get_experiments()
         await self.get_actions()
         await self.get_active_actions()
@@ -2165,10 +2286,13 @@ class Operator:
                 self.experiment_plan_list["experiment_name"].append(D.experiment_name)
 
 
-        self.columns_seq = [TableColumn(field=key, title=key) for key in self.experiment_plan_list]
+        self.columns_expplan = [TableColumn(field=key, title=key) for key in self.experiment_plan_list]
         self.experimentplan_table.source.data = self.experiment_plan_list
-        self.experimentplan_table.columns=self.columns_seq
+        self.experimentplan_table.columns=self.columns_expplan
 
+        self.columns_seq = [TableColumn(field=key, title=key) for key in self.sequence_list]
+        self.sequence_table.source.data = self.sequence_list
+        self.sequence_table.columns=self.columns_seq
 
         self.columns_prc = [TableColumn(field=key, title=key) for key in self.experiment_list]
         self.experiment_table.source.data = self.experiment_list
@@ -2181,6 +2305,20 @@ class Operator:
         self.columns_active_action = [TableColumn(field=key, title=key) for key in self.active_action_list]
         self.active_action_table.source.data=self.active_action_list
         self.active_action_table.columns=self.columns_active_action
+        
+        if self.orch.orchstatusmodel.loop_state == OrchStatus.started:
+            self.orch_status_button.label = "Enabled"
+            self.orch_status_button.button_type = "success"
+            self.orch_status_button.button_type = "success"
+
+        elif self.orch.orchstatusmodel.loop_state == OrchStatus.stopped:
+            self.orch_status_button.label = "Disabled"
+            self.orch_status_button.button_type = "danger"            
+            self.orch_status_button.button_type = "danger"
+        else:
+            self.orch_status_button.label = f"{self.orch.orchstatusmodel.loop_state.value}"
+            self.orch_status_button.button_type = "danger"            
+            self.orch_status_button.button_type = "danger"
 
 
     async def IOloop(self):

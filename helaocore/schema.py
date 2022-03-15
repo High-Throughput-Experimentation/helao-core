@@ -92,7 +92,6 @@ class Experiment(Sequence, ExperimentModel):
     "Sample-action grouping class."
 
     # not in ExperimentModel:
-    result_dict: Optional[dict] = Field(default_factory=dict)
     global_params: Optional[dict] = Field(default_factory=dict)
     experiment_action_list: List[ActionModel] = Field(default_factory=list)
 
