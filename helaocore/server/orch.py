@@ -782,7 +782,7 @@ class Orch(Base):
                                        info = True)
                     error_code = await self.loop_task_dispatch_action()
                     
-                if error_code is not ErrorCodes.nones:
+                if error_code is not ErrorCodes.none:
                     await self.intend_stop()
                     self.print_message(f"stopping orch with error code: "
                                        f"{error_code}",
@@ -1732,15 +1732,9 @@ class Operator:
             self.action_list["action_name"].append(
                 actdict.get("action_name", None)
             )
-            tmp = actdict.get("action_server", None)
-            if tmp is not None:
-                self.action_list["action_server"].append(
-                    tmp.disp_name()
-                )
-            else:
-                self.action_list["action_server"].append(
-                    None
-                )
+            self.action_list["action_server"].append(
+                actdict.get("action_server", None)
+            )
             self.action_list["action_uuid"].append(
                 actdict.get("action_uuid", None)
             )
