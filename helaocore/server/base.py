@@ -1577,6 +1577,9 @@ class Base(object):
                         action.samples_out
                     action.samples_out.append(sample)
 
+            # broadcast status when a sample is added (for operator table update)
+            await self.add_status(action = action)
+
 
         async def split_and_keep_active(self):
             await self.split(uuid_list = [])
