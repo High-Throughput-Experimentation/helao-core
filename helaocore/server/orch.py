@@ -1082,8 +1082,8 @@ class Orch(Base):
                  "action_uuid":f"{statusmodel.act.action_uuid}",
                  "server":statusmodel.act.action_server.disp_name(),
                  "action_name":statusmodel.act.action_name,
-                 "samples":[s.get_global_label() for s in statusmodel.act.samples_in],
-                 "solids":[s.get_global_label() for s in solid_list],
+                 "samples_in":[s.get_global_label() for s in statusmodel.act.samples_in],
+                 "solids_in":[s.get_global_label() for s in solid_list],
                 })
             index = index+1
         return action_list
