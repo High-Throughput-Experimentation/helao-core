@@ -536,7 +536,7 @@ class Orch(Base):
 
 
 
-    async def loop_task_dispatch_sequence(self) -> bool:
+    async def loop_task_dispatch_sequence(self) -> ErrorCodes:
         if self.sequence_dq:
             self.print_message("finishing last sequence")
             await self.finish_active_sequence()
@@ -574,7 +574,6 @@ class Orch(Base):
 
 
             self.orchstatusmodel.loop_state = OrchStatus.started
-            return True
 
         else:
             self.print_message("sequence queue is empty, "
@@ -582,11 +581,11 @@ class Orch(Base):
 
             self.orchstatusmodel.loop_state = OrchStatus.stopped
             await self.intend_none()
-            return False
+
+        return ErrorCodes.none
 
 
-
-    async def loop_task_dispatch_experiment(self):
+    async def loop_task_dispatch_experiment(self) -> ErrorCodes:
         self.print_message("action_dq is empty, getting new actions")
         # wait for all actions in last/active experiment to finish 
         self.print_message("finishing last active experiment first")
@@ -618,7 +617,7 @@ class Orch(Base):
                 error = True
             )
             self.action_dq = deque([])
-            return
+            return ErrorCodes.none
 
         self.print_message("setting action order")
         for i, act in enumerate(unpacked_acts):
@@ -636,9 +635,10 @@ class Orch(Base):
 
         # write a temporary prc
         await self.write_active_experiment_prc()
+        return ErrorCodes.none
 
 
-    async def loop_task_dispatch_action(self):
+    async def loop_task_dispatch_action(self) -> ErrorCodes:
         self.print_message("actions in action_dq, processing them")
         if self.orchstatusmodel.loop_intent == OrchStatus.stop:
             self.print_message("stopping orchestrator")
@@ -717,6 +717,8 @@ class Orch(Base):
 
             A.init_act(time_offset = self.ntp_offset)
             result, error_code = await async_action_dispatcher(self.world_cfg, A)
+            if error_code is not ErrorCodes.none:
+                return error_code
 
             self.print_message("copying global vars "
                                "back to experiment")
@@ -736,8 +738,7 @@ class Orch(Base):
             self.print_message("done copying global "
                                "vars back to experiment")
         
-
-
+        return ErrorCodes.none
 
 
     async def dispatch_loop_task(self):
@@ -769,19 +770,25 @@ class Orch(Base):
                 and  not self.action_dq:
                     self.print_message("!!!dispatchinng next sequence", 
                                        info = True)
-                    await self.loop_task_dispatch_sequence()
+                    error_code = await self.loop_task_dispatch_sequence()
 
                 # check if we have still actions to dispatch
                 elif not self.action_dq:
                     self.print_message("!!!dispatchinng next experiment", 
                                        info = True)
-                    await self.loop_task_dispatch_experiment()
+                    error_code = await self.loop_task_dispatch_experiment()
 
                 else:
                     self.print_message("!!!dispatchinng next action", 
                                        info = True)
-                    await self.loop_task_dispatch_action()
+                    error_code = await self.loop_task_dispatch_action()
                     
+                if error_code is not ErrorCodes.nones:
+                    await self.intend_stop()
+                    self.print_message(f"stopping orch with error code: "
+                                       f"{error_code}",
+                                       error = True)
+
 
             self.print_message("all queues are empty")
             self.print_message("--- stopping operator orch ---", info = True)
@@ -1659,14 +1666,19 @@ class Operator:
         """get experiment list from orch"""
         sequences = self.orch.list_sequences()
         self.sequence_list = dict()
-        if sequences:
-            for key,val in sequences[0].json_dict().items():
-                if val is not None:
-                    self.sequence_list[key] = []
-            for seq in sequences:
-                for key, value in seq.json_dict().items():
-                    if key in self.sequence_list:
-                        self.sequence_list[key].append(value)
+        self.sequence_list["index"] = []
+        self.sequence_list["sequence_name"] = []
+        self.sequence_list["sequence_uuid"] = []
+        
+        for index, seq in enumerate(sequences):
+            seqdict = seq.json_dict()
+            self.sequence_list["index"].append(index)
+            self.sequence_list["sequence_name"].append(
+                seqdict.get("sequence_name", None)
+            )
+            self.sequence_list["sequence_uuid"].append(
+                seqdict.get("sequence_uuid", None)
+            )
         self.vis.print_message(f"current queued sequences: {self.sequence_list}")
 
 
@@ -1675,14 +1687,19 @@ class Operator:
         """get experiment list from orch"""
         experiments = self.orch.list_experiments()
         self.experiment_list = dict()
-        if experiments:
-            for key,val in experiments[0].json_dict().items():
-                if val is not None:
-                    self.experiment_list[key] = []
-            for exp in experiments:
-                for key, value in exp.json_dict().items():
-                    if key in self.experiment_list:
-                        self.experiment_list[key].append(value)
+        self.experiment_list["index"] = []
+        self.experiment_list["experiment_name"] = []
+        self.experiment_list["experiment_uuid"] = []
+
+        for index, exp in enumerate(experiments):
+            expdict = exp.json_dict()
+            self.experiment_list["index"].append(index)
+            self.experiment_list["experiment_name"].append(
+                expdict.get("experiment_name", None)
+            )
+            self.experiment_list["experiment_uuid"].append(
+                expdict.get("experiment_uuid", None)
+            )
         self.vis.print_message(f"current queued experiments: {self.experiment_list}")
 
 
@@ -1690,14 +1707,29 @@ class Operator:
         """get action list from orch"""
         actions = self.orch.list_actions()
         self.action_list = dict()
-        if actions:
-            for key,val in actions[0].json_dict().items():
-                if val is not None:
-                    self.action_list[key] = []
-            for act in actions:
-                for key, value in act.json_dict().items():
-                    if key in self.action_list:
-                        self.action_list[key].append(value)
+        self.action_list["index"] = []
+        self.action_list["action_name"] = []
+        self.action_list["action_server"] = []
+        self.action_list["action_uuid"] = []
+        for index, act in enumerate(actions):
+            actdict = act.json_dict()
+            self.action_list["index"].append(index)
+            self.action_list["action_name"].append(
+                actdict.get("action_name", None)
+            )
+            tmp = actdict.get("action_server", None)
+            if tmp is not None:
+                self.action_list["action_server"].append(
+                    tmp.disp_name()
+                )
+            else:
+                self.action_list["action_server"].append(
+                    None
+                )
+            self.action_list["action_uuid"].append(
+                actdict.get("action_uuid", None)
+            )
+            
         self.vis.print_message(f"current queued actions: {self.action_list}")
 
 
