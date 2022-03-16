@@ -353,8 +353,8 @@ class _BaseSampleAPI(object):
             await self._open_db()
 
             for sample in samples:
-                self._base.print_message(f"updating sample {self._sample_type}"
-                                         f" {sample.sample_no}", 
+                self._base.print_message(f"updating sample '{self._sample_type}'"
+                                         f" '{sample.sample_no}'", 
                                          info = True)
                 if sample.global_label is None:
                     self._base.print_message("No global_label. Skipping sample.", info = True)
@@ -374,8 +374,8 @@ class _BaseSampleAPI(object):
                 retdf = pd.read_sql_query(f"""select * from {self._sample_type} where idx={sample.sample_no};""", con=self._con)
                 prev_sample = self._df_to_sample(retdf)
                 
-                if prev_sample.sample_type != None:
-                    self._base.print_message("invalid sample", error = True)
+                if prev_sample.sample_type == None:
+                    self._base.print_message("update_samples: invalid sample", error = True)
                     continue
                 
                 # some safety checks
