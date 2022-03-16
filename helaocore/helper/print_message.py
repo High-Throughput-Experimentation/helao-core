@@ -18,7 +18,7 @@ def print_message(server_cfg, server_name, *args, **kwargs):
         precolor = f"{Fore.BLACK}{Back.GREEN}"
         msg_type = "info_"
     elif "sample" in kwargs:
-        precolor = f"{Style.BRIGHT}{Fore.WHITE}{Back.BLUE}"
+        precolor = f"{Fore.BLUE}{Style.BRIGHT}{Back.CYAN}"
         msg_type = "sample_"
     else:
         precolor = f"{Style.RESET_ALL}"
