@@ -27,9 +27,10 @@ from bokeh.models import ColumnDataSource
 from bokeh.models import DataTable, TableColumn
 from bokeh.models.widgets import Paragraph
 from bokeh.models import Select
-from bokeh.models import Button, TextInput
-import bokeh.models.widgets as bmw
-import bokeh.plotting as bpl
+from bokeh.models import Button
+from bokeh.models.widgets import Div
+from bokeh.models.widgets.inputs import TextInput
+from bokeh.plotting import figure, Figure
 from bokeh.events import ButtonClick, DoubleTap
 from bokeh.models.widgets import FileInput, Toggle
 
@@ -47,38 +48,24 @@ from ..helper.to_json import to_json
 from ..schema import Sequence, Experiment, Action
 
 from ..model.experiment_sequence import ExperimentSequenceModel
-from ..model.experiment import (
-                                ExperimentModel,
-                                ShortExperimentModel,
-                                ExperimentTemplate
-                               )
+from ..model.experiment import ExperimentTemplate
+
 from ..model.sample import (
-                                   SampleType,
-                                   SampleUnion,
-                                   LiquidSample,
-                                   GasSample,
-                                   SolidSample,
-                                   AssemblySample,
-                                   NoneSample,
-                                   SampleStatus,
-                                   SampleInheritance,
-                                   object_to_sample,
-                                   SampleType
-                                  )
+                            SampleUnion,
+                            SampleType
+                           )
 
 
-from ..model.action import ActionModel
-from ..model.active import ActiveParams
 from ..model.hlostatus import HloStatus
 from ..model.server import ActionServerModel, GlobalStatusModel
-from ..model.machine import MachineModel
 from ..model.orchstatus import OrchStatus
 from ..data.legacy import HTELegacyAPI
 from ..error import ErrorCodes
 
 
 # ANSI color codes converted to the Windows versions
-colorama.init(strip=not sys.stdout.isatty())  # strip colors if stdout is redirected
+# strip colors if stdout is redirected
+colorama.init(strip=not sys.stdout.isatty())
 # colorama.init()
 
 hlotags_metadata = [
@@ -736,7 +723,7 @@ class Orch(Base):
                             )
             self.print_message("done copying global "
                                "vars back to experiment")
-        
+
         return ErrorCodes.none
 
 
@@ -803,6 +790,7 @@ class Orch(Base):
 
             self.orchstatusmodel.loop_state = OrchStatus.stopped
             await self.intend_none()
+            await self.update_operator(True)
             return True
 
         # except asyncio.CancelledError:
@@ -1474,23 +1462,23 @@ class Operator:
         self.button_append_seq.on_event(ButtonClick, self.callback_append_seq)
 
 
-        self.sequence_descr_txt = bmw.Div(text="""select a sequence item""", width=600)
-        self.experiment_descr_txt = bmw.Div(text="""select a experiment item""", width=600)
+        self.sequence_descr_txt = Div(text="""select a sequence item""", width=600)
+        self.experiment_descr_txt = Div(text="""select a experiment item""", width=600)
         self.error_txt = Paragraph(text="""no error""", width=600, height=30, style={"font-size": "100%", "color": "black"})
 
         self.input_sequence_label = TextInput(value="nolabel", title="sequence label", disabled=False, width=120, height=40)
 
         self.layout0 = layout([
             layout(
-                [Spacer(width=20), bmw.Div(text=f"<b>{self.config_dict.get('doc_name', 'Operator')} on {gethostname()}</b>", width=self.max_width-20, height=32, style={"font-size": "200%", "color": "red"})],
+                [Spacer(width=20), Div(text=f"<b>{self.config_dict.get('doc_name', 'Operator')} on {gethostname()}</b>", width=self.max_width-20, height=32, style={"font-size": "200%", "color": "red"})],
                 background="#C0C0C0",width=self.max_width),
             Spacer(height=10),
             layout(
-                [Spacer(width=20), bmw.Div(text="<b>Sequences:</b>", width=self.max_width-20, height=32, style={"font-size": "150%", "color": "red"})],
+                [Spacer(width=20), Div(text="<b>Sequences:</b>", width=self.max_width-20, height=32, style={"font-size": "150%", "color": "red"})],
                 background="#C0C0C0",width=self.max_width),
             layout([
                 [self.sequence_dropdown],
-                [Spacer(width=10), bmw.Div(text="<b>sequence description:</b>", width=200+50, height=15)],
+                [Spacer(width=10), Div(text="<b>sequence description:</b>", width=200+50, height=15)],
                 [self.sequence_descr_txt],
                 Spacer(height=10),
                 ],background="#808080",width=self.max_width),
@@ -1503,12 +1491,12 @@ class Operator:
         self.layout2 = layout([
             Spacer(height=10),
             layout(
-                [Spacer(width=20), bmw.Div(text="<b>Experiments:</b>", width=self.max_width-20, height=32, style={"font-size": "150%", "color": "red"})],
+                [Spacer(width=20), Div(text="<b>Experiments:</b>", width=self.max_width-20, height=32, style={"font-size": "150%", "color": "red"})],
                 background="#C0C0C0",width=self.max_width),
             Spacer(height=10),
             layout([
                 [self.experiment_dropdown],
-                [Spacer(width=10), bmw.Div(text="<b>experiment description:</b>", width=200+50, height=15)],
+                [Spacer(width=10), Div(text="<b>experiment description:</b>", width=200+50, height=15)],
                 [self.experiment_descr_txt],
                 Spacer(height=20),
                 ],background="#808080",width=self.max_width),
@@ -1521,7 +1509,7 @@ class Operator:
         self.layout4 = layout([
                 Spacer(height=10),
                 layout(
-                    [Spacer(width=20), bmw.Div(text="<b>Orch:</b>", width=self.max_width-20, height=32, style={"font-size": "150%", "color": "red"})],
+                    [Spacer(width=20), Div(text="<b>Orch:</b>", width=self.max_width-20, height=32, style={"font-size": "150%", "color": "red"})],
                     background="#C0C0C0",width=self.max_width),
                 layout([
                     [
@@ -1537,20 +1525,20 @@ class Operator:
                      self.orch_status_button,
                     ],
                     Spacer(height=10),
-                    [Spacer(width=10), bmw.Div(text="<b>Error message:</b>", width=200+50, height=15, style={"font-size": "100%", "color": "black"})],
+                    [Spacer(width=10), Div(text="<b>Error message:</b>", width=200+50, height=15, style={"font-size": "100%", "color": "black"})],
                     [Spacer(width=10), self.error_txt],
                     Spacer(height=10),
                     ],background="#808080",width=self.max_width),
                 layout([
-                [Spacer(width=20), bmw.Div(text="<b>Experiment Plan:</b>", width=200+50, height=15)],
+                [Spacer(width=20), Div(text="<b>Experiment Plan:</b>", width=200+50, height=15)],
                 [self.experimentplan_table],
-                [Spacer(width=20), bmw.Div(text="<b>queued sequences:</b>", width=200+50, height=15)],
+                [Spacer(width=20), Div(text="<b>queued sequences:</b>", width=200+50, height=15)],
                 [self.sequence_table],
-                [Spacer(width=20), bmw.Div(text="<b>queued experiments:</b>", width=200+50, height=15)],
+                [Spacer(width=20), Div(text="<b>queued experiments:</b>", width=200+50, height=15)],
                 [self.experiment_table],
-                [Spacer(width=20), bmw.Div(text="<b>queued actions:</b>", width=200+50, height=15)],
+                [Spacer(width=20), Div(text="<b>queued actions:</b>", width=200+50, height=15)],
                 [self.action_table],
-                [Spacer(width=20), bmw.Div(text="<b>Active actions:</b>", width=200+50, height=15)],
+                [Spacer(width=20), Div(text="<b>Active actions:</b>", width=200+50, height=15)],
                 [self.active_action_table],
                 Spacer(height=10),
                 [
@@ -1851,6 +1839,8 @@ class Operator:
             sellabel = self.input_sequence_label.value
             self.sequence.sequence_label = sellabel
             self.vis.doc.add_next_tick_callback(partial(self.orch.add_sequence,self.sequence))
+            # clear current experiment_plan (sequence in operator)
+            self.sequence = None
             self.vis.doc.add_next_tick_callback(partial(self.update_tables))
 
 
@@ -2006,7 +1996,7 @@ class Operator:
         self.seq_private_input = []
         self.seq_param_layout = [
             layout([
-                [Spacer(width=10), bmw.Div(text="<b>Optional sequence parameters:</b>", width=200+50, height=15, style={"font-size": "100%", "color": "black"})],
+                [Spacer(width=10), Div(text="<b>Optional sequence parameters:</b>", width=200+50, height=15, style={"font-size": "100%", "color": "black"})],
                 ],background=self.color_sq_param_inputs,width=self.max_width),
             ]
 
@@ -2023,7 +2013,7 @@ class Operator:
         if not self.seq_param_input:
             self.seq_param_layout.append(
                     layout([
-                    [Spacer(width=10), bmw.Div(text="-- none --", width=200+50, height=15, style={"font-size": "100%", "color": "black"})],
+                    [Spacer(width=10), Div(text="-- none --", width=200+50, height=15, style={"font-size": "100%", "color": "black"})],
                     ],background=self.color_sq_param_inputs,width=self.max_width),
                 )
 
@@ -2044,7 +2034,7 @@ class Operator:
         self.prc_private_input = []
         self.prc_param_layout = [
             layout([
-                [Spacer(width=10), bmw.Div(text="<b>Optional experiment parameters:</b>", width=200+50, height=15, style={"font-size": "100%", "color": "black"})],
+                [Spacer(width=10), Div(text="<b>Optional experiment parameters:</b>", width=200+50, height=15, style={"font-size": "100%", "color": "black"})],
                 ],background=self.color_sq_param_inputs,width=self.max_width),
             ]
         self.add_dynamic_inputs(
@@ -2059,7 +2049,7 @@ class Operator:
         if not self.prc_param_input:
             self.prc_param_layout.append(
                     layout([
-                    [Spacer(width=10), bmw.Div(text="-- none --", width=200+50, height=15, style={"font-size": "100%", "color": "black"})],
+                    [Spacer(width=10), Div(text="-- none --", width=200+50, height=15, style={"font-size": "100%", "color": "black"})],
                     ],background=self.color_sq_param_inputs,width=self.max_width),
                 )
 
@@ -2094,7 +2084,7 @@ class Operator:
             # special key params
             if args[idx] == "solid_plate_id":
                 param_input[-1].on_change("value", partial(self.callback_changed_plateid, sender=param_input[-1]))
-                private_input.append(bpl.figure(
+                private_input.append(figure(
                     title="PlateMap", 
                     # height=300,
                     x_axis_label="X (mm)", 
@@ -2200,7 +2190,15 @@ class Operator:
         old_point = plot_mpmap.select(name="PMplot")
         if len(old_point)>0:
             plot_mpmap.renderers.remove(old_point[0])
-        plot_mpmap.square(x, y, size=5, color=None, alpha=0.5, line_color="black",name="PMplot")
+        plot_mpmap.square(
+                          x, 
+                          y, 
+                          size=5, 
+                          color=None, 
+                          alpha=0.5, 
+                          line_color="black",
+                          name="PMplot"
+                         )
 
 
     def get_pm(self, plateid, sender):
@@ -2270,19 +2268,21 @@ class Operator:
                 exclude_elements_list=[""],
                 return_defaults_if_none=False)
             if elements is not None:
-                self.vis.doc.add_next_tick_callback(partial(self.update_input_value, input_elements, ",".join(elements)))
+                self.vis.doc.add_next_tick_callback(
+                    partial(self.update_input_value, input_elements, ",".join(elements))
+                )
 
 
     def find_plot(self, inputs, name):
         for inp in inputs:
-            if isinstance(inp, bpl.Figure):
+            if isinstance(inp, Figure):
                 if inp.title.text == name:
                     return inp
         return None
 
     def find_input(self, inputs, name):
         for inp in inputs:
-            if isinstance(inp, bmw.inputs.TextInput):
+            if isinstance(inp, TextInput):
                 if inp.title == name:
                     return inp
         return None
@@ -2328,7 +2328,9 @@ class Operator:
                     self.vis.print_message(f"selected sample_no: {PMnum[0]+1}")
                     if PMnum[0] > len(pmdata) or PMnum[0] < 0:
                         self.vis.print_message("invalid sample no")
-                        self.vis.doc.add_next_tick_callback(partial(self.update_input_value,input_sample_no,""))
+                        self.vis.doc.add_next_tick_callback(
+                            partial(self.update_input_value,input_sample_no,"")
+                        )
                         return False
                     
                     platex = pmdata[PMnum[0]]["x"]
@@ -2341,19 +2343,36 @@ class Operator:
                     if len(buf) == 0:
                         buf = "-"
                     if input_sample_no != str(PMnum[0]+1):
-                        self.vis.doc.add_next_tick_callback(partial(self.update_input_value, input_sample_no,str(PMnum[0]+1)))
-                    self.vis.doc.add_next_tick_callback(partial(self.update_xysamples,str(platex), str(platey), sender))
+                        self.vis.doc.add_next_tick_callback(
+                            partial(self.update_input_value, input_sample_no,str(PMnum[0]+1))
+                        )
+                    self.vis.doc.add_next_tick_callback(
+                        partial(self.update_xysamples,str(platex), str(platey), sender)
+                    )
                     if input_composition is not None:
-                        self.vis.doc.add_next_tick_callback(partial(self.update_input_value,input_composition,buf))
+                        self.vis.doc.add_next_tick_callback(
+                            partial(self.update_input_value,input_composition,buf)
+                        )
                     if input_code is not None:
-                        self.vis.doc.add_next_tick_callback(partial(self.update_input_value,input_code,str(code)))
+                        self.vis.doc.add_next_tick_callback(
+                            partial(self.update_input_value,input_code,str(code))
+                        )
     
                     # remove old Marker point
                     old_point = plot_mpmap.select(name="selsample")
                     if len(old_point)>0:
                         plot_mpmap.renderers.remove(old_point[0])
                     # plot new Marker point
-                    plot_mpmap.square(platex, platey, size=7,line_width=2, color=None, alpha=1.0, line_color=(255,0,0), name="selsample")
+                    plot_mpmap.square(
+                                      platex, 
+                                      platey, 
+                                      size=7,
+                                      line_width=2, 
+                                      color=None, 
+                                      alpha=1.0, 
+                                      line_color=(255,0,0), 
+                                      name="selsample"
+                                     )
 
                     return True
             else:
