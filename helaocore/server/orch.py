@@ -1055,22 +1055,7 @@ class Orch(Base):
 
     def list_active_actions(self):
         """Return the current queue running actions."""
-        action_list = []
-        index = 0
-        for uuid, statusmodel in self.orchstatusmodel.active_dict.items():
-            liquid_list, solid_list, gas_list = \
-                unpack_samples_helper(samples = statusmodel.act.samples_in)
-            self.print_message(f"solids_in: {[s.get_global_label() for s in solid_list]}", sample=True)
-            action_list.append(
-                {"index":index,
-                 "action_uuid":f"{statusmodel.act.action_uuid}",
-                 "server":statusmodel.act.action_server.disp_name(),
-                 "action_name":statusmodel.act.action_name,
-                 "samples_in":[s.get_global_label() for s in statusmodel.act.samples_in],
-                 "solids_in":[s.get_global_label() for s in solid_list],
-                })
-            index = index+1
-        return action_list
+        return [statusmodel.act for uuid, statusmodel in self.orchstatusmodel.active_dict.items()]
 
 
     def list_actions(self):
@@ -1291,10 +1276,29 @@ class Operator:
 
         self.sequence = None
         self.experiment_plan_list = dict()
+        self.experiment_plan_list["sequence_name"] = []
+        self.experiment_plan_list["sequence_label"] = []
+        self.experiment_plan_list["experiment_name"] = []
+
         self.sequence_list = dict()
+        self.sequence_list["sequence_name"] = []
+        self.sequence_list["sequence_uuid"] = []
+
         self.experiment_list = dict()
+        self.experiment_list["experiment_name"] = []
+        self.experiment_list["experiment_uuid"] = []
+
         self.action_list = dict()
+        self.action_list["action_name"] = []
+        self.action_list["action_server"] = []
+        self.action_list["action_uuid"] = []
+
         self.active_action_list = dict()
+        self.active_action_list["action_name"] = []
+        self.active_action_list["action_server"] = []
+        self.active_action_list["action_uuid"] = []
+        self.active_action_list["samples_in"] = []
+        self.active_action_list["solids_in"] = []
 
         self.sequence_select_list = []
         self.sequences = []
@@ -1364,7 +1368,8 @@ class Operator:
                                              columns=self.columns_active_action, 
                                              width=self.max_width-20, 
                                              height=200,
-                                             autosize_mode = "fit_columns"
+                                             autosize_mode = "fit_columns",
+                                             fit_columns=False,
                                             )
 
         self.sequence_dropdown = Select(
@@ -1628,20 +1633,19 @@ class Operator:
     async def get_sequences(self):
         """get experiment list from orch"""
         sequences = self.orch.list_sequences()
-        self.sequence_list = dict()
-        self.sequence_list["index"] = []
-        self.sequence_list["sequence_name"] = []
-        self.sequence_list["sequence_uuid"] = []
-        
-        for index, seq in enumerate(sequences):
+        for key in self.sequence_list:
+            self.sequence_list[key] = []
+
+        for seq in sequences:
             seqdict = seq.json_dict()
-            self.sequence_list["index"].append(index)
             self.sequence_list["sequence_name"].append(
                 seqdict.get("sequence_name", None)
             )
             self.sequence_list["sequence_uuid"].append(
                 seqdict.get("sequence_uuid", None)
             )
+
+        self.sequence_source.data = self.sequence_list
         self.vis.print_message(f"current queued sequences: {self.sequence_list}")
 
 
@@ -1649,58 +1653,72 @@ class Operator:
     async def get_experiments(self):
         """get experiment list from orch"""
         experiments = self.orch.list_experiments()
-        self.experiment_list = dict()
-        self.experiment_list["index"] = []
-        self.experiment_list["experiment_name"] = []
-        self.experiment_list["experiment_uuid"] = []
+        for key in self.experiment_list:
+            self.experiment_list[key] = []
 
-        for index, exp in enumerate(experiments):
+        for exp in experiments:
             expdict = exp.json_dict()
-            self.experiment_list["index"].append(index)
             self.experiment_list["experiment_name"].append(
                 expdict.get("experiment_name", None)
             )
             self.experiment_list["experiment_uuid"].append(
                 expdict.get("experiment_uuid", None)
             )
+
+        self.experiment_source.data = self.experiment_list
         self.vis.print_message(f"current queued experiments: {self.experiment_list}")
 
 
     async def get_actions(self):
         """get action list from orch"""
         actions = self.orch.list_actions()
-        self.action_list = dict()
-        self.action_list["index"] = []
-        self.action_list["action_name"] = []
-        self.action_list["action_server"] = []
-        self.action_list["action_uuid"] = []
-        for index, act in enumerate(actions):
+        for key in self.action_list:
+            self.action_list[key] = []
+
+        for act in actions:
             actdict = act.json_dict()
-            self.action_list["index"].append(index)
             self.action_list["action_name"].append(
                 actdict.get("action_name", None)
             )
-            tmp = actdict.get("action_server", {}) 
             self.action_list["action_server"].append(
-                ", ".join([f"{v}" for k,v in tmp.items()])
+                act.action_server.disp_name()
             )
             self.action_list["action_uuid"].append(
                 actdict.get("action_uuid", None)
             )
-            
+
+        self.action_source.data = self.action_list
         self.vis.print_message(f"current queued actions: {self.action_list}")
+
 
 
     async def get_active_actions(self):
         """get action list from orch"""
         actions = self.orch.list_active_actions()
-        self.active_action_list = dict()
-        if actions:
-            for key in actions[0]:
-                self.active_action_list[key] = []
-            for act in actions:
-                for key, value in act.items():
-                    self.active_action_list[key].append(value)
+        for key in self.active_action_list:
+            self.active_action_list[key] = []
+        for act in actions:
+            actdict = act.json_dict()
+            liquid_list, solid_list, gas_list = \
+                unpack_samples_helper(samples = act.samples_in)
+            self.vis.print_message(f"solids_in: {[s.get_global_label() for s in solid_list]}", sample=True)
+            self.active_action_list["action_name"].append(
+                actdict.get("action_name", None)
+            )
+            self.active_action_list["action_server"].append(
+                act.action_server.disp_name()
+            )
+            self.active_action_list["action_uuid"].append(
+                actdict.get("action_uuid", None)
+            )
+            self.active_action_list["samples_in"].append(
+                [s.get_global_label() for s in act.samples_in]
+            )
+            self.active_action_list["solids_in"].append(
+                [s.get_global_label() for s in solid_list]
+            )
+
+        self.active_action_source.data = self.active_action_list
         self.vis.print_message(f"current active actions: {self.active_action_list}")
 
 
@@ -2349,38 +2367,15 @@ class Operator:
         await self.get_experiments()
         await self.get_actions()
         await self.get_active_actions()
-
-        self.experiment_plan_list = dict()
-
-        self.experiment_plan_list["sequence_name"] = []
-        self.experiment_plan_list["sequence_label"] = []
-        self.experiment_plan_list["experiment_name"] = []
+        for key in self.experiment_plan_list:
+            self.experiment_plan_list[key] = []
         if self.sequence is not None:
             for D in self.sequence.experiment_plan_list:
                 self.experiment_plan_list["sequence_name"].append(self.sequence.sequence_name)
                 self.experiment_plan_list["sequence_label"].append(self.sequence.sequence_label)
                 self.experiment_plan_list["experiment_name"].append(D.experiment_name)
 
-
-        self.columns_expplan = [TableColumn(field=key, title=key) for key in self.experiment_plan_list]
-        self.experimentplan_table.source.data = self.experiment_plan_list
-        self.experimentplan_table.columns=self.columns_expplan
-
-        self.columns_seq = [TableColumn(field=key, title=key) for key in self.sequence_list]
-        self.sequence_table.source.data = self.sequence_list
-        self.sequence_table.columns=self.columns_seq
-
-        self.columns_prc = [TableColumn(field=key, title=key) for key in self.experiment_list]
-        self.experiment_table.source.data = self.experiment_list
-        self.experiment_table.columns=self.columns_prc
-
-        self.columns_act = [TableColumn(field=key, title=key) for key in self.action_list]
-        self.action_table.source.data=self.action_list
-        self.action_table.columns=self.columns_act
-
-        self.columns_active_action = [TableColumn(field=key, title=key) for key in self.active_action_list]
-        self.active_action_table.source.data=self.active_action_list
-        self.active_action_table.columns=self.columns_active_action
+        self.experimentplan_source.data = self.experiment_plan_list
         
         if self.orch.orchstatusmodel.loop_state == OrchStatus.started:
             self.orch_status_button.label = "Enabled"
