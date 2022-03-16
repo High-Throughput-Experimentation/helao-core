@@ -45,16 +45,11 @@ from .dispatcher import async_private_dispatcher, async_action_dispatcher
 
 from ..model.action_start_condition import ActionStartCondition
 from ..helper.to_json import to_json
+from ..helper.unpack_samples import unpack_samples_helper
 from ..schema import Sequence, Experiment, Action
 
 from ..model.experiment_sequence import ExperimentSequenceModel
 from ..model.experiment import ExperimentTemplate
-
-from ..model.sample import (
-                            SampleUnion,
-                            SampleType
-                           )
-
 
 from ..model.hlostatus import HloStatus
 from ..model.server import ActionServerModel, GlobalStatusModel
@@ -1064,7 +1059,7 @@ class Orch(Base):
         index = 0
         for uuid, statusmodel in self.orchstatusmodel.active_dict.items():
             liquid_list, solid_list, gas_list = \
-                self.unpack_samples_helper(samples = statusmodel.act.samples_in)
+                unpack_samples_helper(samples = statusmodel.act.samples_in)
             self.print_message(f"solids_in: {[s.get_global_label() for s in solid_list]}", sample=True)
             action_list.append(
                 {"index":index,
@@ -1231,42 +1226,6 @@ class Orch(Base):
         self.status_logger.cancel()
         self.ntp_syncer.cancel()
         self.status_subscriber.cancel()
-
-
-    def unpack_samples_helper(self, samples: List[SampleUnion] = []) -> Tuple[List[SampleUnion],List[SampleUnion]]:
-        liquid_list = []
-        solid_list = []
-        gas_list = []
-        # assembly_list = []
-
-        for sample in samples:
-            if sample.sample_type == SampleType.assembly:
-                for part in sample.parts:
-                    if part.sample_type == SampleType.assembly:
-                        # recursive unpacking
-                        tmp_liquid_list, tmp_solid_list, tmp_gas_list = \
-                            self.unpack_samples_helper(samples = [part])
-                        for s in tmp_liquid_list:
-                            liquid_list.append(s)
-                        for s in tmp_gas_list:
-                            gas_list.append(s)
-                        for s in tmp_solid_list:
-                            solid_list.append(s)
-                    elif part.sample_type == SampleType.solid:
-                        solid_list.append(part)
-                    elif part.sample_type == SampleType.liquid:
-                        liquid_list.append(part)
-                    elif part.sample_type == SampleType.gas:
-                        gas_list.append(part)
-
-            elif sample.sample_type == SampleType.solid:
-                solid_list.append(sample)
-            elif sample.sample_type == SampleType.liquid:
-                liquid_list.append(sample)
-            elif sample.sample_type == SampleType.gas:
-                gas_list.append(sample)
-
-        return liquid_list, solid_list, gas_list
 
 
     async def update_operator(self, msg):
