@@ -24,8 +24,28 @@ def import_experiments(world_config_dict: dict, experiment_path: str = None, ser
     sys.path.append(experiment_path)
     explibs = world_config_dict.get("experiment_libraries", [])
     for explib in explibs:
+        print_message(
+            world_config_dict,
+            server_name,
+            f"importing exeriments from {explib}",
+        )
         tempd = import_module(explib).__dict__
-        experiment_lib.update({func: tempd[func] for func in tempd.get("EXPERIMENTS",[])})
+        for func in tempd.get("EXPERIMENTS",[]):
+            if func in tempd:
+                experiment_lib.update({func: tempd[func]})
+                print_message(
+                    world_config_dict,
+                    server_name,
+                    f"added exp '{func}' to experiment library",
+                )
+            else:
+                print_message(
+                    world_config_dict,
+                    server_name,
+                    f"!!! Could not find experiment function '{func}' in '{explib}'",
+                    error = True
+                )
+
     print_message(
         world_config_dict,
         server_name,

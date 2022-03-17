@@ -24,8 +24,28 @@ def import_sequences(world_config_dict: dict, sequence_path: str = None, server_
     sys.path.append(sequence_path)
     seqlibs =  world_config_dict.get("sequence_libraries", [])
     for seqlib in seqlibs:
+        print_message(
+            world_config_dict,
+            server_name,
+            f"importing sequences from {seqlib}",
+        )
         tempd = import_module(seqlib).__dict__
-        sequence_lib.update({func: tempd[func] for func in tempd.get("SEQUENCES",[])})
+        for func in tempd.get("SEQUENCES",[]):
+            if func in tempd:
+                sequence_lib.update({func: tempd[func]})
+                print_message(
+                    world_config_dict,
+                    server_name,
+                    f"added seq '{func}' to sequence library",
+                )
+            else:
+                print_message(
+                    world_config_dict,
+                    server_name,
+                    f"!!! Could not find sequence function '{func}' in '{seqlib}'",
+                    error = True
+                )
+
     print_message(
         world_config_dict,
         server_name,
