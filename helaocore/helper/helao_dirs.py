@@ -21,7 +21,7 @@ def helao_dirs(world_cfg: dict):
     
     if "root" in world_cfg:
         root = world_cfg["root"]
-        save_root = os.path.join(root, "ACTIVE")
+        save_root = os.path.join(root, "RUNS_ACTIVE")
         log_root = os.path.join(root, "LOGS")
         states_root = os.path.join(root, "STATES")
         db_root = os.path.join(root, "DATABASE")
