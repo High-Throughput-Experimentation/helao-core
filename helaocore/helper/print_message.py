@@ -3,7 +3,7 @@ __all__ = ["print_message"]
 import os
 from time import strftime
 
-from colorama import Fore, Back, Style
+from colorama import Fore, Back, Style, colorama_text
 
 def print_message(server_cfg, server_name, *args, **kwargs):
     precolor = ""
@@ -38,11 +38,13 @@ def print_message(server_cfg, server_name, *args, **kwargs):
     else:
         style = ""
 
+
     if cmd_print:
-        for arg in args:
-            print(
-                f"{precolor}[{strftime('%H:%M:%S')}_{server_name}]:{Style.RESET_ALL} {style}{arg}{Style.RESET_ALL}"
-            )
+        with colorama_text():
+            for arg in args:
+                print(
+                    f"{precolor}[{strftime('%H:%M:%S')}_{server_name}]:{Style.RESET_ALL} {style}{arg}{Style.RESET_ALL}"
+                )
 
     output_path = kwargs.get("log_dir", None)
     if output_path is not None:
