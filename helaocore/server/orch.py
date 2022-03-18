@@ -718,7 +718,10 @@ class Orch(Base):
             
             
             if result_action.error_code is not ErrorCodes.none:
-                self.print_message(f"Action result has error code: "
+                self.print_message(f"Action result for "
+                                   f"'{result_action.action_name}' on "
+                                   f"'{result_action.action_server.disp_name()}' "
+                                   f"has error code: "
                                    f"{result_action.error_code}",
                                    error = True)
                 return result_action.error_code
@@ -879,19 +882,12 @@ class Orch(Base):
         self.print_message("estopping orch",
                            info = True)
 
-        # if self.orchstatusmodel.loop_state == OrchStatus.started:
-        #     await self.intend_estop()
-        # else:
         # set orchstatusmodel.loop_state to estop
         self.orchstatusmodel.loop_state = OrchStatus.estop
-        # cancels current dispatch loop task
-
 
         # force stop all running actions in the status dict (for this orch)
-        # TODO
         await self.estop_actions(switch = True)
-        # if self.loop_task is not None:
-            # self.loop_task.cancel()
+
         # reset loop intend
         await self.intend_none()
 
