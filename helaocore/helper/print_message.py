@@ -4,8 +4,21 @@ import os
 from time import strftime
 
 from colorama import Fore, Back, Style, colorama_text
+from termcolor import cprint
+from pyfiglet import figlet_format
 
 def print_message(server_cfg, server_name, *args, **kwargs):
+
+    def write_log_file(server_name = None, output_path = None, msg_part1=None, msg_part2=None):
+        output_path = os.path.join(output_path,server_name)
+        output_file = os.path.join(output_path, f"{server_name}_log_{strftime('%Y%m%d')}.txt")
+        if not os.path.exists(output_path):
+            os.makedirs(output_path, exist_ok=True)
+        with open(output_file, "a+") as f:
+            for arg in msg_part2:
+                f.write(f"[{msg_type}{msg_part1}: {arg}\n")
+
+
     precolor = ""
     msg_type = ""
     if "error" in kwargs:
@@ -38,20 +51,39 @@ def print_message(server_cfg, server_name, *args, **kwargs):
     else:
         style = ""
 
+    msg_part1 = f"[{strftime('%H:%M:%S')}_{server_name}]:"
 
     if cmd_print:
         with colorama_text():
+            if "error" in kwargs:
+                cprint(figlet_format("ERROR", font="starwars"),"yellow", "on_red", attrs=["bold"])
+
             for arg in args:
                 print(
-                    f"{precolor}[{strftime('%H:%M:%S')}_{server_name}]:{Style.RESET_ALL} {style}{arg}{Style.RESET_ALL}"
+                    f"{precolor}{msg_part1}{Style.RESET_ALL} {style}{arg}{Style.RESET_ALL}"
                 )
 
     output_path = kwargs.get("log_dir", None)
     if output_path is not None:
-        output_path = os.path.join(output_path,server_name)
-        output_file = os.path.join(output_path, f"{server_name}_log_{strftime('%Y%m%d')}.txt")
-        if not os.path.exists(output_path):
-            os.makedirs(output_path, exist_ok=True)
-        with open(output_file, "a+") as f:
-            for arg in args:
-                f.write(f"[{msg_type}{strftime('%H:%M:%S')}_{server_name}]: {arg}\n")
+        write_log_file(server_name = server_name, 
+                       output_path = output_path, 
+                       msg_part1=msg_part1, 
+                       msg_part2=args)
+        write_log_file(server_name = "_MASTER_",
+                       output_path = output_path, 
+                       msg_part1=msg_part1, 
+                       msg_part2=args)
+
+
+        # output_path = os.path.join(output_path,server_name)
+        # output_file = os.path.join(output_path, f"{server_name}_log_{strftime('%Y%m%d')}.txt")
+        # if not os.path.exists(output_path):
+        #     os.makedirs(output_path, exist_ok=True)
+        # with open(output_file, "a+") as f:
+        #     for arg in args:
+        #         f.write(f"[{msg_type}{msg_part1}: {arg}\n")
+
+        # #master log
+
+
+

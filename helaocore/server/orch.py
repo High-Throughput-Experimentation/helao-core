@@ -52,6 +52,7 @@ from ..model.experiment_sequence import ExperimentSequenceModel
 from ..model.experiment import ExperimentTemplate
 
 from ..model.hlostatus import HloStatus
+from ..model.machine import MachineModel
 from ..model.server import ActionServerModel, GlobalStatusModel
 from ..model.orchstatus import OrchStatus
 from ..data.legacy import HTELegacyAPI
@@ -697,25 +698,40 @@ class Orch(Base):
             self.orchstatusmodel.counter_dispatched_actions[self.active_experiment.experiment_uuid] +=1
 
             A.init_act(time_offset = self.ntp_offset)
-            result, error_code = await async_action_dispatcher(self.world_cfg, A)
+            result_actiondict, error_code = await async_action_dispatcher(self.world_cfg, A)
             if error_code is not ErrorCodes.none:
                 return error_code
+            
+            
+            try:
+                result_action = Action(**result_actiondict)
+            except Exception as e:
+                self.print_message(f"returned result is not a valid "
+                                   f"Action BaseModel: {e}",
+                                   error = True)
+                return ErrorCodes.critical
+            
+            
+            if result_action.error_code is not ErrorCodes.none:
+                self.print_message(f"Action result has error code: "
+                                   f"{result_action.error_code}",
+                                   error = True)
+                return result_action.error_code
 
             self.print_message("copying global vars "
                                "back to experiment")
-            # self.print_message(result)
-            if "to_global_params" in result:
-                for k in result["to_global_params"]:
-                    if k in result["action_params"]:
-                        if (
-                            result["action_params"][k] is None
-                            and k in self.active_experiment.global_params
-                        ):
-                            self.active_experiment.global_params.pop(k)
-                        else:
-                            self.active_experiment.global_params.update(
-                                {k: result["action_params"][k]}
-                            )
+
+            for k in result_action.to_global_params:
+                if k in result_action.action_params:
+                    if (
+                        result_action.action_params[k] is None
+                        and k in self.active_experiment.global_params
+                    ):
+                        self.active_experiment.global_params.pop(k)
+                    else:
+                        self.active_experiment.global_params.update(
+                            {k: result_action.action_params[k]}
+                        )
             self.print_message("done copying global "
                                "vars back to experiment")
 
@@ -765,10 +781,12 @@ class Orch(Base):
                     error_code = await self.loop_task_dispatch_action()
                     
                 if error_code is not ErrorCodes.none:
-                    await self.intend_stop()
                     self.print_message(f"stopping orch with error code: "
                                        f"{error_code}",
                                        error = True)
+                    await self.intend_stop()
+                    # await self.estop_loop()
+
 
 
             self.print_message("all queues are empty")
@@ -848,10 +866,14 @@ class Orch(Base):
 
 
     async def estop_loop(self):
+        self.print_message("estopping orch",
+                           info = True)
+
         # set orchstatusmodel.loop_state to estop
         self.orchstatusmodel.loop_state = OrchStatus.estop
         # cancels current dispatch loop task
-        self.loop_task.cancel()
+        if self.loop_task is not None:
+            self.loop_task.cancel()
         # force stop all running actions in the status dict (for this orch)
         # TODO
         await self.estop_actions(switch = True)
@@ -864,6 +886,9 @@ class Orch(Base):
 
 
     async def estop_actions(self, switch: bool):
+        self.print_message("estopping all servers",
+                           info = True)
+
         # create a dict for current active_experiment
         # (estop happens during the active_experiment)
 
@@ -876,37 +901,40 @@ class Orch(Base):
             exp.sequence_name = "orch_estop"
             # need to set status, else init will set in to active
             exp.sequence_status = [HloStatus.estopped, HloStatus.finished]
-            exp.init_seq(time_offset=self.base.ntp_offset)
+            exp.init_seq(time_offset=self.ntp_offset)
 
             exp.technique_name = self.technique_name
             exp.orchestrator = self.server
             exp.experiment_status = [HloStatus.estopped, HloStatus.finished]
-            exp.init_prc(time_offset=self.base.ntp_offset)
+            exp.init_prc(time_offset=self.ntp_offset)
             active_exp_dict = exp.as_dict()
 
+        for action_server_key, actionservermodel \
+        in self.orchstatusmodel.server_dict.items():
+            if actionservermodel.action_server == self.server:
+                continue
 
-        for action_server, actionservermodel \
-        in self.server_dict.items():
             action_dict = deepcopy(active_exp_dict)
             action_dict.update({
                 "action_name":"estop",
-                "action_server":actionservermodel.action_server.dict(),
+                "action_server":actionservermodel.action_server.json_dict(),
                 "action_params":{"switch":switch},
                 "start_condition":ActionStartCondition.no_wait
                 })
 
             A = Action(**action_dict)
+            self.print_message(f"Sending estop={switch} request to "
+                                f"{actionservermodel.action_server.disp_name()}",
+                                info = True)
             try:
-                self.print_message(f"Sending estop={switch} request to "
-                                   f"{actionservermodel.action_server.disp_name()}",
-                                   info = True)
-                _ = await async_action_dispatcher(self.world_cfg, A)
+                _ = await async_action_dispatcher(self.world_cfg, A)                
             except Exception as e:
                 pass
                 # no estop endpoint for this action server?
                 self.print_message(f"estop for "
-                                   f"{actionservermodel.action_server.disp_name()} "
-                                   f"failed with: {e}", error = True)
+                                    f"{actionservermodel.action_server.disp_name()} "
+                                    f"failed with: {e}", error = True)
+                
 
 
     async def skip(self):
@@ -1390,6 +1418,8 @@ class Operator:
         # buttons to control orch
         self.button_start_orch = Button(label="Start Orch", button_type="default", width=70)
         self.button_start_orch.on_event(ButtonClick, self.callback_start_orch)
+        self.button_estop_orch = Button(label="ESTOP", button_type="danger", width=400, height = 100)
+        self.button_estop_orch.on_event(ButtonClick, self.callback_estop_orch)
         self.button_add_expplan = Button(label="add exp plan", button_type="default", width=100)
         self.button_add_expplan.on_event(ButtonClick, self.callback_add_expplan)
         self.button_stop_orch = Button(label="Stop Orch", button_type="default", width=70)
@@ -1516,6 +1546,8 @@ class Operator:
                  self.button_update
                 ],
                 Spacer(height=10),
+                self.button_estop_orch,
+                Spacer(height=10),
                 ],background="#7fdbff",width=self.max_width),
             ])
 
@@ -1545,7 +1577,7 @@ class Operator:
 
     def cleanup_session(self, session_context):
         self.vis.print_message("Operator Bokeh session closed",
-                                error = True)
+                                info = True)
         self.IOloop_run = False
         self.IOtask.cancel()
 
@@ -1800,6 +1832,12 @@ class Operator:
             self.get_sample_infos([sample_no-1], sender)
         else:
             self.vis.doc.add_next_tick_callback(partial(self.update_input_value,sender,""))
+
+
+
+    def callback_estop_orch(self, event):
+        self.vis.print_message("estop orch")
+        self.vis.doc.add_next_tick_callback(partial(self.orch.estop_loop))
 
 
     def callback_start_orch(self, event):
