@@ -1689,7 +1689,7 @@ class Base(object):
             #finish selected actions
             if uuid_list is None:
                 # default: finish all except current one
-                await self.finish(finish_uuid_list = self.action_list[1:])
+                await self.finish(finish_uuid_list = [act.action_uuid for act in self.action_list[1:]])
                 
             else:
                 # use the supplied uuid list
