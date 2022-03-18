@@ -661,7 +661,7 @@ class Base(object):
                     self.actionserver.endpoints[status_msg.act.action_name].active_dict.update(
                         {status_msg.act.action_uuid:status_msg}
                     )
-                
+
                 # sort the status (finished_dict is empty at this point)
                 self.actionserver.endpoints[status_msg.act.action_name].sort_status()
                 self.print_message(
@@ -1081,6 +1081,8 @@ class Base(object):
             self.base.print_message(
                 f"Adding {str(action.action_uuid)} to {action.action_name} status list."
             )
+            
+            
             await self.base.status_q.put(StatusModel(act = action.get_act().as_dict()))
 
 

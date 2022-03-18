@@ -639,6 +639,11 @@ class Orch(Base):
             self.action_dq.clear()
             await self.intend_none()
             self.print_message("skipping to next experiment")
+        elif self.orchstatusmodel.loop_intent == OrchStatus.estop:
+            self.action_dq.clear()
+            await self.intend_none()
+            self.print_message("estopping")
+            self.orchstatusmodel.loop_state = OrchStatus.estop
         else:
             # all action blocking is handled like preempt, 
             # check Action requirements
@@ -784,9 +789,13 @@ class Orch(Base):
                     self.print_message(f"stopping orch with error code: "
                                        f"{error_code}",
                                        error = True)
-                    await self.intend_stop()
-                    # await self.estop_loop()
+                    # await self.intend_stop()
+                    await self.intend_estop()
 
+
+            if self.orchstatusmodel.loop_state == OrchStatus.estop \
+            or self.orchstatusmodel.loop_intent == OrchStatus.estop:
+                await self.estop_loop()
 
 
             self.print_message("all queues are empty")
@@ -800,8 +809,8 @@ class Orch(Base):
             self.print_message("finishing final sequence")
             await self.finish_active_sequence()
 
-
-            self.orchstatusmodel.loop_state = OrchStatus.stopped
+            if self.orchstatusmodel.loop_state != OrchStatus.estop:
+                self.orchstatusmodel.loop_state = OrchStatus.stopped
             await self.intend_none()
             await self.update_operator(True)
             return True
@@ -859,7 +868,8 @@ class Orch(Base):
             self.loop_task = asyncio.create_task(self.dispatch_loop_task())
         elif self.orchstatusmodel.loop_state == OrchStatus.estop:
             self.print_message("E-STOP flag was raised, "
-                               "clear E-STOP before starting.")
+                               "clear E-STOP before starting.",
+                               error = True)
         else:
             self.print_message("loop already started.")
         return self.orchstatusmodel.loop_state
@@ -869,16 +879,23 @@ class Orch(Base):
         self.print_message("estopping orch",
                            info = True)
 
+        # if self.orchstatusmodel.loop_state == OrchStatus.started:
+        #     await self.intend_estop()
+        # else:
         # set orchstatusmodel.loop_state to estop
         self.orchstatusmodel.loop_state = OrchStatus.estop
         # cancels current dispatch loop task
-        if self.loop_task is not None:
-            self.loop_task.cancel()
+
+
         # force stop all running actions in the status dict (for this orch)
         # TODO
         await self.estop_actions(switch = True)
+        # if self.loop_task is not None:
+            # self.loop_task.cancel()
         # reset loop intend
         await self.intend_none()
+
+        await self.update_operator(True)
 
 
     async def stop_loop(self):
@@ -911,8 +928,8 @@ class Orch(Base):
 
         for action_server_key, actionservermodel \
         in self.orchstatusmodel.server_dict.items():
-            if actionservermodel.action_server == self.server:
-                continue
+            # if actionservermodel.action_server == self.server:
+            #     continue
 
             action_dict = deepcopy(active_exp_dict)
             action_dict.update({
@@ -945,8 +962,8 @@ class Orch(Base):
             self.print_message("orchestrator not running, "
                                "clearing action queue")
             await asyncio.sleep(0.001)
-            self.action_dq.clear()        
-
+            self.action_dq.clear()
+    
 
     async def intend_skip(self):
         await asyncio.sleep(0.001)
@@ -969,6 +986,11 @@ class Orch(Base):
     async def intend_stop(self):
         await asyncio.sleep(0.001)
         self.orchstatusmodel.loop_intent = OrchStatus.stop
+        await self.interrupt_q.put(self.orchstatusmodel.loop_intent)
+
+    async def intend_estop(self):
+        await asyncio.sleep(0.001)
+        self.orchstatusmodel.loop_intent = OrchStatus.estop
         await self.interrupt_q.put(self.orchstatusmodel.loop_intent)
 
 
@@ -1844,6 +1866,8 @@ class Operator:
         if self.orch.orchstatusmodel.loop_state == OrchStatus.stopped:
             self.vis.print_message("starting orch")
             self.vis.doc.add_next_tick_callback(partial(self.orch.start))
+        elif self.orch.orchstatusmodel.loop_state == OrchStatus.estop:
+            self.vis.print_message("orch is in estop", error = True)
         else:
             self.vis.print_message("Cannot start orch. Sequence is empty.")
 
@@ -2416,17 +2440,15 @@ class Operator:
         self.experimentplan_source.data = self.experiment_plan_list
         
         if self.orch.orchstatusmodel.loop_state == OrchStatus.started:
-            self.orch_status_button.label = "Enabled"
-            self.orch_status_button.button_type = "success"
+            self.orch_status_button.label = "started"
             self.orch_status_button.button_type = "success"
 
         elif self.orch.orchstatusmodel.loop_state == OrchStatus.stopped:
-            self.orch_status_button.label = "Disabled"
-            self.orch_status_button.button_type = "danger"            
-            self.orch_status_button.button_type = "danger"
+            self.orch_status_button.label = "stopped"
+            self.orch_status_button.button_type = "success"
+            # self.orch_status_button.button_type = "danger"
         else:
             self.orch_status_button.label = f"{self.orch.orchstatusmodel.loop_state.value}"
-            self.orch_status_button.button_type = "danger"            
             self.orch_status_button.button_type = "danger"
 
 

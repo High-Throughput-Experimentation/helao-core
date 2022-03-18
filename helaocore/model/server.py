@@ -20,7 +20,8 @@ from ..error import ErrorCodes
 # additional finished categories which contain one of these
 # will be added to their own categories, sequence defines priority
 # all of these need additional "finish" else the action is still "active"
-main_finished_status = [HloStatus.estopped, HloStatus.errored]
+# main_finished_status = [HloStatus.estopped, HloStatus.errored]
+main_finished_status = [HloStatus.errored]
 
 
 class StatusModel(BaseModel, HelaoDict):
@@ -54,6 +55,7 @@ class EndpointModel(BaseModel, HelaoDict):
     def sort_status(self):
         del_keys = []
         for uuid, status in self.active_dict.items():
+            print(uuid, status.act.action_status)
             # check if action is finished
             if HloStatus.finished in status.act.action_status:
                 del_keys.append(uuid)
@@ -67,11 +69,12 @@ class EndpointModel(BaseModel, HelaoDict):
                             break
                         self.finished_dict[hlostatus].update({uuid:status})
 
-                # no main substatus, add it under finished key
-                if not is_sub_status:
-                    if HloStatus.finished not in self.finished_dict:
-                        self.finished_dict[HloStatus.finished] = dict()
-                    self.finished_dict[HloStatus.finished].update({uuid:status})
+                # # no main substatus, add it under finished key
+                # if not is_sub_status:
+                # also always add it to finished
+                if HloStatus.finished not in self.finished_dict:
+                    self.finished_dict[HloStatus.finished] = dict()
+                self.finished_dict[HloStatus.finished].update({uuid:status})
 
         # delete all finished actions from active_dict
         for key in del_keys:
@@ -234,12 +237,12 @@ class GlobalStatusModel(BaseModel, HelaoDict):
         if hlostatus in self.finished_dict:
             # all of them have this status
             for uuid, statusmodel in self.finished_dict[hlostatus].items():
-                uuid_dict.append({uuid:statusmodel})
+                uuid_dict.update({uuid:statusmodel})
         elif HloStatus.finished in self.finished_dict:
             # can only be in finsihed, but need to look for substatus
             for uuid, statusmodel in self.finished_dict[HloStatus.finished].items():
                 if hlostatus in statusmodel.act.action_status:
-                    uuid_dict.append({uuid:statusmodel})
+                    uuid_dict.update({uuid:statusmodel})
             
         
         return uuid_dict
