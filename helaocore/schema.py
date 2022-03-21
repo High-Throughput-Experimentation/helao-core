@@ -139,12 +139,22 @@ class Experiment(Sequence, ExperimentModel):
 
 
     def _experiment_update_from_actlist(self, prc: ExperimentModel):
-
+        # reset sample list of prc
+        prc.samples_in = []
+        prc.samples_out = []
+        # reset file list
+        prc.files = []
+        
         if self.experiment_action_list is None:
             self.experiment_action_list = []
 
 
         for actm in self.experiment_action_list:
+            print_message({}, "experiment", 
+                          f"updating exp with act {actm.action_name} on "
+                          f"{actm.action_server.disp_name()}, uuid:{actm.action_uuid}"
+                          , info=True)
+
             prc.action_list.append(ShortActionModel(**actm.dict()))
             for file in actm.files:
                 if file.action_uuid is None:
@@ -164,6 +174,7 @@ class Experiment(Sequence, ExperimentModel):
                     prc.samples_in[identical].action_uuid.append(actm.action_uuid)
 
             for _sample in actm.samples_out:
+                
                 identical = self._check_sample(
                                     new_sample = _sample,
                                     sample_list = prc.samples_out
