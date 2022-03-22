@@ -70,7 +70,7 @@ class _BaseSampleAPI(object):
         self._sample_type = f"{sampleclass.sample_type}_sample"
         self._dbfilename = gethostname() + f"__{self._sample_type}.db"
         self._base = Serv_class
-        self._dbfilepath = self._base.db_root
+        self._dbfilepath = self._base.helaodirs.db_root
         self._db = os.path.join(self._dbfilepath, self._dbfilename)
         self._con = None
         self._cur = None
@@ -586,7 +586,7 @@ class OldLiquidSampleAPI:
         self._base = Serv_class
 
         self._dbfile = "liquid_ID_database.csv"
-        self._dbfilepath = self._base.db_root
+        self._dbfilepath = self._base.helaodirs.db_root
         self.fdb = None
         self.headerlines = 0
         # create folder first if it not exist
@@ -754,7 +754,7 @@ class OldLiquidSampleAPI:
 class UnifiedSampleDataAPI:
     def __init__(self, Serv_class):
         self._base = Serv_class
-        self._dbfilepath = self._base.db_root
+        self._dbfilepath = self._base.helaodirs.db_root
 
         self.solidAPI = SolidSampleAPI(self._base)
         self.liquidAPI = LiquidSampleAPI(self._base)
