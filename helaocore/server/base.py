@@ -34,6 +34,7 @@ from ..helper.helao_dirs import helao_dirs
 from ..helper.multisubscriber_queue import MultisubscriberQueue
 from ..helper.print_message import print_message
 from ..helper import async_copy
+from ..helper.yml_finisher import yml_finisher
 from ..schema import Action
 from ..model.hlostatus import HloStatus
 from ..model.sample import (
@@ -1790,6 +1791,12 @@ class Base(object):
                 self.base.print_message("all active action are done, "
                                         "closing active",
                                          info = True)
+
+                # DB server call to finish_yml if DB exists
+                for action in self.action_list:
+                    yml_dir = os.path.join(self.base.helaodirs.save_root.__str__(), action.get_action_dir())
+                    yml_path = os.path.join(yml_dir, f"{action.action_timestamp.strftime('%Y%m%d.%H%M%S%f')}.yml")
+                    await yml_finisher(yml_path, "action", self.base)
 
             # always returns the most recent action of active
             return self.action

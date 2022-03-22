@@ -1,5 +1,6 @@
 __all__ = ["Orch", "makeOrchServ"]
 
+import os
 import asyncio
 import sys
 from collections import deque
@@ -46,6 +47,7 @@ from .dispatcher import async_private_dispatcher, async_action_dispatcher
 from ..model.action_start_condition import ActionStartCondition
 from ..helper.to_json import to_json
 from ..helper.unpack_samples import unpack_samples_helper
+from ..helper.yml_finisher import yml_finisher
 from ..schema import Sequence, Experiment, Action
 
 from ..model.experiment_sequence import ExperimentSequenceModel
@@ -1208,6 +1210,10 @@ class Orch(Base):
             self.last_sequence = deepcopy(self.active_sequence)
             self.active_sequence = None
 
+            # DB server call to finish_yml if DB exists
+            yml_dir = os.path.join(self.helaodirs.save_root.__str__(), self.last_sequence.get_sequence_dir())
+            yml_path = os.path.join(yml_dir, f"{self.last_sequence.sequence_timestamp.strftime('%Y%m%d.%H%M%S%f')}.yml")
+            await yml_finisher(yml_path, "sequence", self)
 
     async def finish_active_experiment(self):
         # we need to wait for all actions to finish first
@@ -1242,9 +1248,16 @@ class Orch(Base):
             await self.write_prc(self.active_experiment)
 
 
-        self.last_experiment = deepcopy(self.active_experiment)
-        self.active_experiment = None
+            self.last_experiment = deepcopy(self.active_experiment)
+            self.active_experiment = None
 
+            # DB server call to finish_yml if DB exists
+            yml_dir = os.path.join(
+                                    self.helaodirs.save_root.__str__(), 
+                                    self.last_experiment.get_experiment_dir()
+                                    )
+            yml_path = os.path.join(yml_dir, f"{self.last_experiment.experiment_timestamp.strftime('%Y%m%d.%H%M%S%f')}.yml")
+            await yml_finisher(yml_path, "experiment", self)
 
     async def write_active_experiment_prc(self):
         await self.write_prc(self.active_experiment)
