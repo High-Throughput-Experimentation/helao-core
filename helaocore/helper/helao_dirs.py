@@ -3,8 +3,9 @@ __all__ = ["helao_dirs"]
 import os
 
 from .print_message import print_message
+from ..model.helaodirs import HelaoDirs
 
-def helao_dirs(world_cfg: dict):
+def helao_dirs(world_cfg: dict) -> HelaoDirs:
     def check_dir(path):
         if not os.path.isdir(path):
             print_message({},"DIR",
@@ -34,4 +35,14 @@ def helao_dirs(world_cfg: dict):
         check_dir(states_root)
         check_dir(db_root)
 
-    return root, save_root, log_root, states_root, db_root
+
+
+    helaodirs = HelaoDirs(
+        root = root,
+        save_root = save_root,
+        log_root = log_root,
+        states_root = states_root,
+        db_root = db_root
+    )
+
+    return helaodirs#root, save_root, log_root, states_root, db_root

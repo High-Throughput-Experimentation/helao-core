@@ -27,10 +27,10 @@ class Vis(object):
         self.server_cfg = bokehapp.helao_cfg["servers"][self.server.server_name]
         self.world_cfg = bokehapp.helao_cfg
         self.doc = bokehapp.doc
-        self.root, self.save_root, self.log_root, self.states_root, self.db_root = \
-            helao_dirs(self.world_cfg)
         
-        if self.root is None:
+        self.helaodirs = helao_dirs(self.world_cfg)
+        
+        if self.helaodirs.root is None:
             raise ValueError(
                 "Warning: root directory was not defined. Logs, PRCs, PRGs, and data will not be written.",
                 error=True,
@@ -40,4 +40,4 @@ class Vis(object):
         # self.aloop = asyncio.get_running_loop()
 
     def print_message(self, *args, **kwargs):
-        print_message(self.server_cfg, self.server.server_name, log_dir = self.log_root, *args, **kwargs)
+        print_message(self.server_cfg, self.server.server_name, log_dir = self.helaodirs.log_root, *args, **kwargs)

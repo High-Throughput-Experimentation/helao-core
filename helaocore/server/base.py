@@ -239,13 +239,9 @@ class Base(object):
         self.technique_name = None
         self.aloop = asyncio.get_running_loop()
 
-        self.root, \
-        self.save_root, \
-        self.log_root, \
-        self.states_root, \
-        self.db_root = helao_dirs(self.world_cfg)
+        self.helaodirs = helao_dirs(self.world_cfg)
 
-        if self.root is None:
+        if self.helaodirs.root is None:
             raise ValueError(
                 "Warning: root directory was not defined. "
                 "Logs, PRCs, PRGs, and data will not be written.",
@@ -278,9 +274,9 @@ class Base(object):
         self.ntp_last_sync = None
 
         self.ntp_last_sync_file = None
-        if self.root is not None:
+        if self.helaodirs.root is not None:
             self.ntp_last_sync_file = os.path.join(
-                                                   self.states_root, 
+                                                   self.helaodirs.states_root, 
                                                    "ntpLastSync.txt"
                                                   )
             if os.path.exists(self.ntp_last_sync_file):
@@ -303,7 +299,7 @@ class Base(object):
         print_message(
                       self.server_cfg, 
                       self.server.server_name, 
-                      log_dir=self.log_root, 
+                      log_dir=self.helaodirs.log_root, 
                       *args, 
                       **kwargs
                      )
@@ -789,7 +785,7 @@ class Base(object):
         "Create new prc if it doesn't exist."
         if action.save_act:
             act_dict = action.get_act().clean_dict()
-            output_path = os.path.join(self.save_root,action.action_output_dir)
+            output_path = os.path.join(self.helaodirs.save_root,action.action_output_dir)
             output_file = os.path.join(
                                        output_path, 
                                        f"{action.action_timestamp.strftime('%Y%m%d.%H%M%S%f')}.yml")
@@ -809,7 +805,7 @@ class Base(object):
     async def write_prc(self, experiment):
         prc_dict = experiment.get_prc().clean_dict()
         output_path = os.path.join(
-                                   self.save_root, 
+                                   self.helaodirs.save_root, 
                                    experiment.get_experiment_dir()
                                   )
         output_file = os.path.join(output_path, f"{experiment.experiment_timestamp.strftime('%Y%m%d.%H%M%S%f')}.yml")
@@ -830,7 +826,7 @@ class Base(object):
     async def write_seq(self, sequence):
         seq_dict = sequence.get_seq().clean_dict()
         sequence_dir = sequence.get_sequence_dir()
-        output_path = os.path.join(self.save_root, sequence_dir)
+        output_path = os.path.join(self.helaodirs.save_root, sequence_dir)
         output_file = os.path.join(output_path, f"{sequence.sequence_timestamp.strftime('%Y%m%d.%H%M%S%f')}.yml")
 
         self.print_message(f"writing to seq meta file: {output_file}")
@@ -919,7 +915,7 @@ class Base(object):
                 self.base.print_message("Manual Action.", info=True)
 
 
-            if not self.base.save_root:
+            if not self.base.helaodirs.save_root:
                 self.base.print_message("Root save directory not specified, "
                                         "cannot save action results.")
                 self.action.save_data = False
@@ -967,7 +963,7 @@ class Base(object):
 
             if self.action.save_act:
                 os.makedirs(
-                    os.path.join(self.base.save_root, self.action.action_output_dir),
+                    os.path.join(self.base.helaodirs.save_root, self.action.action_output_dir),
                     exist_ok=True,
                 )
                 await self.update_act_file()
@@ -1276,7 +1272,7 @@ class Base(object):
             filename = file_info.file_name
 
             output_path = os.path.join(
-                                       self.base.save_root, 
+                                       self.base.helaodirs.save_root, 
                                        output_action.action_output_dir
                                       )
             output_file = os.path.join(
@@ -1461,7 +1457,7 @@ class Base(object):
                     file_group=file_group,
                 )
                 output_path = os.path.join(
-                                           self.base.save_root, 
+                                           self.base.helaodirs.save_root, 
                                            action.action_output_dir, 
                                           )
                 output_file = os.path.join(
@@ -1511,7 +1507,7 @@ class Base(object):
                 )
 
                 output_path = os.path.join(
-                                           self.base.save_root, 
+                                           self.base.helaodirs.save_root, 
                                            action.action_output_dir, 
                                           )
                 output_file = os.path.join(
@@ -1810,7 +1806,7 @@ class Base(object):
             if action is None:
                 action = self.action
             if os.path.dirname(file_path) != \
-            os.path.join(self.base.save_root, action.action_output_dir):
+            os.path.join(self.base.helaodirs.save_root, action.action_output_dir):
                 action.AUX_file_paths.append(file_path)
 
             file_info = FileInfo(
@@ -1831,7 +1827,7 @@ class Base(object):
             "Copy auxiliary files from folder path to prc directory."
             for x in self.action.AUX_file_paths:
                 new_path = os.path.join(
-                                        self.base.save_root, 
+                                        self.base.helaodirs.save_root, 
                                         self.action.action_output_dir, 
                                         os.path.basename(x)
                                        )
