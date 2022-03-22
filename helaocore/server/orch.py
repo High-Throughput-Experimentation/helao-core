@@ -324,11 +324,13 @@ class Orch(Base):
             world_config_dict=self.world_cfg,
             experiment_path=None,
             server_name=self.server.server_name,
+            user_experiment_path = self.helaodirs.user_exp,
         )
         self.sequence_lib = import_sequences(
             world_config_dict = self.world_cfg,
             sequence_path = None,
-            server_name=self.server.server_name
+            server_name=self.server.server_name,
+            user_sequence_path = self.helaodirs.user_seq,
         )
 
         # instantiate experiment/experiment queue, action queue

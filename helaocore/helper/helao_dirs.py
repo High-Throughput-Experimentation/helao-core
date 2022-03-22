@@ -19,6 +19,8 @@ def helao_dirs(world_cfg: dict) -> HelaoDirs:
     log_root = None
     states_root = None
     db_root = None
+    user_exp = None
+    user_seq = None
     
     if "root" in world_cfg:
         root = world_cfg["root"]
@@ -26,6 +28,8 @@ def helao_dirs(world_cfg: dict) -> HelaoDirs:
         log_root = os.path.join(root, "LOGS")
         states_root = os.path.join(root, "STATES")
         db_root = os.path.join(root, "DATABASE")
+        user_exp = os.path.join(root, "USER_CONFIG","EXP")
+        user_seq = os.path.join(root, "USER_CONFIG","SEQ")
         print_message({},"DIR",
             f"Found root directory in config: {world_cfg['root']}",
         )
@@ -34,6 +38,8 @@ def helao_dirs(world_cfg: dict) -> HelaoDirs:
         check_dir(log_root)
         check_dir(states_root)
         check_dir(db_root)
+        check_dir(user_exp)
+        check_dir(user_seq)
 
 
 
@@ -42,7 +48,9 @@ def helao_dirs(world_cfg: dict) -> HelaoDirs:
         save_root = save_root,
         log_root = log_root,
         states_root = states_root,
-        db_root = db_root
+        db_root = db_root,
+        user_exp = user_exp,
+        user_seq = user_seq,
     )
 
-    return helaodirs#root, save_root, log_root, states_root, db_root
+    return helaodirs
