@@ -2,7 +2,8 @@ __all__ = ["yml_finisher"]
 
 import asyncio
 import aiohttp
-from helaocore.helper.print_message import print_message
+
+from .print_message import print_message
 
 
 async def yml_finisher(yml_path: str, yml_type: str, retry: int = 3, base: object = None):
