@@ -1634,9 +1634,9 @@ class Operator:
             
             # filter the Sequence BaseModel
             idxlist = []
-            for idx, tmparg in enumerate(argspec.args):
-                if tmparg=="sequence_version":
-                    idxlist.append(idx)
+            # for idx, tmparg in enumerate(argspec.args):
+            #     if tmparg=="sequence_version":
+            #         idxlist.append(idx)
 
             tmpargs = list(tmpargs)
             tmpdefs = list(tmpdefs)
@@ -1682,7 +1682,8 @@ class Operator:
             # filter the Experiment BaseModel
             idxlist = []
             for idx, tmparg in enumerate(argspec.args):
-                if argspec.annotations.get(tmparg, None) == Experiment or tmparg=="experiment_version":
+                # if argspec.annotations.get(tmparg, None) == Experiment or tmparg=="experiment_version":
+                if argspec.annotations.get(tmparg, None) == Experiment:
                     idxlist.append(idx)
 
             tmpargs = list(tmpargs)
@@ -2141,7 +2142,7 @@ class Operator:
             #     continue
             disabled = False
 
-            param_input.append(TextInput(value=def_val, title=args[idx], disabled=disabled, width=400, height=40))
+            param_input.append(TextInput(value=def_val, title=args[idx], disabled=True if args[idx].endswith("_version") else False, width=400, height=40))
             param_layout.append(layout([
                         [param_input[item]],
                         Spacer(height=10),
