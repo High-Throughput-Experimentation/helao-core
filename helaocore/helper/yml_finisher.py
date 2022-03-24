@@ -6,7 +6,7 @@ import aiohttp
 from .print_message import print_message
 
 
-async def yml_finisher(yml_path: str, yml_type: str, retry: int = 3, base: object = None):
+async def yml_finisher(yml_path: str, yml_type: str, base: object = None, retry: int = 3):
 
     if base is not None:
         print_msg = lambda msg: base.print_message(msg, info=True)

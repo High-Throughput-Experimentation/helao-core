@@ -1796,7 +1796,7 @@ class Base(object):
                 for action in self.action_list:
                     yml_dir = os.path.join(self.base.helaodirs.save_root.__str__(), action.get_action_dir())
                     yml_path = os.path.join(yml_dir, f"{action.action_timestamp.strftime('%Y%m%d.%H%M%S%f')}.yml")
-                    await yml_finisher(yml_path, "action", self.base)
+                    await yml_finisher(yml_path, "action", base=self.base)
 
             # always returns the most recent action of active
             return self.action
