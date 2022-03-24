@@ -1627,12 +1627,29 @@ class Operator:
 
             argspec = inspect.getfullargspec(self.sequence_lib[sequence])
             tmpargs = argspec.args
-            tmpdef = argspec.defaults
+            tmpdefs = argspec.defaults
 
-            if tmpdef == None:
-                tmpdef = []
+            if tmpdefs == None:
+                tmpdefs = []
             
-            for t in tmpdef:
+            # filter the Sequence BaseModel
+            idxlist = []
+            for idx, tmparg in enumerate(argspec.args):
+                if tmparg=="sequence_version":
+                    idxlist.append(idx)
+
+            tmpargs = list(tmpargs)
+            tmpdefs = list(tmpdefs)
+            for j, idx in enumerate(idxlist):
+                if len(tmpargs) == len(tmpdefs):
+                    tmpargs.pop(idx-j)
+                    tmpdefs.pop(idx-j)
+                else:
+                    tmpargs.pop(idx-j)
+            tmpargs = tuple(tmpargs)
+            tmpdefs = tuple(tmpdefs)
+
+            for t in tmpdefs:
                 t = json.dumps(t)
             
             self.sequences.append(return_sequence_lib(
@@ -1640,7 +1657,7 @@ class Operator:
                 sequence_name = sequence,
                 doc = tmpdoc,
                 args = tmpargs,
-                defaults = tmpdef,
+                defaults = tmpdefs,
                 ).dict()
             )
         for item in self.sequences:
@@ -1665,17 +1682,17 @@ class Operator:
             # filter the Experiment BaseModel
             idxlist = []
             for idx, tmparg in enumerate(argspec.args):
-                if argspec.annotations.get(tmparg, None) == Experiment:
+                if argspec.annotations.get(tmparg, None) == Experiment or tmparg=="experiment_version":
                     idxlist.append(idx)
 
             tmpargs = list(tmpargs)
             tmpdefs = list(tmpdefs)
-            for i, idx in enumerate(idxlist):
+            for j, idx in enumerate(idxlist):
                 if len(tmpargs) == len(tmpdefs):
-                    tmpargs.pop(idx-i)
-                    tmpdefs.pop(idx-i)
+                    tmpargs.pop(idx-j)
+                    tmpdefs.pop(idx-j)
                 else:
-                    tmpargs.pop(idx-i)
+                    tmpargs.pop(idx-j)
             tmpargs = tuple(tmpargs)
             tmpdefs = tuple(tmpdefs)
                 
