@@ -520,7 +520,7 @@ class Base(object):
 
             if self.ntp_last_sync_file is not None:
                 while file_in_use(self.ntp_last_sync_file):
-                    self._base.print_message("ntp file already in use, waiting", info=True)
+                    self.print_message("ntp file already in use, waiting", info=True)
                     await asyncio.sleep(0.1)
                 async with aiofiles.open(self.ntp_last_sync_file, "w") as f:
                     await f.write(f"{self.ntp_last_sync},{self.ntp_offset}")
