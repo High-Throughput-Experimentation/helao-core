@@ -3,13 +3,7 @@ Standard classes for experiment queue objects.
 
 """
 
-__all__ = [
-           "Sequence", 
-           "Experiment", 
-           "Action", 
-           "ActionPlanMaker",
-           "ExperimentPlanMaker"
-          ]
+__all__ = ["Sequence", "Experiment", "Action", "ActionPlanMaker", "ExperimentPlanMaker"]
 
 import os
 import inspect
@@ -25,30 +19,25 @@ from .helper.print_message import print_message
 from .helper.gen_uuid import gen_uuid
 from .helper.set_time import set_time
 from .model.action import ActionModel, ShortActionModel
-from .model.experiment import (
-                               ExperimentModel, 
-                               ShortExperimentModel, 
-                               ExperimentTemplate
-                              )
+from .model.experiment import ExperimentModel, ShortExperimentModel, ExperimentTemplate
 from .model.experiment_sequence import ExperimentSequenceModel
 from .model.hlostatus import HloStatus
 from .model.action_start_condition import ActionStartCondition
-from .model.machine import MachineModel
+
 # from .error import ErrorCodes
+
 
 class Sequence(ExperimentSequenceModel):
     # not in ExperimentSequenceModel:
 
-    #this holds experiments from an active sequence
+    # this holds experiments from an active sequence
     experimentmodel_list: List[ExperimentModel] = Field(default_factory=list)
 
     def __repr__(self):
-        return f"<sequence_name:{self.sequence_name}>" 
-
+        return f"<sequence_name:{self.sequence_name}>"
 
     def __str__(self):
-        return f"sequence_name:{self.sequence_name}" 
-
+        return f"sequence_name:{self.sequence_name}"
 
     def get_seq(self):
         seq = ExperimentSequenceModel(**self.dict())
@@ -58,23 +47,17 @@ class Sequence(ExperimentSequenceModel):
         # seq.experiment_plan_list = [ExperimentTemplate(**prc.dict()) for prc in self.experimentmodel_list]
         return seq
 
-
-    def init_seq(
-                 self, 
-                 time_offset: float = 0,
-                 force: Optional[bool] = None
-                ):
+    def init_seq(self, time_offset: float = 0, force: Optional[bool] = None):
         if force is None:
             force = False
         if force or self.sequence_timestamp is None:
-            self.sequence_timestamp = set_time(offset = time_offset)
+            self.sequence_timestamp = set_time(offset=time_offset)
         if force or self.sequence_uuid is None:
             self.sequence_uuid = gen_uuid()
         if force or not self.sequence_status:
             self.sequence_status = [HloStatus.active]
         if force or self.sequence_output_dir is None:
             self.sequence_output_dir = self.get_sequence_dir()
-
 
     def get_sequence_dir(self):
         HMS = self.sequence_timestamp.strftime("%H%M%S")
@@ -95,31 +78,23 @@ class Experiment(Sequence, ExperimentModel):
     global_params: Optional[dict] = Field(default_factory=dict)
     experiment_action_list: List[ActionModel] = Field(default_factory=list)
 
-
     def __repr__(self):
-        return f"<experiment_name:{self.experiment_name}>" 
-
+        return f"<experiment_name:{self.experiment_name}>"
 
     def __str__(self):
-        return f"experiment_name:{self.experiment_name}" 
+        return f"experiment_name:{self.experiment_name}"
 
-
-    def init_prc(
-                 self, 
-                 time_offset: float = 0,
-                 force: Optional[bool] = None
-                ):
+    def init_prc(self, time_offset: float = 0, force: Optional[bool] = None):
         if force is None:
             force = False
         if force or self.experiment_timestamp is None:
-            self.experiment_timestamp = set_time(offset = time_offset)
+            self.experiment_timestamp = set_time(offset=time_offset)
         if force or self.experiment_uuid is None:
             self.experiment_uuid = gen_uuid()
         if force or not self.experiment_status:
             self.experiment_status = [HloStatus.active]
         if force or self.experiment_output_dir is None:
             self.experiment_output_dir = self.get_experiment_dir()
-
 
     def get_experiment_dir(self):
         """accepts action or experiment object"""
@@ -130,13 +105,11 @@ class Experiment(Sequence, ExperimentModel):
             f"{experiment_time}__{self.experiment_name}",
         )
 
-
     def get_prc(self):
         prc = ExperimentModel(**self.dict())
         # now add all actions
-        self._experiment_update_from_actlist(prc = prc)
+        self._experiment_update_from_actlist(prc=prc)
         return prc
-
 
     def _experiment_update_from_actlist(self, prc: ExperimentModel):
         # reset sample list of prc
@@ -144,16 +117,18 @@ class Experiment(Sequence, ExperimentModel):
         prc.samples_out = []
         # reset file list
         prc.files = []
-        
+
         if self.experiment_action_list is None:
             self.experiment_action_list = []
 
-
         for actm in self.experiment_action_list:
-            print_message({}, "experiment", 
-                          f"updating exp with act {actm.action_name} on "
-                          f"{actm.action_server.disp_name()}, uuid:{actm.action_uuid}"
-                          , info=True)
+            print_message(
+                {},
+                "experiment",
+                f"updating exp with act {actm.action_name} on "
+                f"{actm.action_server.disp_name()}, uuid:{actm.action_uuid}",
+                info=True,
+            )
 
             prc.action_list.append(ShortActionModel(**actm.dict()))
             for file in actm.files:
@@ -162,10 +137,7 @@ class Experiment(Sequence, ExperimentModel):
                 prc.files.append(file)
 
             for _sample in actm.samples_in:
-                identical = self._check_sample(
-                                    new_sample = _sample,
-                                    sample_list = prc.samples_in
-                                    )
+                identical = self._check_sample(new_sample=_sample, sample_list=prc.samples_in)
                 if identical is None:
                     _sample.action_uuid = []
                     _sample.action_uuid.append(actm.action_uuid)
@@ -174,11 +146,8 @@ class Experiment(Sequence, ExperimentModel):
                     prc.samples_in[identical].action_uuid.append(actm.action_uuid)
 
             for _sample in actm.samples_out:
-                
-                identical = self._check_sample(
-                                    new_sample = _sample,
-                                    sample_list = prc.samples_out
-                                    )
+
+                identical = self._check_sample(new_sample=_sample, sample_list=prc.samples_out)
                 if identical is None:
                     _sample.action_uuid = []
                     _sample.action_uuid.append(actm.action_uuid)
@@ -186,8 +155,7 @@ class Experiment(Sequence, ExperimentModel):
                 else:
                     prc.samples_out[identical].action_uuid.append(actm.action_uuid)
 
-        self._check_sample_duplicates(prc = prc)
-
+        self._check_sample_duplicates(prc=prc)
 
     def _check_sample(self, new_sample, sample_list):
         for idx, sample in enumerate(sample_list):
@@ -208,27 +176,29 @@ class Experiment(Sequence, ExperimentModel):
 
         isunique = True
         for key, locs in in_labels.items():
-            if len(locs)>1:
+            if len(locs) > 1:
                 isunique = False
 
         if not isunique:
-            print_message({}, "experiment", 
-                          "\n----------------------------------"
-                          "\nDuplicate but 'unique' samples."
-                          "\nExperiment needs to be split."
-                          "\n----------------------------------", error=True)
-            print_message({}, "experiment", 
-                          f"samples_in labels: {in_labels}", error = True)
-            print_message({}, "experiment", 
-                          f"samples_out labels: {out_labels}", error = True)
+            print_message(
+                {},
+                "experiment",
+                "\n----------------------------------"
+                "\nDuplicate but 'unique' samples."
+                "\nExperiment needs to be split."
+                "\n----------------------------------",
+                error=True,
+            )
+            print_message({}, "experiment", f"samples_in labels: {in_labels}", error=True)
+            print_message({}, "experiment", f"samples_out labels: {out_labels}", error=True)
 
 
 class Action(Experiment, ActionModel):
     "Sample-action identifier class."
     # not in ActionModel:
     start_condition: Optional[ActionStartCondition] = ActionStartCondition.wait_for_all
-    save_act: Optional[bool] = True # default should be true
-    save_data: Optional[bool] = True # default should be true
+    save_act: Optional[bool] = True  # default should be true
+    save_data: Optional[bool] = True  # default should be true
     AUX_file_paths: Optional[List[Path]] = Field(default_factory=list)
 
     # moved to ActionModel
@@ -247,24 +217,16 @@ class Action(Experiment, ActionModel):
     data_stream_status: Optional[HloStatus] = None
 
     def __repr__(self):
-        return f"<action_name:{self.action_name}>" 
-
+        return f"<action_name:{self.action_name}>"
 
     def __str__(self):
-        return f"action_name:{self.action_name}" 
-
+        return f"action_name:{self.action_name}"
 
     def get_act(self):
         return ActionModel(**self.dict())
 
-
-    def init_act(
-                 self, 
-                 time_offset: float = 0,
-                 force: Optional[bool] = None
-                ):
-        if self.sequence_timestamp is None \
-        or self.experiment_timestamp is None:
+    def init_act(self, time_offset: float = 0, force: Optional[bool] = None):
+        if self.sequence_timestamp is None or self.experiment_timestamp is None:
             self.manual_action = True
             self.access = "manual"
             # -- (1) -- set missing sequence parameters
@@ -282,7 +244,6 @@ class Action(Experiment, ActionModel):
             self.action_status = [HloStatus.active]
         if force or self.action_output_dir is None:
             self.action_output_dir = self.get_action_dir()
-
 
     def get_action_dir(self):
         experiment_dir = self.get_experiment_dir()
@@ -312,33 +273,38 @@ class ActionPlanMaker(object):
             argparam = _locals.get(arg, None)
             if isinstance(argparam, Experiment):
                 if self._experiment is None:
-                    print_message({}, "actionplanmaker", 
-                                     f"{self.expname}: found Experiment BaseModel under "
-                                     f"parameter '{arg}'",
-                                     info = True)
+                    print_message(
+                        {},
+                        "actionplanmaker",
+                        f"{self.expname}: found Experiment BaseModel under " f"parameter '{arg}'",
+                        info=True,
+                    )
                     self._experiment = deepcopy(argparam)
                 else:
-                    print_message({}, "actionplanmaker", 
-                                  f"{self.expname}: critical error: "
-                                  f"found another Experiment BaseModel"
-                                  f" under parameter '{arg}',"
-                                  f" skipping it",
-                                  error=True,
-                                  )
+                    print_message(
+                        {},
+                        "actionplanmaker",
+                        f"{self.expname}: critical error: "
+                        f"found another Experiment BaseModel"
+                        f" under parameter '{arg}',"
+                        f" skipping it",
+                        error=True,
+                    )
             else:
-                exp_paramdict.update({arg:argparam})
+                exp_paramdict.update({arg: argparam})
 
         # check if an Experiment was detected
         if self._experiment is None:
-            print_message({}, "actionplanmaker", 
-               f"{self.expname}: critical error: "
-               f"no Experiment BaseModel was found "
-               f"by ActionPlanMaker, "
-               f"using blank Experiment.",
-               error=True,
+            print_message(
+                {},
+                "actionplanmaker",
+                f"{self.expname}: critical error: "
+                f"no Experiment BaseModel was found "
+                f"by ActionPlanMaker, "
+                f"using blank Experiment.",
+                error=True,
             )
             self._experiment = Experiment()
-
 
         # add all experiment_params under self.pars
         if self._experiment.experiment_params is not None:
@@ -358,28 +324,22 @@ class ActionPlanMaker(object):
                     f"adding it to self.pars",
                     error=True,
                 )
-                setattr(
-                    self.pars, key, val
-                )
+                setattr(self.pars, key, val)
 
         print_message(
             {},
             "ActionPlanMaker",
-            f"{self.expname}: params in self.pars are:"
-            f" {vars(self.pars)}",
+            f"{self.expname}: params in self.pars are:" f" {vars(self.pars)}",
             info=True,
         )
 
-
     class _C:
         pass
-
 
     def add_action(self, action_dict: dict):
         new_action_dict = self._experiment.as_dict()
         new_action_dict.update(action_dict)
         self.action_list.append(Action(**new_action_dict))
-
 
     def add_action_list(self, action_list: list):
         for action in action_list:
@@ -391,16 +351,18 @@ class ActionPlanMaker(object):
         action_name: str,
         action_params: dict,
         start_condition: ActionStartCondition = ActionStartCondition.wait_for_all,
-        **kwargs
+        **kwargs,
     ):
         """Shorthand add_action()."""
         action_dict = self._experiment.as_dict()
-        action_dict.update({
-            "action_server": action_server,
-            "action_name": action_name,
-            "action_params": action_params,
-            "start_condition": start_condition
-        })
+        action_dict.update(
+            {
+                "action_server": action_server,
+                "action_name": action_name,
+                "action_params": action_params,
+                "start_condition": start_condition,
+            }
+        )
         action_dict.update(kwargs)
         self.action_list.append(Action(**action_dict))
 
@@ -411,11 +373,10 @@ class ExperimentPlanMaker(object):
     ):
         self.experiment_plan_list = []
 
-
     def add_experiment(self, selected_experiment, experiment_params):
         self.experiment_plan_list.append(
             ExperimentTemplate(
-                experiment_name = selected_experiment,
-                experiment_params = experiment_params,
-                )
+                experiment_name=selected_experiment,
+                experiment_params=experiment_params,
             )
+        )
