@@ -16,6 +16,7 @@ from .machine import MachineModel
 from ..version import get_hlo_version
 from ..helper.helaodict import HelaoDict
 
+
 class ShortProcessModel(BaseModel, HelaoDict):
     process_uuid: Optional[UUID]
     process_name: Optional[str]

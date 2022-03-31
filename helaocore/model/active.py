@@ -19,10 +19,8 @@ class ActiveParams(BaseModel, HelaoDict):
     file_conn_params_dict: Dict[UUID, FileConnParams] = Field(default_factory=dict)
     aux_listen_uuids: List[UUID] = Field(default_factory=list)
 
-
     class Config:
         arbitrary_types_allowed = True
-
 
     @validator("action")
     def validate_action(cls, v):

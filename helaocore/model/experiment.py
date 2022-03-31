@@ -43,4 +43,4 @@ class ExperimentModel(ExperimentTemplate):
     samples_in: List[SampleUnion] = Field(default_factory=list)
     samples_out: List[SampleUnion] = Field(default_factory=list)
     files: List[FileInfo] = Field(default_factory=list)
-    process_list: List[UUID] = Field(default_factory=list) # populated by DB yml_finisher
+    process_list: List[UUID] = Field(default_factory=list)  # populated by DB yml_finisher

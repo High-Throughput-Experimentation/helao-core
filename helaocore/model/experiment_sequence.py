@@ -1,7 +1,4 @@
-__all__ = [
-           "ExperimentSequenceTemplate",
-           "ExperimentSequenceModel"
-           ]
+__all__ = ["ExperimentSequenceTemplate", "ExperimentSequenceModel"]
 
 from datetime import datetime
 from typing import List, Optional

@@ -1,35 +1,35 @@
-
 __all__ = [
-           "Custom",
-           "CustomTypes",
-           "VT15",
-           "VT54",
-           "VT70",
-           "Positions",
-          ]
+    "Custom",
+    "CustomTypes",
+    "VT15",
+    "VT54",
+    "VT70",
+    "Positions",
+]
 
 from copy import deepcopy
 from typing import (
-                    List, 
-                    Dict,
-                    Optional, 
-                    Union, 
-                    Literal, 
-                    Tuple,
-                    ForwardRef,
-                   )
+    List,
+    Dict,
+    Optional,
+    Union,
+    Literal,
+    Tuple,
+    ForwardRef,
+)
 from enum import Enum
 from pydantic import BaseModel, Field, root_validator
 
 from .sample import (
-                     SampleUnion,
-                     NoneSample,
-                     object_to_sample,
-                    )
+    SampleUnion,
+    NoneSample,
+    object_to_sample,
+)
 from ..helper.print_message import print_message
 from ..helper.helaodict import HelaoDict
 
 VTUnion = ForwardRef("VTUnion")
+
 
 class CustomTypes(str, Enum):
     cell = "cell"
@@ -45,27 +45,20 @@ class Custom(BaseModel, HelaoDict):
     blocked: bool = False
     max_vol_ml: Optional[float] = None
 
-
     def __repr__(self):
-        return f"<custom_name:{self.custom_name} custom_type:{self.custom_type}>" 
+        return f"<custom_name:{self.custom_name} custom_type:{self.custom_type}>"
 
     def __str__(self):
-        return f"custom_name:{self.custom_name}, custom_type:{self.custom_type}" 
-        
-        
+        return f"custom_name:{self.custom_name}, custom_type:{self.custom_type}"
+
     def assembly_allowed(self) -> bool:
         if self.custom_type == CustomTypes.cell:
             return True
         elif self.custom_type == CustomTypes.reservoir:
             return False
         else:
-            print_message({}, 
-                          "archive", 
-                          f"invalid 'custom_type': "
-                          f"{self.custom_type}", 
-                          error = True)
+            print_message({}, "archive", f"invalid 'custom_type': {self.custom_type}", error=True)
             return False
-
 
     def dilution_allowed(self) -> bool:
         if self.custom_type == CustomTypes.cell:
@@ -73,38 +66,27 @@ class Custom(BaseModel, HelaoDict):
         elif self.custom_type == CustomTypes.reservoir:
             return False
         else:
-            print_message({}, 
-                          "archive", 
-                          f"invalid 'custom_type': "
-                          f"{self.custom_type}", 
-                          error = True)                
+            print_message({}, "archive", f"invalid 'custom_type': {self.custom_type}", error=True)
             return False
 
-
     def is_destroyed(self) -> bool:
-        if self.custom_type ==  CustomTypes.injector:
+        if self.custom_type == CustomTypes.injector:
             return True
         elif self.custom_type == CustomTypes.waste:
             return True
         else:
             return False
-        
 
     def dest_allowed(self) -> bool:
         if self.custom_type == CustomTypes.cell:
             return True
-        elif self.custom_type ==  CustomTypes.injector:
+        elif self.custom_type == CustomTypes.injector:
             return True
         elif self.custom_type == CustomTypes.reservoir:
             return False
         else:
-            print_message({}, 
-                          "archive",
-                          f"invalid 'custom_type': "
-                          f"{self.custom_type}", 
-                          error = True)                
+            print_message({}, "archive", f"invalid 'custom_type': {self.custom_type}", error=True)
             return False
-
 
     def unload(self) -> SampleUnion:
         ret_sample = deepcopy(self.sample)
@@ -113,36 +95,27 @@ class Custom(BaseModel, HelaoDict):
         self.sample = NoneSample()
         return ret_sample
 
-    
     def load(self, sample_in: SampleUnion) -> Tuple[bool, SampleUnion]:
         if self.sample != NoneSample():
-            print_message({}, 
-                          "archive", 
-                          "sample already loaded. "
-                          "Unload first to load new one.", 
-                          error = True) 
+            print_message(
+                {}, "archive", "sample already loaded. Unload first to load new one.", error=True
+            )
             return False, NoneSample()
 
-        
         self.sample = deepcopy(sample_in)
         self.blocked = False
-        print_message({}, 
-                      "archive",
-                      f"loaded sample "
-                      f"{sample_in.global_label}", 
-                      info = True) 
+        print_message({}, "archive", f"loaded sample {sample_in.global_label}", info=True)
         return True, deepcopy(sample_in)
 
-   
+
 class _VT_template(BaseModel, HelaoDict):
     max_vol_ml: float
     VTtype: str
-    positions: int# = positions
+    positions: int  # = positions
     vials: List[bool] = Field(default_factory=list)
     blocked: List[bool] = Field(default_factory=list)
     samples: List[SampleUnion] = Field(default_factory=list)
     # reset_tray()
-
 
     @root_validator(skip_on_failure=True)
     def check_init_VT(cls, values):
@@ -150,9 +123,7 @@ class _VT_template(BaseModel, HelaoDict):
         vials = values.get("vials")
         blocked = values.get("blocked")
         samples = values.get("samples")
-        if len(vials) != positions \
-        or len(blocked) != positions \
-        or len(samples) != positions:
+        if len(vials) != positions or len(blocked) != positions or len(samples) != positions:
             values["vials"] = [False for i in range(positions)]
             values["blocked"] = [False for i in range(positions)]
             values["samples"] = [NoneSample() for i in range(positions)]
@@ -163,28 +134,24 @@ class _VT_template(BaseModel, HelaoDict):
         values["samples"] = tmp_samples
         return values
 
-
     def __repr__(self):
-        return f"<{self.VTtype} vials:{self.positions} max_vol_ml:{self.max_vol_ml}>" 
+        return f"<{self.VTtype} vials:{self.positions} max_vol_ml:{self.max_vol_ml}>"
 
     def __str__(self):
-        return  f"{self.VTtype} with vials:{self.positions} and max_vol_ml:{self.max_vol_ml}" 
+        return f"{self.VTtype} with vials:{self.positions} and max_vol_ml:{self.max_vol_ml}"
 
     def reset_tray(self):
         self.vials: List[bool] = [False for i in range(self.positions)]
         self.blocked: List[bool] = [False for i in range(self.positions)]
         self.samples: List[SampleUnion] = [NoneSample() for i in range(self.positions)]
 
-
     def first_empty(self):
         res = next((i for i, j in enumerate(self.vials) if not j and not self.blocked[i]), None)
         return res
-    
 
     def first_full(self):
         res = next((i for i, j in enumerate(self.vials) if j), None)
         return res
-
 
     def update_vials(self, vial_dict):
         for i, vial in enumerate(vial_dict):
@@ -200,52 +167,50 @@ class _VT_template(BaseModel, HelaoDict):
             except Exception:
                 self.samples[i] = NoneSample()
 
-
     def unload(self) -> List[SampleUnion]:
         ret_sample = []
         for sample in self.samples:
             if sample != NoneSample():
                 ret_sample.append(deepcopy(sample))
-        
+
         self.reset_tray()
         return ret_sample
-    
-    
+
     def load(
-             self, 
-             sample: SampleUnion,
-             vial: int = None,
-            ) -> SampleUnion:
+        self,
+        sample: SampleUnion,
+        vial: int = None,
+    ) -> SampleUnion:
         vial -= 1
-        ret_sample = NoneSample()        
+        ret_sample = NoneSample()
         if sample == NoneSample():
             return ret_sample
-        
-        if vial+1 <= self.positions:
+
+        if vial + 1 <= self.positions:
             if self.samples[vial] == NoneSample() and self.vials[vial] == False:
                 self.vials[vial] = True
                 self.samples[vial] = deepcopy(sample)
                 ret_sample = deepcopy(self.samples[vial])
 
         return ret_sample
-        
+
 
 class VT15(_VT_template):
     VTtype: Literal["VT15"] = "VT15"
     positions: Literal[15] = 15
-    max_vol_ml: Literal[10.0] =  10.0
+    max_vol_ml: Literal[10.0] = 10.0
 
 
 class VT54(_VT_template):
     VTtype: Literal["VT54"] = "VT54"
     positions: Literal[54] = 54
-    max_vol_ml: Literal[2.0] =  2.0
+    max_vol_ml: Literal[2.0] = 2.0
 
 
 class VT70(_VT_template):
     VTtype: Literal["VT70"] = "VT70"
     positions: Literal[70] = 70
-    max_vol_ml: Literal[1.0] =  1.0
+    max_vol_ml: Literal[1.0] = 1.0
 
 
 class Positions(BaseModel, HelaoDict):
@@ -255,9 +220,9 @@ class Positions(BaseModel, HelaoDict):
 
 
 VTUnion = Union[
-                VT15,
-                VT54,
-                VT70,
-                ]
+    VT15,
+    VT54,
+    VT70,
+]
 
 Positions.update_forward_refs()

@@ -76,14 +76,12 @@ class HTELegacyAPI:
             else:
                 return True
 
-
     def get_platemap_plateid(self, plateid: int):
         pmpath = self.getplatemappath_plateid(plateid)
         if pmpath is None:
             return []
         pmdlist, fid = self.readsingleplatemaptxt(pmpath)
         return pmdlist
-
 
     def get_elements_plateid(
         self,
@@ -100,9 +98,7 @@ class HTELegacyAPI:
             if infofiled is None:
                 return None
         requiredkeysthere = (
-            lambda infofiled, print_key_or_keyword=print_key_or_keyword: (
-                "screening_print_id" in infofiled
-            )
+            lambda infofiled, print_key_or_keyword=print_key_or_keyword: ("screening_print_id" in infofiled)
             if print_key_or_keyword == "screening_print_id"
             else (print_key_or_keyword in infofiled["prints"])
         )
@@ -212,7 +208,6 @@ class HTELegacyAPI:
         p = os.path.join(pmfold, fns[0])
         return (p, pmidstr) if return_pmidstr else p
 
-
     def importinfo(self, plateid: int):
         fn = str(plateid) + ".info"
         p = self.tryprependpath(
@@ -228,7 +223,6 @@ class HTELegacyAPI:
         infofiled = self.filedict_lines(lines)
         return infofiled
 
-
     def tryprependpath(self, preppendfolderlist, p, testfile=True, testdir=True):
         # if (testfile and os.path.isfile(p)) or (testdir and os.path.isdir(p)):
         if os.path.isfile(p):
@@ -239,7 +233,6 @@ class HTELegacyAPI:
             if (testdir and os.path.isdir(pp)) or (testfile and os.path.isfile(pp)):
                 return pp
         return ""
-
 
     def getinfopath_plateid(self, plateid: int, erroruifcn=None):
         p = ""
@@ -252,7 +245,6 @@ class HTELegacyAPI:
         if not os.path.isfile(p):
             return None
         return p
-
 
     def filedict_lines(self, lines):
         lines = [l for l in lines if len(l.strip()) > 0]
@@ -350,11 +342,9 @@ class HTELegacyAPI:
             return False, (els, numpy.identity(len(els), dtype="float64") * conclist[0])
         return None
 
-
     def partitionlineitem(self, ln):
         a, b, c = ln.strip().partition(":")
         return (a.strip(), c.strip())
-
 
     def myeval(self, c):
         if c == "None":
@@ -369,14 +359,9 @@ class HTELegacyAPI:
                 c = eval(temp)
         return c
 
-
     def readsingleplatemaptxt(
-                              self, 
-                              p, 
-                              returnfiducials: Optional[bool] = False, 
-                              erroruifcn = None,
-                              lines: Optional[list] = None
-                             ):
+        self, p, returnfiducials: Optional[bool] = False, erroruifcn=None, lines: Optional[list] = None
+    ):
 
         dlist = []
         fid = []
@@ -385,18 +370,16 @@ class HTELegacyAPI:
                 f = open(p, mode="r")
             except:
                 if erroruifcn is None:
-                    return  dlist, fid
+                    return dlist, fid
                 p = erroruifcn("bad platemap path")
                 if len(p) == 0:
-                    return  dlist, fid
+                    return dlist, fid
                 f = open(p, mode="r")
 
             ls = f.readlines()
             f.close()
         else:
             ls = lines
-
-
 
         if returnfiducials:
             s = ls[0].partition("=")[2].partition("mm")[0].strip()

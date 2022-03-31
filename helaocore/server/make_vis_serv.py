@@ -4,6 +4,7 @@ __all__ = ["makeVisServ"]
 from .api import HelaoBokehAPI
 from .vis import Vis
 
+
 def makeVisServ(
     config,
     server_key,

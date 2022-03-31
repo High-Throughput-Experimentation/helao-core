@@ -1,6 +1,4 @@
-__all__ = [
-           "OrchStatus"
-          ]
+__all__ = ["OrchStatus"]
 
 from enum import Enum
 

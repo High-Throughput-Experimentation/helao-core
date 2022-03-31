@@ -1,19 +1,14 @@
-__all__ = [
-           "HloFileGroup",
-           "HloHeaderModel",
-           "FileConnParams",
-           "FileConn",
-           "FileInfo"
-          ]
+__all__ = ["HloFileGroup", "HloHeaderModel", "FileConnParams", "FileConn", "FileInfo"]
 
 from enum import Enum
 from typing import List, Optional, Dict
 from pydantic import BaseModel, Field, validator
 from uuid import UUID
-from copy import copy, deepcopy
+from copy import deepcopy
 
 from ..version import get_hlo_version
 from ..helper.helaodict import HelaoDict
+
 
 class HloFileGroup(str, Enum):
     aux_files = "aux_files"
@@ -24,7 +19,7 @@ class HloHeaderModel(BaseModel, HelaoDict):
     hlo_version: Optional[str] = get_hlo_version()
     action_name: Optional[str]
     column_headings: List[str] = Field(default_factory=list)
-    # this can hold instrument/server specific optional header 
+    # this can hold instrument/server specific optional header
     # entries
     optional: Optional[Dict] = Field(default_factory=dict)
     epoch_ns: Optional[float]
@@ -50,9 +45,10 @@ class FileConnParams(BaseModel, HelaoDict):
 
 
 class FileConn(BaseModel, HelaoDict):
-    """This is an internal BaseModel for Base which will hold all 
+    """This is an internal BaseModel for Base which will hold all
     file connections.
     """
+
     params: FileConnParams
     added_hlo_separator: bool = False
     # holds the file reference
@@ -65,12 +61,9 @@ class FileConn(BaseModel, HelaoDict):
         self.added_hlo_separator = False
         self.file = None
 
-
     def deepcopy(self):
         newfileconn = FileConn(
-            params = deepcopy(self.params),
-            added_hlo_separator = deepcopy(self.added_hlo_separator),
-            file = None
+            params=deepcopy(self.params), added_hlo_separator=deepcopy(self.added_hlo_separator), file=None
         )
         return newfileconn
 
@@ -78,7 +71,7 @@ class FileConn(BaseModel, HelaoDict):
     def validate_file(cls, v):
         return v
 
-    
+
 class FileInfo(BaseModel, HelaoDict):
     file_type: Optional[str]
     file_name: Optional[str]

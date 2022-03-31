@@ -15,4 +15,3 @@ class HelaoDirs(BaseModel, HelaoDict):
     db_root: Optional[Path] = None
     user_exp: Optional[Path] = None
     user_seq: Optional[Path] = None
-    

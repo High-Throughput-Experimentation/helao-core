@@ -7,13 +7,14 @@ from ..error import ErrorCodes
 
 from ..helper.print_message import print_message
 
+
 async def async_action_dispatcher(world_config_dict: dict, A: Action):
     """Request non-blocking action_dq which may run concurrently.
 
     Send action object to action server for experimenting.
 
     Args:
-        A: an action type object contain action server name, 
+        A: an action type object contain action server name,
            endpoint, parameters
 
     Returns:
@@ -27,7 +28,7 @@ async def async_action_dispatcher(world_config_dict: dict, A: Action):
         async with session.post(
             url,
             params={},
-            json={"action":A.json_dict()},
+            json={"action": A.json_dict()},
         ) as resp:
             error_code = ErrorCodes.none
             if resp.status != 200:
@@ -36,13 +37,11 @@ async def async_action_dispatcher(world_config_dict: dict, A: Action):
                 response = await resp.json()
             except Exception as e:
                 print_message(
-                              actd,
-                              A.action_server.server_name,
-                              f"async_action_dispatcher "
-                              f"could not decide response: '{resp}',"
-                              f" error={e}",
-                              error = True
-                             )
+                    actd,
+                    A.action_server.server_name,
+                    f"async_action_dispatcher could not decide response: '{resp}', error={e}",
+                    error=True,
+                )
                 response = None
             return response, error_code
 
@@ -79,12 +78,10 @@ async def async_private_dispatcher(
                 response = await resp.json()
             except Exception as e:
                 print_message(
-                              actd,
-                              server,
-                              f"async_private_dispatcher "
-                              f"could not decide response: '{resp}',"
-                              f" error={e}",
-                              error = True
-                             )
+                    actd,
+                    server,
+                    f"async_private_dispatcher could not decide response: '{resp}', error={e}",
+                    error=True,
+                )
                 response = None
             return response, error_code

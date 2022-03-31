@@ -2,6 +2,7 @@ __all__ = ["HloStatus"]
 
 from enum import Enum
 
+
 class HloStatus(str, Enum):
     active = "active"
     finished = "finished"

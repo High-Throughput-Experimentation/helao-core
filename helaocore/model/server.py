@@ -1,8 +1,8 @@
 __all__ = [
-           "StatusModel",
-           "ActionServerModel",
-           "GlobalStatusModel",
-          ]
+    "StatusModel",
+    "ActionServerModel",
+    "GlobalStatusModel",
+]
 
 from typing import Dict, Optional, Tuple, List
 from uuid import UUID
@@ -14,7 +14,6 @@ from .machine import MachineModel
 from .action import ActionModel
 from .hlostatus import HloStatus
 from ..helper.helaodict import HelaoDict
-from ..error import ErrorCodes
 
 
 # additional finished categories which contain one of these
@@ -25,13 +24,13 @@ main_finished_status = [HloStatus.errored]
 
 
 class StatusModel(BaseModel, HelaoDict):
-    # one status model per endpoint    
+    # one status model per endpoint
     act: ActionModel
 
 
 class EndpointModel(BaseModel, HelaoDict):
     endpoint_name: str
-    # status is a dict (keyed by action uuid) 
+    # status is a dict (keyed by action uuid)
     # which hold a dict of active actions
     active_dict: Dict[UUID, StatusModel] = Field(default_factory=dict)
 
@@ -43,14 +42,11 @@ class EndpointModel(BaseModel, HelaoDict):
     max_uuids: Optional[int] = None
     # todo: - add local queue and priority lists here?
 
-
     def __repr__(self):
         return f"<active:{[uuid for uuid in self.active_dict.keys()]}, finished:{[uuid for uuid in self.finished_dict.keys()]}>"
 
-
     def __str__(self):
-        return f"active:{[uuid for uuid in self.active_dict.keys()]}, finished:{[uuid for uuid in self.finished_dict.keys()]}" 
-
+        return f"active:{[uuid for uuid in self.active_dict.keys()]}, finished:{[uuid for uuid in self.finished_dict.keys()]}"
 
     def sort_status(self):
         del_keys = []
@@ -59,7 +55,7 @@ class EndpointModel(BaseModel, HelaoDict):
             # check if action is finished
             if HloStatus.finished in status.act.action_status:
                 del_keys.append(uuid)
-                
+
                 is_sub_status = False
                 for hlostatus in main_finished_status:
                     if hlostatus in status.act.action_status:
@@ -67,19 +63,18 @@ class EndpointModel(BaseModel, HelaoDict):
                             is_sub_status = True
                             self.finished_dict[hlostatus] = dict()
                             break
-                        self.finished_dict[hlostatus].update({uuid:status})
+                        self.finished_dict[hlostatus].update({uuid: status})
 
                 # # no main substatus, add it under finished key
                 # if not is_sub_status:
                 # also always add it to finished
                 if HloStatus.finished not in self.finished_dict:
                     self.finished_dict[HloStatus.finished] = dict()
-                self.finished_dict[HloStatus.finished].update({uuid:status})
+                self.finished_dict[HloStatus.finished].update({uuid: status})
 
         # delete all finished actions from active_dict
         for key in del_keys:
             del self.active_dict[key]
-
 
     def clear_finished(self):
         """clears all status dicts except active_dict"""
@@ -102,10 +97,9 @@ class ActionServerModel(BaseModel, HelaoDict):
             # send only selected endpoint status
             if action_name in self.endpoints:
                 json_dict = ActionServerModel(
-                        action_server = self.action_server,
-                        # status_msg should be a StatusModel
-                        endpoints = {action_name:self.endpoints[action_name]}
-                    
+                    action_server=self.action_server,
+                    # status_msg should be a StatusModel
+                    endpoints={action_name: self.endpoints[action_name]},
                 ).json_dict()
 
         return json_dict
@@ -115,17 +109,16 @@ class GlobalStatusModel(BaseModel, HelaoDict):
     orchestrator: MachineModel
     # a dict of actionserversmodels keyed by the server name
     # use MachineModel.as_key() for the dict key
-    server_dict: Dict[Tuple,ActionServerModel] = Field(default_factory=dict)
+    server_dict: Dict[Tuple, ActionServerModel] = Field(default_factory=dict)
 
     # a dict of all active actions for this orch
     active_dict: Dict[UUID, StatusModel] = Field(default_factory=dict)
-    # a dict of all finished actions 
+    # a dict of all finished actions
     # keyed by either main_finished_status or "finished"
     finished_dict: Dict[HloStatus, Dict[UUID, StatusModel]] = Field(default_factory=dict)
 
-
     # some control parameters for the orch
-    
+
     # new intented state for the dispatch loop
     loop_intent: OrchStatus = OrchStatus.none
     # the dispatch loop state
@@ -135,7 +128,6 @@ class GlobalStatusModel(BaseModel, HelaoDict):
     # counter for dispatched actions, keyed by experiment uuid
     counter_dispatched_actions: Dict[UUID, int] = Field(default_factory=dict)
 
-
     def actions_idle(self) -> bool:
         """checks if all action servers for this orch are idle"""
         if self.active_dict:
@@ -143,11 +135,10 @@ class GlobalStatusModel(BaseModel, HelaoDict):
         else:
             return True
 
-
     def server_free(
-                    self, 
-                    action_server: MachineModel, 
-                   ) -> bool:
+        self,
+        action_server: MachineModel,
+    ) -> bool:
         """checks if action server is idle for this orch"""
         free = True
         if action_server.as_key() in self.server_dict:
@@ -162,14 +153,9 @@ class GlobalStatusModel(BaseModel, HelaoDict):
                         break
         return free
 
-
-    def endpoint_free(
-                      self, 
-                      action_server: MachineModel, 
-                      endpoint_name: str
-                     ) -> bool:
-        """checks if an action server endpoint is available 
-           for this orch"""
+    def endpoint_free(self, action_server: MachineModel, endpoint_name: str) -> bool:
+        """checks if an action server endpoint is available
+        for this orch"""
         free = True
         # check if the actio server is registered for this orch
         # if action_server.server_name in self.server_dict:
@@ -188,21 +174,18 @@ class GlobalStatusModel(BaseModel, HelaoDict):
 
         return free
 
-
     def _sort_status(self):
         """sorts actions from server_dict
-           into orch specific separate dicts"""
+        into orch specific separate dicts"""
 
         # loop through all servers
-        for action_server, actionservermodel \
-        in self.server_dict.items():
+        for action_server, actionservermodel in self.server_dict.items():
             # loop through all endpoints on this server
-            for action_name, endpointmodel \
-            in actionservermodel.endpoints.items():
+            for action_name, endpointmodel in actionservermodel.endpoints.items():
                 # loop through all active uuids on this endpoint
                 for uuid, statusmodel in endpointmodel.active_dict.items():
                     if statusmodel.act.orchestrator == self.orchestrator:
-                        self.active_dict.update({uuid:statusmodel})
+                        self.active_dict.update({uuid: statusmodel})
                 # loop through all finished uuids on this endpoint
                 for hlostatus, status_dict in endpointmodel.finished_dict.items():
                     for uuid, statusmodel in status_dict.items():
@@ -212,41 +195,32 @@ class GlobalStatusModel(BaseModel, HelaoDict):
                                 del self.active_dict[uuid]
                             if hlostatus not in self.finished_dict:
                                 self.finished_dict[hlostatus] = dict()
-                            self.finished_dict[hlostatus].update({uuid:statusmodel})
-
+                            self.finished_dict[hlostatus].update({uuid: statusmodel})
 
     def update_global_with_acts(self, actionserver: ActionServerModel):
         if actionserver.action_server.as_key() not in self.server_dict:
             # add it for the first time
-            self.server_dict.update(
-                {actionserver.action_server.as_key():actionserver}
-            )
+            self.server_dict.update({actionserver.action_server.as_key(): actionserver})
         else:
             self.server_dict[actionserver.action_server.as_key()].endpoints.update(actionserver.endpoints)
         # sort it into active and finished
         self._sort_status()
 
-
-    def find_hlostatus_in_finished(
-                        self, 
-                        hlostatus: HloStatus
-                       ) -> Dict[UUID, StatusModel]:
+    def find_hlostatus_in_finished(self, hlostatus: HloStatus) -> Dict[UUID, StatusModel]:
         """returns a dict of uuids for actions which contain hlostatus"""
         uuid_dict = dict()
-        
+
         if hlostatus in self.finished_dict:
             # all of them have this status
             for uuid, statusmodel in self.finished_dict[hlostatus].items():
-                uuid_dict.update({uuid:statusmodel})
+                uuid_dict.update({uuid: statusmodel})
         elif HloStatus.finished in self.finished_dict:
             # can only be in finsihed, but need to look for substatus
             for uuid, statusmodel in self.finished_dict[HloStatus.finished].items():
                 if hlostatus in statusmodel.act.action_status:
-                    uuid_dict.update({uuid:statusmodel})
-            
-        
-        return uuid_dict
+                    uuid_dict.update({uuid: statusmodel})
 
+        return uuid_dict
 
     def clear_in_finished(self, hlostatus: HloStatus):
         if hlostatus in self.finished_dict:
@@ -262,23 +236,21 @@ class GlobalStatusModel(BaseModel, HelaoDict):
             for key in del_keys:
                 del self.finished_dict[HloStatus.finished][key]
 
-
     def new_experiment(self, exp_uuid: UUID):
         self.counter_dispatched_actions[exp_uuid] = 0
 
-
     def finish_experiment(self, exp_uuid: UUID) -> List[ActionModel]:
-        """ returns all finished experiments"""
-        # we don't filter by orch as this should have happened already when they 
+        """returns all finished experiments"""
+        # we don't filter by orch as this should have happened already when they
         # were added to the finished_dict
         finished_dict = []
         for hlostatus, status_dict in self.finished_dict.items():
             for uuid, statusmodel in status_dict.items():
-                # TODO all acts should contain "finished", else 
+                # TODO all acts should contain "finished", else
                 # something went wrong
                 # if HloStatus.finished not in statusmodel.act.action_status:
                 #     ERROR
-               finished_dict.append(statusmodel.act)
+                finished_dict.append(statusmodel.act)
 
         # if self.active_dict:
         #     ERROR

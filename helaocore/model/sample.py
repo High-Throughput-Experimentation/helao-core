@@ -1,21 +1,22 @@
 from __future__ import annotations
+
 """ sample.py
 Liquid, Gas, Assembly, and Solid sample type models.
 
 """
 __all__ = [
-           "NoneSample",
-           "SampleModel",
-           "LiquidSample", 
-           "GasSample", 
-           "SolidSample", 
-           "AssemblySample", 
-           "SampleList",
-           "SampleUnion",
-           "object_to_sample",
-           "SampleInheritance",
-           "SampleStatus"
-          ]
+    "NoneSample",
+    "SampleModel",
+    "LiquidSample",
+    "GasSample",
+    "SolidSample",
+    "AssemblySample",
+    "SampleList",
+    "SampleUnion",
+    "object_to_sample",
+    "SampleInheritance",
+    "SampleStatus",
+]
 
 from socket import gethostname
 from uuid import UUID
@@ -41,7 +42,7 @@ class SampleType(str, Enum):
     gas = "gas"
     solid = "solid"
     assembly = "assembly"
-    
+
 
 class SampleInheritance(str, Enum):
     none = "none"
@@ -52,7 +53,7 @@ class SampleInheritance(str, Enum):
 
 
 class SampleStatus(str, Enum):
-    none = "none" 
+    none = "none"
     # pretty self-explanatory; the sample was created during the action.
     created = "created"
     # also self-explanatory
@@ -77,7 +78,7 @@ class SampleModel(BaseModel, HelaoDict):
     hlo_version: Optional[str] = get_hlo_version()
     global_label: Optional[str]  # is None for a ref sample
     sample_type: Optional[str]
-  
+
 
 class _BaseSample(SampleModel):
     """Full Sample with all helao-async relevant attributes."""
@@ -109,7 +110,6 @@ class _BaseSample(SampleModel):
     source: List[str] = Field(default_factory=list)
     comment: Optional[str]
 
-
     def create_initial_prc_dict(self):
         if not isinstance(self.status, list):
             self.status = [self.status]
@@ -121,31 +121,29 @@ class _BaseSample(SampleModel):
             "machine_name": self.machine_name if self.machine_name is not None else gethostname(),
             "sample_creation_timecode": self.sample_creation_timecode,
             "last_update": self.last_update,
-            "sample_position":self.sample_position,
-            "inheritance":self.inheritance,
-            "status":self.status
+            "sample_position": self.sample_position,
+            "inheritance": self.inheritance,
+            "status": self.status,
         }
-
 
     def prc_dict(self):
         prc_dict = self.create_initial_prc_dict()
         return prc_dict
 
-
     def get_global_label(self):
-         pass
+        pass
 
-        
     def update_vol(self, delta_vol_ml: float, dilute: bool):
         if hasattr(self, "volume_ml"):
             old_vol = self.volume_ml
-            tot_vol = old_vol+delta_vol_ml
+            tot_vol = old_vol + delta_vol_ml
             if tot_vol <= 0:
-                print_message({}, "model", 
-                              "new volume is <= 0, "
-                              "setting it to zero and setting "
-                              "status to destroyed",
-                              error=True)
+                print_message(
+                    {},
+                    "model",
+                    "new volume is <= 0, setting it to zero and setting status to destroyed",
+                    error=True,
+                )
                 self.zero_volume()
                 tot_vol = 0
             self.volume_ml = tot_vol
@@ -153,16 +151,16 @@ class _BaseSample(SampleModel):
                 if hasattr(self, "dilution_factor"):
                     old_df = self.dilution_factor
                     if old_vol <= 0:
-                        print_message({}, "model", "previous volume is <= 0, "
-                                      "setting new df to 0.", error=True)
+                        print_message(
+                            {}, "model", "previous volume is <= 0, setting new df to 0.", error=True
+                        )
                         new_df = -1
                     else:
-                        new_df = tot_vol/(old_vol/old_df)
+                        new_df = tot_vol / (old_vol / old_df)
                     self.dilution_factor = new_df
-                    print_message({}, "model", f"updated sample "
-                                  f"dilution-factor: {self.dilution_factor}",
-                                  info=True)
-
+                    print_message(
+                        {}, "model", f"updated sample dilution-factor: {self.dilution_factor}", info=True
+                    )
 
     def zero_volume(self):
         if hasattr(self, "volume_ml"):
@@ -172,7 +170,6 @@ class _BaseSample(SampleModel):
             if SampleStatus.preserved in self.status:
                 self.status.remove(SampleStatus.preserved)
 
-
     def destroy_sample(self):
         self.zero_volume()
         if SampleStatus.preserved in self.status:
@@ -180,20 +177,19 @@ class _BaseSample(SampleModel):
         if SampleStatus.destroyed not in self.status:
             self.status.append(SampleStatus.destroyed)
 
-
     def get_vol_ml(self) -> float:
         if hasattr(self, "volume_ml"):
             return self.volume_ml
         else:
             return 0.0
 
-        
     def get_dilution_factor(self) -> float:
         if hasattr(self, "dilution_factor"):
             return self.dilution_factor
         else:
             return 1.0
-    
+
+
 class NoneSample(SampleModel):
     sample_type: Literal[None] = None
     global_label: Literal[None] = None
@@ -210,7 +206,7 @@ class NoneSample(SampleModel):
         return {
             "global_label": self.get_global_label(),
             "sample_type": self.sample_type,
-        }        
+        }
 
 
 class LiquidSample(_BaseSample):
@@ -258,7 +254,6 @@ class SolidSample(_BaseSample):
             return label
         else:
             return self.global_label
-
 
     @root_validator(pre=False, skip_on_failure=True)
     def validate_global_label(cls, values):
@@ -310,19 +305,16 @@ class AssemblySample(_BaseSample):
         else:
             return self.global_label
 
-
     @validator("parts", pre=True)
     def validate_parts(cls, value):
         if value is None:
             return []
         return value
 
-
     def prc_dict(self):
         prc_dict = self.create_initial_prc_dict()
         prc_dict.update({"assembly_parts": self.get_assembly_parts_prc_dict()})
         return prc_dict
-
 
     def get_assembly_parts_prc_dict(self):
         part_dict_list = []
@@ -347,21 +339,21 @@ class SampleList(BaseModel, HelaoDict):
 
 
 SampleUnion = Union[
-                    AssemblySample,
-                    NoneSample,
-                    LiquidSample,
-                    GasSample,
-                    SolidSample,
-                    ]
+    AssemblySample,
+    NoneSample,
+    LiquidSample,
+    GasSample,
+    SolidSample,
+]
 
 
 SamplePartUnion = Union[
-                    AssemblySample,
-                    NoneSample,
-                    LiquidSample,
-                    GasSample,
-                    SolidSample,
-                    ]
+    AssemblySample,
+    NoneSample,
+    LiquidSample,
+    GasSample,
+    SolidSample,
+]
 
 
 def object_to_sample(data):

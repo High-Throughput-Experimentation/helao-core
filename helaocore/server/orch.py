@@ -5,7 +5,7 @@ import asyncio
 import sys
 from collections import deque
 from copy import deepcopy
-from typing import Optional, List, Tuple
+from typing import Optional, List
 from uuid import UUID
 from socket import gethostname
 import inspect
@@ -54,7 +54,6 @@ from ..model.experiment_sequence import ExperimentSequenceModel
 from ..model.experiment import ExperimentTemplate
 
 from ..model.hlostatus import HloStatus
-from ..model.machine import MachineModel
 from ..model.server import ActionServerModel, GlobalStatusModel
 from ..model.orchstatus import OrchStatus
 from ..data.legacy import HTELegacyAPI
@@ -390,7 +389,7 @@ class Orch(Base):
         fails = []
         for serv_key, serv_dict in self.world_cfg["servers"].items():
             if "fast" in serv_dict:
-                self.print_message(f"trying to subscribe to " f"{serv_key} status")
+                self.print_message(f"trying to subscribe to {serv_key} status")
 
                 success = False
                 serv_addr = serv_dict["host"]
@@ -418,11 +417,11 @@ class Orch(Base):
                         await asyncio.sleep(1)
 
                 if success:
-                    self.print_message(f"Subscribed to {serv_key} " f"at {serv_addr}:{serv_port}")
+                    self.print_message(f"Subscribed to {serv_key} at {serv_addr}:{serv_port}")
                 else:
                     fails.append(serv_key)
                     self.print_message(
-                        f"Failed to subscribe to {serv_key} at " f"{serv_addr}:{serv_port}. Check connection."
+                        f"Failed to subscribe to {serv_key} at {serv_addr}:{serv_port}. Check connection."
                     )
 
         if len(fails) == 0:
@@ -459,7 +458,7 @@ class Orch(Base):
             self.orchstatusmodel.orch_state = OrchStatus.idle
         else:
             self.orchstatusmodel.orch_state = OrchStatus.busy
-            self.print_message(f"running_states: " f"{self.orchstatusmodel.active_dict}")
+            self.print_message(f"running_states: {self.orchstatusmodel.active_dict}")
 
         await self.update_operator(True)
 
@@ -502,7 +501,7 @@ class Orch(Base):
             # todo: use seq model instead to initialize some parameters
             # of the experiment
             for experimenttemplate in self.active_sequence.experiment_plan_list:
-                self.print_message(f"unpack experiment " f"{experimenttemplate.experiment_name}")
+                self.print_message(f"unpack experiment {experimenttemplate.experiment_name}")
                 await self.add_experiment(
                     seq=self.active_sequence.get_seq(),
                     experimenttemplate=experimenttemplate,
@@ -511,7 +510,7 @@ class Orch(Base):
             self.orchstatusmodel.loop_state = OrchStatus.started
 
         else:
-            self.print_message("sequence queue is empty, " "cannot start orch loop")
+            self.print_message("sequence queue is empty, cannot start orch loop")
 
             self.orchstatusmodel.loop_state = OrchStatus.stopped
             await self.intend_none()
@@ -606,7 +605,7 @@ class Orch(Base):
                         if endpoint_free:
                             break
                 elif A.start_condition == ActionStartCondition.wait_for_server:
-                    self.print_message("orch is waiting for " "server to become available")
+                    self.print_message("orch is waiting for server to become available")
                     while True:
                         await self.wait_for_interrupt()
                         server_free = self.orchstatusmodel.server_free(action_server=A.action_server)
@@ -627,9 +626,7 @@ class Orch(Base):
                 if k in self.active_experiment.global_params:
                     A.action_params.update({v: self.active_experiment.global_params[k]})
 
-            self.print_message(
-                f"dispatching action {A.action_name} " f"on server {A.action_server.server_name}"
-            )
+            self.print_message(f"dispatching action {A.action_name} on server {A.action_server.server_name}")
             # keep running counter of dispatched actions
             A.orch_submit_order = self.orchstatusmodel.counter_dispatched_actions[
                 self.active_experiment.experiment_uuid
@@ -644,7 +641,7 @@ class Orch(Base):
             try:
                 result_action = Action(**result_actiondict)
             except Exception as e:
-                self.print_message(f"returned result is not a valid " f"Action BaseModel: {e}", error=True)
+                self.print_message(f"returned result is not a valid Action BaseModel: {e}", error=True)
                 return ErrorCodes.critical
 
             if result_action.error_code is not ErrorCodes.none:
@@ -658,7 +655,7 @@ class Orch(Base):
                 )
                 return result_action.error_code
 
-            self.print_message("copying global vars " "back to experiment")
+            self.print_message("copying global vars back to experiment")
 
             for k in result_action.to_global_params:
                 if k in result_action.action_params:
@@ -666,7 +663,7 @@ class Orch(Base):
                         self.active_experiment.global_params.pop(k)
                     else:
                         self.active_experiment.global_params.update({k: result_action.action_params[k]})
-            self.print_message("done copying global " "vars back to experiment")
+            self.print_message("done copying global vars back to experiment")
 
         return ErrorCodes.none
 
@@ -707,7 +704,7 @@ class Orch(Base):
                     error_code = await self.loop_task_dispatch_action()
 
                 if error_code is not ErrorCodes.none:
-                    self.print_message(f"stopping orch with error code: " f"{error_code}", error=True)
+                    self.print_message(f"stopping orch with error code: {error_code}", error=True)
                     # await self.intend_stop()
                     await self.intend_estop()
 
@@ -752,7 +749,7 @@ class Orch(Base):
             # some actions are active
             # we need to wait for them to finish
             while True:
-                self.print_message("some actions are still active, " "waiting for status update")
+                self.print_message("some actions are still active, waiting for status update")
                 # we check again once the active action
                 # updates its status again
                 await self.wait_for_interrupt()
@@ -780,7 +777,7 @@ class Orch(Base):
             self.print_message("starting orch loop")
             self.loop_task = asyncio.create_task(self.dispatch_loop_task())
         elif self.orchstatusmodel.loop_state == OrchStatus.estop:
-            self.print_message("E-STOP flag was raised, " "clear E-STOP before starting.", error=True)
+            self.print_message("E-STOP flag was raised, clear E-STOP before starting.", error=True)
         else:
             self.print_message("loop already started.")
         return self.orchstatusmodel.loop_state
@@ -841,7 +838,7 @@ class Orch(Base):
 
             A = Action(**action_dict)
             self.print_message(
-                f"Sending estop={switch} request to " f"{actionservermodel.action_server.disp_name()}",
+                f"Sending estop={switch} request to {actionservermodel.action_server.disp_name()}",
                 info=True,
             )
             try:
@@ -850,7 +847,7 @@ class Orch(Base):
                 pass
                 # no estop endpoint for this action server?
                 self.print_message(
-                    f"estop for " f"{actionservermodel.action_server.disp_name()} " f"failed with: {e}",
+                    f"estop for {actionservermodel.action_server.disp_name()} failed with: {e}",
                     error=True,
                 )
 
@@ -859,7 +856,7 @@ class Orch(Base):
         if self.orchstatusmodel.loop_state == OrchStatus.started:
             await self.intend_skip()
         else:
-            self.print_message("orchestrator not running, " "clearing action queue")
+            self.print_message("orchestrator not running, clearing action queue")
             await asyncio.sleep(0.001)
             self.action_dq.clear()
 
@@ -874,7 +871,7 @@ class Orch(Base):
         if self.orchstatusmodel.loop_state == OrchStatus.started:
             await self.intend_stop()
         elif self.orchstatusmodel.loop_state == OrchStatus.estop:
-            self.print_message("orchestrator E-STOP flag was raised; " "nothing to stop")
+            self.print_message("orchestrator E-STOP flag was raised; nothing to stop")
         else:
             self.print_message("orchestrator is not running")
 
@@ -959,10 +956,10 @@ class Orch(Base):
             self.experiment_dq.insert(i=at_index, x=D)
         elif prepend:
             self.experiment_dq.appendleft(D)
-            self.print_message(f"experiment {D.experiment_name} " "prepended to queue")
+            self.print_message(f"experiment {D.experiment_name} prepended to queue")
         else:
             self.experiment_dq.append(D)
-            self.print_message(f"experiment {D.experiment_name} " "appended to queue")
+            self.print_message(f"experiment {D.experiment_name} appended to queue")
 
     def list_sequences(self):
         """Return the current queue of sequence_dq."""
@@ -1013,7 +1010,7 @@ class Orch(Base):
                 new_action.action_retry = EA_act.action_retry + 1
                 self.action_dq.appendleft(new_action)
             else:
-                self.print_message(f"uuid {check_uuid} not found " "in list of error statuses:")
+                self.print_message(f"uuid {check_uuid} not found in list of error statuses:")
                 self.print_message(", ".join(self.error_uuids))
 
     def remove_experiment(self, by_index: Optional[int] = None, by_uuid: Optional[UUID] = None):
@@ -1023,7 +1020,7 @@ class Orch(Base):
         elif by_uuid:
             i = [i for i, D in enumerate(list(self.experiment_dq)) if D.experiment_uuid == by_uuid][0]
         else:
-            self.print_message("No arguments given for " "locating existing experiment to remove.")
+            self.print_message("No arguments given for locating existing experiment to remove.")
             return None
         del self.experiment_dq[i]
 
@@ -1042,7 +1039,7 @@ class Orch(Base):
         elif by_action_order:
             i = [i for i, A in enumerate(list(self.action_dq)) if A.action_order == by_action_order][0]
         else:
-            self.print_message("No arguments given for " "locating existing action to replace.")
+            self.print_message("No arguments given for locating existing action to replace.")
             return None
         # get action_order of selected action which gets replaced
         current_action_order = self.action_dq[i].action_order
@@ -1558,17 +1555,17 @@ class Operator:
     def get_sequence_lib(self):
         """Return the current list of sequences."""
         self.sequences = []
-        self.vis.print_message(f"found sequences: " f"{[sequence for sequence in self.sequence_lib]}")
+        self.vis.print_message(f"found sequences: {[sequence for sequence in self.sequence_lib]}")
         for i, sequence in enumerate(self.sequence_lib):
             tmpdoc = self.sequence_lib[sequence].__doc__
-            if tmpdoc == None:
+            if tmpdoc is None:
                 tmpdoc = ""
 
             argspec = inspect.getfullargspec(self.sequence_lib[sequence])
             tmpargs = argspec.args
             tmpdefs = argspec.defaults
 
-            if tmpdefs == None:
+            if tmpdefs is None:
                 tmpdefs = []
 
             # filter the Sequence BaseModel
@@ -1609,13 +1606,13 @@ class Operator:
         self.vis.print_message(f"found experiment: {[experiment for experiment in self.experiment_lib]}")
         for i, experiment in enumerate(self.experiment_lib):
             tmpdoc = self.experiment_lib[experiment].__doc__
-            if tmpdoc == None:
+            if tmpdoc is None:
                 tmpdoc = ""
 
             argspec = inspect.getfullargspec(self.experiment_lib[experiment])
             tmpargs = argspec.args
             tmpdefs = argspec.defaults
-            if tmpdefs == None:
+            if tmpdefs is None:
                 tmpdefs = []
 
             # filter the Experiment BaseModel
@@ -2223,7 +2220,7 @@ class Operator:
         plot_mpmap.square(x, y, size=5, color=None, alpha=0.5, line_color="black", name="PMplot")
 
     def get_pm(self, plateid, sender):
-        """ "gets plate map"""
+        """gets plate map"""
         private_input, param_input = self.find_param_private_input(sender)
         if private_input is None or param_input is None:
             return False
