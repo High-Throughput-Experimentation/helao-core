@@ -74,6 +74,12 @@ async def async_private_dispatcher(
             error_code = ErrorCodes.none
             if resp.status != 200:
                 error_code = ErrorCodes.http
+                print_message(
+                    actd,
+                    server,
+                    f"{private_action} POST request returned status {resp.status}: '{resp.json()}', error={e}",
+                    error=True,
+                )
             try:
                 response = await resp.json()
             except Exception as e:
