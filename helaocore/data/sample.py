@@ -190,7 +190,7 @@ class _BaseSampleAPI(object):
         ret_samples = []
 
         for i, sample in enumerate(samples):
-            if isinstance(sample, self._sampleclass):
+            if isinstance(sample, type(self._sampleclass)):
                 await asyncio.sleep(0.001)
                 sample = await self._key_checks(sample)
                 added_sample = await self._append_sample(sample=sample)
