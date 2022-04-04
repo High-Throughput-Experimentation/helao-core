@@ -33,6 +33,12 @@ async def async_action_dispatcher(world_config_dict: dict, A: Action):
             error_code = ErrorCodes.none
             if resp.status != 200:
                 error_code = ErrorCodes.http
+                print_message(
+                    actd,
+                    A.action_server.server_name,
+                    f"{private_action} POST request returned status {resp.status}: '{resp.json()}', error={e}",
+                    error=True,
+                )
             try:
                 response = await resp.json()
             except Exception as e:
