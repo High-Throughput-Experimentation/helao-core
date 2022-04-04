@@ -41,7 +41,7 @@ class HTELegacyAPI:
             self.base.print_message(f" ... Elements: {elements}")
 
             # 3. checks that a print and anneal record exist in the info file
-            if not "prints" or not "anneals" in infod:
+            if "prints" not in infod or "anneals" not in infod:
                 self.base.print_message("Warning: no print or anneal record exists", warning=True)
 
             # 4. gets platemap and passes to alignment code
@@ -227,7 +227,7 @@ class HTELegacyAPI:
                 s = f.read(1000)
             if pmfold == "" or (infokey not in s and "prints" not in s):
                 self.base.print_message(f"PM folder is '' or info has no print.", info=True)
-                if not erroruifcn is None:
+                if erroruifcn is not None:
                     p = erroruifcn("", self.tryprependpath(self.PLATEMAPFOLDERS, ""))
                 return (p, pmidstr) if return_pmidstr else p
             pmidstr = s.partition(infokey)[2].partition("\n")[0].strip()
@@ -243,7 +243,7 @@ class HTELegacyAPI:
             if fn.startswith("0" * (4 - len(pmidstr)) + pmidstr + "-") and fn.endswith("-mp.txt")
         ]
         if len(fns) != 1:
-            if not erroruifcn is None:
+            if erroruifcn is not None:
                 p = erroruifcn("", self.tryprependpath(self.PLATEMAPFOLDERS, ""))
             return (p, pmidstr) if return_pmidstr else p
         p = os.path.join(pmfold, fns[0])
