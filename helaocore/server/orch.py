@@ -263,6 +263,8 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
     @app.on_event("shutdown")
     def shutdown_event():
         """Run shutdown actions."""
+        app.orch.print_message("Stopping operator", info=True)
+        app.orch.bokehapp.stop()
         app.orch.print_message("orch shutdown", info=True)
         # emergencyStop = True
         time.sleep(0.75)

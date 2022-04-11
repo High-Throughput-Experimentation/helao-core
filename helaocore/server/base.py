@@ -453,6 +453,7 @@ class Base(object):
                     f"Client {client_servkey} is already subscribed to "
                     f"{self.server.server_name} status updates."
                 )
+                success = True
             else:
                 self.status_clients.add(client_servkey)
 
