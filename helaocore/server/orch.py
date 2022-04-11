@@ -1584,6 +1584,9 @@ class Operator:
                     tmpdefs.pop(idx - j)
                 else:
                     tmpargs.pop(idx - j)
+            # use defaults specified in config
+            seq_defs = self.orch.world_cfg.get("sequence_params", {})
+            tmpdefs = [seq_defs.get(ta, td) for ta, td in zip(tmpargs, tmpdefs)]
             tmpargs = tuple(tmpargs)
             tmpdefs = tuple(tmpdefs)
 
@@ -1632,6 +1635,9 @@ class Operator:
                     tmpdefs.pop(idx - j)
                 else:
                     tmpargs.pop(idx - j)
+            # use defaults specified in config
+            exp_defs = self.orch.world_cfg.get("experiment_params", {})
+            tmpdefs = [exp_defs.get(ta, td) for ta, td in zip(tmpargs, tmpdefs)]
             tmpargs = tuple(tmpargs)
             tmpdefs = tuple(tmpdefs)
 
