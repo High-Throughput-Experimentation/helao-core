@@ -42,3 +42,4 @@ class ProcessModel(ProcessTemplate):
     samples_in: List[SampleUnion] = Field(default_factory=list)
     samples_out: List[SampleUnion] = Field(default_factory=list)
     files: List[FileInfo] = Field(default_factory=list)
+    meta: Optional[dict]
