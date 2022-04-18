@@ -28,7 +28,7 @@ class ShortActionModel(BaseModel, HelaoDict):
 
 class ActionModel(ShortActionModel):
     orchestrator: MachineModel = MachineModel()
-    access: Optional[str]
+    access: Optional[str] = 'hte'
     experiment_uuid: Optional[UUID]
     experiment_timestamp: Optional[datetime]
     action_timestamp: Optional[datetime]

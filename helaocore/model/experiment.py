@@ -30,7 +30,7 @@ class ExperimentTemplate(BaseModel, HelaoDict):
 
 class ExperimentModel(ExperimentTemplate):
     hlo_version: Optional[str] = get_hlo_version()
-    access: Optional[str]
+    access: Optional[str] = 'hte'
     orchestrator: MachineModel = MachineModel()
     # name of "instrument": sdc, anec, adss etc. defined in world config
     technique_name: Optional[str]

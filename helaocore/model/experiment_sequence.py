@@ -23,6 +23,7 @@ class ExperimentSequenceTemplate(BaseModel, HelaoDict):
 
 class ExperimentSequenceModel(ExperimentSequenceTemplate):
     hlo_version: Optional[str] = get_hlo_version()
+    access: Optional[str] = 'hte'
     sequence_uuid: Optional[UUID]
     sequence_timestamp: Optional[datetime]
     sequence_status: List[HloStatus] = Field(default_factory=list)
