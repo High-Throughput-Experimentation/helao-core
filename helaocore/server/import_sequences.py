@@ -36,7 +36,7 @@ def import_sequences(
 
     sequence_lib = {}
     if sequence_path is None:
-        sequence_path = world_config_dict.get("sequence_path", os.path.join("helao", "config", "sequence"))
+        sequence_path = world_config_dict.get("sequence_path", os.path.join("helao", "sequence"))
     if not os.path.isdir(sequence_path):
         print_message(
             world_config_dict,

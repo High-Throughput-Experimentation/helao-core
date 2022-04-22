@@ -40,7 +40,7 @@ def import_experiments(
     experiment_lib = {}
     if experiment_path is None:
         experiment_path = world_config_dict.get(
-            "experiment_path", os.path.join("helao", "config", "experiment")
+            "experiment_path", os.path.join("helao", "experiment")
         )
     if not os.path.isdir(experiment_path):
         print_message(
