@@ -41,10 +41,10 @@ class Sequence(ExperimentSequenceModel):
 
     def get_seq(self):
         seq = ExperimentSequenceModel(**self.dict())
-        seq.experiment_list = [ShortExperimentModel(**prc.dict()) for prc in self.experimentmodel_list]
+        seq.experiment_list = [ShortExperimentModel(**exp.dict()) for exp in self.experimentmodel_list]
         # either we have a plan at the beginning or not
         # don't add it later from the experimentmodel_list
-        # seq.experiment_plan_list = [ExperimentTemplate(**prc.dict()) for prc in self.experimentmodel_list]
+        # seq.experiment_plan_list = [ExperimentTemplate(**exp.dict()) for exp in self.experimentmodel_list]
         return seq
 
     def init_seq(self, time_offset: float = 0, force: Optional[bool] = None):
@@ -84,7 +84,7 @@ class Experiment(Sequence, ExperimentModel):
     def __str__(self):
         return f"experiment_name:{self.experiment_name}"
 
-    def init_prc(self, time_offset: float = 0, force: Optional[bool] = None):
+    def init_exp(self, time_offset: float = 0, force: Optional[bool] = None):
         if force is None:
             force = False
         if force or self.experiment_timestamp is None:
@@ -105,18 +105,18 @@ class Experiment(Sequence, ExperimentModel):
             f"{experiment_time}__{self.experiment_name}",
         )
 
-    def get_prc(self):
-        prc = ExperimentModel(**self.dict())
+    def get_exp(self):
+        exp = ExperimentModel(**self.dict())
         # now add all actions
-        self._experiment_update_from_actlist(prc=prc)
-        return prc
+        self._experiment_update_from_actlist(exp=exp)
+        return exp
 
-    def _experiment_update_from_actlist(self, prc: ExperimentModel):
-        # reset sample list of prc
-        prc.samples_in = []
-        prc.samples_out = []
+    def _experiment_update_from_actlist(self, exp: ExperimentModel):
+        # reset sample list of exp
+        exp.samples_in = []
+        exp.samples_out = []
         # reset file list
-        prc.files = []
+        exp.files = []
 
         if self.experiment_action_list is None:
             self.experiment_action_list = []
@@ -130,32 +130,32 @@ class Experiment(Sequence, ExperimentModel):
                 info=True,
             )
 
-            prc.action_list.append(ShortActionModel(**actm.dict()))
+            exp.action_list.append(ShortActionModel(**actm.dict()))
             for file in actm.files:
                 if file.action_uuid is None:
                     file.action_uuid = actm.action_uuid
-                prc.files.append(file)
+                exp.files.append(file)
 
             for _sample in actm.samples_in:
-                identical = self._check_sample(new_sample=_sample, sample_list=prc.samples_in)
+                identical = self._check_sample(new_sample=_sample, sample_list=exp.samples_in)
                 if identical is None:
                     _sample.action_uuid = []
                     _sample.action_uuid.append(actm.action_uuid)
-                    prc.samples_in.append(_sample)
+                    exp.samples_in.append(_sample)
                 else:
-                    prc.samples_in[identical].action_uuid.append(actm.action_uuid)
+                    exp.samples_in[identical].action_uuid.append(actm.action_uuid)
 
             for _sample in actm.samples_out:
 
-                identical = self._check_sample(new_sample=_sample, sample_list=prc.samples_out)
+                identical = self._check_sample(new_sample=_sample, sample_list=exp.samples_out)
                 if identical is None:
                     _sample.action_uuid = []
                     _sample.action_uuid.append(actm.action_uuid)
-                    prc.samples_out.append(_sample)
+                    exp.samples_out.append(_sample)
                 else:
-                    prc.samples_out[identical].action_uuid.append(actm.action_uuid)
+                    exp.samples_out[identical].action_uuid.append(actm.action_uuid)
 
-        self._check_sample_duplicates(prc=prc)
+        self._check_sample_duplicates(exp=exp)
 
     def _check_sample(self, new_sample, sample_list):
         for idx, sample in enumerate(sample_list):
@@ -166,12 +166,12 @@ class Experiment(Sequence, ExperimentModel):
                 return idx
         return None
 
-    def _check_sample_duplicates(self, prc: ExperimentModel):
+    def _check_sample_duplicates(self, exp: ExperimentModel):
         out_labels = defaultdict(list)
         in_labels = defaultdict(list)
-        for i, sample in enumerate(prc.samples_out):
+        for i, sample in enumerate(exp.samples_out):
             out_labels[sample.get_global_label()].append(i)
-        for i, sample in enumerate(prc.samples_in):
+        for i, sample in enumerate(exp.samples_in):
             in_labels[sample.get_global_label()].append(i)
 
         isunique = True
@@ -234,7 +234,7 @@ class Action(Experiment, ActionModel):
             self.init_seq(time_offset=time_offset)
             # -- (2) -- set missing experiment parameters
             self.experiment_name = "MANUAL"
-            self.init_prc(time_offset=time_offset)
+            self.init_exp(time_offset=time_offset)
 
         if force or self.action_timestamp is None:
             self.action_timestamp = set_time(offset=time_offset)

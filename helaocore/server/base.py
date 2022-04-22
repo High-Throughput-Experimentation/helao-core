@@ -652,7 +652,7 @@ class Base(object):
         self.ntp_syncer.cancel()
 
     async def write_act(self, action):
-        "Create new prc if it doesn't exist."
+        "Create new exp if it doesn't exist."
         if action.save_act:
             act_dict = action.get_act().clean_dict()
             output_path = os.path.join(self.helaodirs.save_root, action.action_output_dir)
@@ -671,15 +671,15 @@ class Base(object):
         else:
             self.print_message(f"writing meta file for action '{action.action_name}' is disabled.", info=True)
 
-    async def write_prc(self, experiment):
-        prc_dict = experiment.get_prc().clean_dict()
+    async def write_exp(self, experiment):
+        exp_dict = experiment.get_exp().clean_dict()
         output_path = os.path.join(self.helaodirs.save_root, experiment.get_experiment_dir())
         output_file = os.path.join(
             output_path, f"{experiment.experiment_timestamp.strftime('%Y%m%d.%H%M%S%f')}.yml"
         )
 
-        self.print_message(f"writing to prc meta file: {output_file}")
-        output_str = pyaml.dump(prc_dict, sort_dicts=False)
+        self.print_message(f"writing to exp meta file: {output_file}")
+        output_str = pyaml.dump(exp_dict, sort_dicts=False)
 
         if not os.path.exists(output_path):
             os.makedirs(output_path, exist_ok=True)
@@ -747,7 +747,7 @@ class Base(object):
         return ret_error
 
     class Active(object):
-        """Active action holder which wraps data queing and prc writing."""
+        """Active action holder which wraps data queing and exp writing."""
 
         def __init__(self, base, activeparams: ActiveParams):  # outer instance
             self.base = base
@@ -778,7 +778,7 @@ class Base(object):
                     self.action.save_data = False
                 if self.action.save_act is None:
                     self.action.save_act = False
-                # cannot save data without prc
+                # cannot save data without exp
                 if self.action.save_data is True:
                     self.action.save_act = True
 
@@ -818,8 +818,8 @@ class Base(object):
                 if self.action.manual_action:
                     # create and write seq file for manual action
                     await self.base.write_seq(self.action)
-                    # create and write prc file for manual action
-                    await self.base.write_prc(self.action)
+                    # create and write exp file for manual action
+                    await self.base.write_exp(self.action)
 
             self.base.print_message("init active: sending active data_stream_status package", info=True)
 
@@ -1410,7 +1410,7 @@ class Base(object):
             finish_uuid_list: Optional[List[UUID]] = None
             # end_state: HloStatus = HloStatus.finished
         ) -> Action:
-            """Close file_conn, finish prc, copy aux,
+            """Close file_conn, finish exp, copy aux,
             set endpoint status, and move active dict to past.
             for action uuids of active defined in finish_uuid_list.
             default None finsihes all
@@ -1521,7 +1521,7 @@ class Base(object):
             self.base.print_message(f"{file_info.file_name} added to files_technique / aux_files list.")
 
         async def relocate_files(self):
-            "Copy auxiliary files from folder path to prc directory."
+            "Copy auxiliary files from folder path to exp directory."
             for x in self.action.AUX_file_paths:
                 new_path = os.path.join(
                     self.base.helaodirs.save_root, self.action.action_output_dir, os.path.basename(x)
@@ -1543,12 +1543,12 @@ class Base(object):
                     exp.experiment_action_list.append(action.get_act())
 
                 # add experiment to sequence
-                exp.experimentmodel_list.append(action.get_prc())
+                exp.experimentmodel_list.append(action.get_exp())
 
                 # this will write the correct
                 # sequence and experiment meta files for
                 # manual operation
                 # create and write seq file for manual action
                 await self.base.write_seq(exp)
-                # create and write prc file for manual action
-                await self.base.write_prc(exp)
+                # create and write exp file for manual action
+                await self.base.write_exp(exp)

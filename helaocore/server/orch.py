@@ -488,12 +488,12 @@ class Orch(Base):
 
             # self.print_message(f"unpacking experiments for {self.active_sequence.sequence_name}")
             # if self.active_sequence.sequence_name in self.sequence_lib:
-            #     unpacked_prcs = self.sequence_lib[self.active_sequence.sequence_name](**self.active_sequence.sequence_params)
+            #     unpacked_exps = self.sequence_lib[self.active_sequence.sequence_name](**self.active_sequence.sequence_params)
             # else:
-            #     unpacked_prcs = []
+            #     unpacked_exps = []
 
-            # for prc in unpacked_prcs:
-            #     D = Experiment(**prc.as_dict())
+            # for exp in unpacked_exps:
+            #     D = Experiment(**exp.as_dict())
             #     self.active_sequence.experiment_plan_list.append(D)
 
             self.seq_file = self.active_sequence.get_seq()
@@ -533,7 +533,7 @@ class Orch(Base):
 
         self.active_experiment.technique_name = self.technique_name
         self.active_experiment.orchestrator = self.server
-        self.active_experiment.init_prc(time_offset=self.ntp_offset)
+        self.active_experiment.init_exp(time_offset=self.ntp_offset)
 
         self.orchstatusmodel.new_experiment(exp_uuid=self.active_experiment.experiment_uuid)
 
@@ -559,8 +559,8 @@ class Orch(Base):
         self.print_message(f"got: {self.action_dq}")
         self.print_message(f"optional params: {self.active_experiment.experiment_params}")
 
-        # write a temporary prc
-        await self.write_active_experiment_prc()
+        # write a temporary exp
+        await self.write_active_experiment_exp()
         return ErrorCodes.none
 
     async def loop_task_dispatch_action(self) -> ErrorCodes:
@@ -719,9 +719,9 @@ class Orch(Base):
             self.print_message("all queues are empty")
             self.print_message("--- stopping operator orch ---", info=True)
 
-            # finish the last prc
+            # finish the last exp
             # this wait for all actions in active experiment
-            # to finish and then updates the prc with the acts
+            # to finish and then updates the exp with the acts
             self.print_message("finishing final experiment")
             await self.finish_active_experiment()
             self.print_message("finishing final sequence")
@@ -821,7 +821,7 @@ class Orch(Base):
             exp.technique_name = self.technique_name
             exp.orchestrator = self.server
             exp.experiment_status = [HloStatus.estopped, HloStatus.finished]
-            exp.init_prc(time_offset=self.ntp_offset)
+            exp.init_exp(time_offset=self.ntp_offset)
             active_exp_dict = exp.as_dict()
 
         for action_server_key, actionservermodel in self.orchstatusmodel.server_dict.items():
@@ -969,7 +969,7 @@ class Orch(Base):
 
     def list_experiments(self):
         """Return the current queue of experiment_dq."""
-        return [experiment.get_prc() for experiment in self.experiment_dq]
+        return [experiment.get_exp() for experiment in self.experiment_dq]
 
     def get_experiment(self, last=False):
         """Return the active or last experiment."""
@@ -979,7 +979,7 @@ class Orch(Base):
         else:
             experiment = self.active_experiment
         if experiment is not None:
-            active_experiment_list.append(experiment.get_prc())
+            active_experiment_list.append(experiment.get_exp())
         return active_experiment_list
 
     def list_active_actions(self):
@@ -1090,7 +1090,7 @@ class Orch(Base):
         await self.orch_wait_for_all_actions()
         if self.active_experiment is not None:
             self.print_message(
-                f"finished prc uuid is: "
+                f"finished exp uuid is: "
                 f"{self.active_experiment.experiment_uuid}, "
                 f"adding matching acts to it"
             )
@@ -1108,16 +1108,16 @@ class Orch(Base):
                 new_status=HloStatus.finished,
             )
 
-            # add finished prc to seq
+            # add finished exp to seq
             # !!! add to experimentmodel_list
             # not to experiment_list !!!!
-            self.active_sequence.experimentmodel_list.append(deepcopy(self.active_experiment.get_prc()))
+            self.active_sequence.experimentmodel_list.append(deepcopy(self.active_experiment.get_exp()))
 
             # write new updated seq
             await self.write_active_sequence_seq()
 
-            # write final prc
-            await self.write_prc(self.active_experiment)
+            # write final exp
+            await self.write_exp(self.active_experiment)
 
             self.last_experiment = deepcopy(self.active_experiment)
             self.active_experiment = None
@@ -1131,8 +1131,8 @@ class Orch(Base):
             )
             await yml_finisher(yml_path, "experiment", self)
 
-    async def write_active_experiment_prc(self):
-        await self.write_prc(self.active_experiment)
+    async def write_active_experiment_exp(self):
+        await self.write_exp(self.active_experiment)
 
     async def write_active_sequence_seq(self):
         await self.write_seq(self.active_sequence)
@@ -1200,9 +1200,9 @@ class Operator:
         self.seq_param_layout = []
         self.seq_param_input = []
         self.seq_private_input = []
-        self.prc_param_layout = []
-        self.prc_param_input = []
-        self.prc_private_input = []
+        self.exp_param_layout = []
+        self.exp_param_input = []
+        self.exp_private_input = []
 
         self.sequence = None
         self.experiment_plan_list = dict()
@@ -1268,10 +1268,10 @@ class Operator:
         )
 
         self.experiment_source = ColumnDataSource(data=self.experiment_list)
-        self.columns_prc = [TableColumn(field=key, title=key) for key in self.experiment_list]
+        self.columns_exp = [TableColumn(field=key, title=key) for key in self.experiment_list]
         self.experiment_table = DataTable(
             source=self.experiment_source,
-            columns=self.columns_prc,
+            columns=self.columns_exp,
             width=self.max_width - 20,
             height=200,
             autosize_mode="fit_columns",
@@ -1336,10 +1336,10 @@ class Operator:
         self.button_clear_action = Button(label="clear act", button_type="danger", width=100)
         self.button_clear_action.on_event(ButtonClick, self.callback_clear_actions)
 
-        self.button_prepend_prc = Button(label="prepend exp to exp plan", button_type="default", width=150)
-        self.button_prepend_prc.on_event(ButtonClick, self.callback_prepend_prc)
-        self.button_append_prc = Button(label="append exp to exp plan", button_type="default", width=150)
-        self.button_append_prc.on_event(ButtonClick, self.callback_append_prc)
+        self.button_prepend_exp = Button(label="prepend exp to exp plan", button_type="default", width=150)
+        self.button_prepend_exp.on_event(ButtonClick, self.callback_prepend_exp)
+        self.button_append_exp = Button(label="append exp to exp plan", button_type="default", width=150)
+        self.button_append_exp.on_event(ButtonClick, self.callback_append_exp)
 
         self.button_prepend_seq = Button(
             label="prepend seq to experiment plan list", button_type="default", width=250
@@ -1445,7 +1445,7 @@ class Operator:
                 ),
                 layout(
                     [
-                        [self.button_append_prc, self.button_prepend_prc],
+                        [self.button_append_exp, self.button_prepend_exp],
                     ],
                     background="#808080",
                     width=self.max_width,
@@ -1724,8 +1724,8 @@ class Operator:
 
     def callback_experiment_select(self, attr, old, new):
         idx = self.experiment_select_list.index(new)
-        self.update_prc_param_layout(idx)
-        self.vis.doc.add_next_tick_callback(partial(self.update_prc_doc, self.experiments[idx]["doc"]))
+        self.update_exp_param_layout(idx)
+        self.vis.doc.add_next_tick_callback(partial(self.update_exp_doc, self.experiments[idx]["doc"]))
 
     def callback_clicked_pmplot(self, event, sender):
         """double click/tap on PM plot to add/move marker"""
@@ -1856,11 +1856,11 @@ class Operator:
             self.sequence.experiment_plan_list.append(D)
         self.vis.doc.add_next_tick_callback(partial(self.update_tables))
 
-    def callback_prepend_prc(self, event):
+    def callback_prepend_exp(self, event):
         self.prepend_experiment()
         self.vis.doc.add_next_tick_callback(partial(self.update_tables))
 
-    def callback_append_prc(self, event):
+    def callback_append_exp(self, event):
         self.append_experiment()
         self.vis.doc.add_next_tick_callback(partial(self.update_tables))
 
@@ -1903,7 +1903,7 @@ class Operator:
         selected_experiment = self.experiment_dropdown.value
         self.vis.print_message(f"selected experiment from list: {selected_experiment}")
         experiment_params = {
-            paraminput.title: to_json(paraminput.value) for paraminput in self.prc_param_input
+            paraminput.title: to_json(paraminput.value) for paraminput in self.exp_param_input
         }
         experimenttemplate = ExperimentTemplate(
             experiment_name=selected_experiment, experiment_params=experiment_params
@@ -1996,7 +1996,7 @@ class Operator:
 
         self.refresh_inputs(self.seq_param_input, self.seq_private_input)
 
-    def update_prc_param_layout(self, idx):
+    def update_exp_param_layout(self, idx):
         args = self.experiments[idx]["args"]
         defaults = self.experiments[idx]["defaults"]
         self.dynamic_col.children.pop(3)
@@ -2004,9 +2004,9 @@ class Operator:
         for _ in range(len(args) - len(defaults)):
             defaults.insert(0, "")
 
-        self.prc_param_input = []
-        self.prc_private_input = []
-        self.prc_param_layout = [
+        self.exp_param_input = []
+        self.exp_private_input = []
+        self.exp_param_layout = [
             layout(
                 [
                     [
@@ -2024,11 +2024,11 @@ class Operator:
             ),
         ]
         self.add_dynamic_inputs(
-            self.prc_param_input, self.prc_private_input, self.prc_param_layout, args, defaults
+            self.exp_param_input, self.exp_private_input, self.exp_param_layout, args, defaults
         )
 
-        if not self.prc_param_input:
-            self.prc_param_layout.append(
+        if not self.exp_param_input:
+            self.exp_param_layout.append(
                 layout(
                     [
                         [
@@ -2046,9 +2046,9 @@ class Operator:
                 ),
             )
 
-        self.dynamic_col.children.insert(3, layout(self.prc_param_layout))
+        self.dynamic_col.children.insert(3, layout(self.exp_param_layout))
 
-        self.refresh_inputs(self.prc_param_input, self.prc_private_input)
+        self.refresh_inputs(self.exp_param_input, self.exp_private_input)
 
     def add_dynamic_inputs(self, param_input, private_input, param_layout, args, defaults):
         item = 0
@@ -2199,7 +2199,7 @@ class Operator:
     def update_seq_doc(self, value):
         self.sequence_descr_txt.text = value.replace("\n", "<br>")
 
-    def update_prc_doc(self, value):
+    def update_exp_doc(self, value):
         self.experiment_descr_txt.text = value.replace("\n", "<br>")
 
     def update_error(self, value):
@@ -2313,9 +2313,9 @@ class Operator:
         private_input = None
         param_input = None
 
-        if sender in self.prc_param_input or sender in self.prc_private_input:
-            private_input = self.prc_private_input
-            param_input = self.prc_param_input
+        if sender in self.exp_param_input or sender in self.exp_private_input:
+            private_input = self.exp_private_input
+            param_input = self.exp_param_input
 
         elif sender in self.seq_param_input or sender in self.seq_private_input:
             private_input = self.seq_private_input

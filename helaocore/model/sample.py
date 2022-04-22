@@ -110,7 +110,7 @@ class _BaseSample(SampleModel):
     source: List[str] = Field(default_factory=list)
     comment: Optional[str]
 
-    def create_initial_prc_dict(self):
+    def create_initial_exp_dict(self):
         if not isinstance(self.status, list):
             self.status = [self.status]
 
@@ -126,9 +126,9 @@ class _BaseSample(SampleModel):
             "status": self.status,
         }
 
-    def prc_dict(self):
-        prc_dict = self.create_initial_prc_dict()
-        return prc_dict
+    def exp_dict(self):
+        exp_dict = self.create_initial_exp_dict()
+        return exp_dict
 
     def get_global_label(self):
         pass
@@ -202,7 +202,7 @@ class NoneSample(SampleModel):
     def get_vol_ml(self):
         return None
 
-    def prc_dict(self):
+    def exp_dict(self):
         return {
             "global_label": self.get_global_label(),
             "sample_type": self.sample_type,
@@ -217,12 +217,12 @@ class LiquidSample(_BaseSample):
     ph: Optional[float] = None
     dilution_factor: Optional[float] = 1.0
 
-    def prc_dict(self):
-        prc_dict = self.create_initial_prc_dict()
-        prc_dict.update({"volume_ml": self.volume_ml})
-        prc_dict.update({"ph": self.ph})
-        prc_dict.update({"dilution_factor": self.dilution_factor})
-        return prc_dict
+    def exp_dict(self):
+        exp_dict = self.create_initial_exp_dict()
+        exp_dict.update({"volume_ml": self.volume_ml})
+        exp_dict.update({"ph": self.ph})
+        exp_dict.update({"dilution_factor": self.dilution_factor})
+        return exp_dict
 
     def get_global_label(self):
         if self.global_label is None:
@@ -241,10 +241,10 @@ class SolidSample(_BaseSample):
     machine_name: Optional[str] = "legacy"
     plate_id: Optional[int] = None
 
-    def prc_dict(self):
-        prc_dict = self.create_initial_prc_dict()
-        prc_dict.update({"plate_id": self.plate_id})
-        return prc_dict
+    def exp_dict(self):
+        exp_dict = self.create_initial_exp_dict()
+        exp_dict.update({"plate_id": self.plate_id})
+        return exp_dict
 
     def get_global_label(self):
         if self.global_label is None:
@@ -274,11 +274,11 @@ class GasSample(_BaseSample):
     volume_ml: Optional[float] = 0.0
     dilution_factor: Optional[float] = 1.0
 
-    def prc_dict(self):
-        prc_dict = self.create_initial_prc_dict()
-        prc_dict.update({"volume_ml": self.volume_ml})
-        prc_dict.update({"dilution_factor": self.dilution_factor})
-        return prc_dict
+    def exp_dict(self):
+        exp_dict = self.create_initial_exp_dict()
+        exp_dict.update({"volume_ml": self.volume_ml})
+        exp_dict.update({"dilution_factor": self.dilution_factor})
+        return exp_dict
 
     def get_global_label(self):
         if self.global_label is None:
@@ -311,17 +311,17 @@ class AssemblySample(_BaseSample):
             return []
         return value
 
-    def prc_dict(self):
-        prc_dict = self.create_initial_prc_dict()
-        prc_dict.update({"assembly_parts": self.get_assembly_parts_prc_dict()})
-        return prc_dict
+    def exp_dict(self):
+        exp_dict = self.create_initial_exp_dict()
+        exp_dict.update({"assembly_parts": self.get_assembly_parts_exp_dict()})
+        return exp_dict
 
-    def get_assembly_parts_prc_dict(self):
+    def get_assembly_parts_exp_dict(self):
         part_dict_list = []
         for part in self.parts:
             if part is not None:
                 # return full dict
-                # part_dict_list.append(part.prc_dict())
+                # part_dict_list.append(part.exp_dict())
                 # return only the label (preferred)
                 part_dict_list.append(part.get_global_label())
             else:
