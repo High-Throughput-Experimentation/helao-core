@@ -13,7 +13,7 @@ class MultisubscriberQueue(object):
         The constructor for MultisubscriberQueue class
         """
         super().__init__()
-        self.subscribers = list()
+        self.subscribers = []
 
     def __len__(self):
         return len(self.subscribers)

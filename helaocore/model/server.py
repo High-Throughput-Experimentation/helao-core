@@ -61,7 +61,7 @@ class EndpointModel(BaseModel, HelaoDict):
                     if hlostatus in status.act.action_status:
                         if hlostatus not in self.finished_dict:
                             is_sub_status = True
-                            self.finished_dict[hlostatus] = dict()
+                            self.finished_dict[hlostatus] = {}
                             break
                         self.finished_dict[hlostatus].update({uuid: status})
 
@@ -69,7 +69,7 @@ class EndpointModel(BaseModel, HelaoDict):
                 # if not is_sub_status:
                 # also always add it to finished
                 if HloStatus.finished not in self.finished_dict:
-                    self.finished_dict[HloStatus.finished] = dict()
+                    self.finished_dict[HloStatus.finished] = {}
                 self.finished_dict[HloStatus.finished].update({uuid: status})
 
         # delete all finished actions from active_dict
@@ -78,7 +78,7 @@ class EndpointModel(BaseModel, HelaoDict):
 
     def clear_finished(self):
         """clears all status dicts except active_dict"""
-        self.finished_dict = dict()
+        self.finished_dict = {}
 
 
 class ActionServerModel(BaseModel, HelaoDict):
@@ -194,7 +194,7 @@ class GlobalStatusModel(BaseModel, HelaoDict):
                             if uuid in self.active_dict:
                                 del self.active_dict[uuid]
                             if hlostatus not in self.finished_dict:
-                                self.finished_dict[hlostatus] = dict()
+                                self.finished_dict[hlostatus] = {}
                             self.finished_dict[hlostatus].update({uuid: statusmodel})
 
     def update_global_with_acts(self, actionserver: ActionServerModel):
@@ -208,7 +208,7 @@ class GlobalStatusModel(BaseModel, HelaoDict):
 
     def find_hlostatus_in_finished(self, hlostatus: HloStatus) -> Dict[UUID, StatusModel]:
         """returns a dict of uuids for actions which contain hlostatus"""
-        uuid_dict = dict()
+        uuid_dict = {}
 
         if hlostatus in self.finished_dict:
             # all of them have this status
@@ -224,7 +224,7 @@ class GlobalStatusModel(BaseModel, HelaoDict):
 
     def clear_in_finished(self, hlostatus: HloStatus):
         if hlostatus in self.finished_dict:
-            self.finished_dict[hlostatus] = dict()
+            self.finished_dict[hlostatus] = {}
         elif HloStatus.finished in self.finished_dict:
             # can only be in finsihed, but need to look for substatus
             del_keys = []
@@ -256,7 +256,7 @@ class GlobalStatusModel(BaseModel, HelaoDict):
         #     ERROR
 
         # clear finished
-        self.finished_dict = dict()
+        self.finished_dict = {}
         if exp_uuid in self.counter_dispatched_actions:
             del self.counter_dispatched_actions[exp_uuid]
 

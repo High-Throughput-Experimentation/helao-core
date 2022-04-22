@@ -1190,7 +1190,7 @@ class Operator:
             if "positions" in pal_server_params:
                 dev_custom = pal_server_params["positions"].get("custom", dict())
             else:
-                dev_custom = dict()
+                dev_custom = {}
             self.dev_customitems = [key for key in dev_custom.keys()]
 
         self.color_sq_param_inputs = "#BDB76B"
@@ -1205,25 +1205,25 @@ class Operator:
         self.exp_private_input = []
 
         self.sequence = None
-        self.experiment_plan_list = dict()
+        self.experiment_plan_list = {}
         self.experiment_plan_list["sequence_name"] = []
         self.experiment_plan_list["sequence_label"] = []
         self.experiment_plan_list["experiment_name"] = []
 
-        self.sequence_list = dict()
+        self.sequence_list = {}
         self.sequence_list["sequence_name"] = []
         self.sequence_list["sequence_uuid"] = []
 
-        self.experiment_list = dict()
+        self.experiment_list = {}
         self.experiment_list["experiment_name"] = []
         self.experiment_list["experiment_uuid"] = []
 
-        self.action_list = dict()
+        self.action_list = {}
         self.action_list["action_name"] = []
         self.action_list["action_server"] = []
         self.action_list["action_uuid"] = []
 
-        self.active_action_list = dict()
+        self.active_action_list = {}
         self.active_action_list["action_name"] = []
         self.active_action_list["action_server"] = []
         self.active_action_list["action_uuid"] = []

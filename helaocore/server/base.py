@@ -206,7 +206,7 @@ class Base(object):
                 error=True,
             )
 
-        self.actives: Dict[UUID, object] = dict()
+        self.actives: Dict[UUID, object] = {}
         # basemodel to describe the full action server
         self.actionserver = ActionServerModel(action_server=self.server)
 
@@ -283,7 +283,7 @@ class Base(object):
     async def _get_action(self, frame) -> Action:
         _args, _varargs, _keywords, _locals = inspect.getargvalues(frame)
         action = None
-        paramdict = dict()
+        paramdict = {}
 
         for arg in _args:
             argparam = _locals.get(arg, None)
@@ -789,7 +789,7 @@ class Base(object):
             for aux_uuid in activeparams.aux_listen_uuids:
                 self.add_new_listen_uuid(aux_uuid)
 
-            self.file_conn_dict: Dict(str, FileConn) = dict()
+            self.file_conn_dict: Dict(str, FileConn) = {}
             for file_conn_key, file_conn_param in activeparams.file_conn_params_dict.items():
                 self.file_conn_dict[file_conn_key] = FileConn(params=file_conn_param)
                 self.action.file_conn_keys.append(file_conn_key)
@@ -1480,7 +1480,7 @@ class Base(object):
                 for filekey in self.file_conn_dict:
                     if self.file_conn_dict[filekey].file:
                         await self.file_conn_dict[filekey].file.close()
-                self.file_conn_dict = dict()
+                self.file_conn_dict = {}
 
                 # finish the data writer
                 self.data_logger.cancel()

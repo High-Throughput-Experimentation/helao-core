@@ -14,7 +14,7 @@ class HelaoDict:
     """implements dict and serialization methods for helao"""
 
     def _serialize_dict(self, dict_in: dict):
-        clean = dict()
+        clean = {}
         for k, v in dict_in.items():
             if not isinstance(v, types.FunctionType) and not (isinstance(v, str) and k.startswith("__")):
                 # keys can also be UUID, datetime etc
@@ -63,8 +63,8 @@ class HelaoDict:
         """creates dictionaries for FastAPI post request"""
         d = deepcopy(vars(self))
 
-        params_dict = dict()
-        json_dict = dict()
+        params_dict = {}
+        json_dict = {}
         for k, v in d.items():
             if not isinstance(v, types.FunctionType) and not k.startswith("__") and (v is not None):
                 if isinstance(v, (dict, list, set, tuple)):

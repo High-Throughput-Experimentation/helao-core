@@ -60,8 +60,8 @@ class _BaseSampleAPI(object):
               {self.extra_columns}"""
 
         self.column_names = self.columns.replace("\n", "").strip().split(",")
-        self.column_types = dict()
-        self.column_notNULL = dict()
+        self.column_types = {}
+        self.column_notNULL = {}
         for i, name in enumerate(self.column_names):
             self.column_names[i] = name.strip().split(" ")[0]
             self.column_types.update({self.column_names[i]: name.strip().split(" ")[1].lower()})

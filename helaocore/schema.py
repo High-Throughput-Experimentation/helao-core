@@ -265,7 +265,7 @@ class ActionPlanMaker(object):
         self.action_list = []
         self.pars = self._C()
 
-        exp_paramdict = dict()
+        exp_paramdict = {}
 
         # find the Experiment Basemodel
         # and add all other params to a dict
