@@ -192,19 +192,9 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
     async def wait(action: Optional[Action] = Body({}, embed=True), waittime: Optional[float] = 0.0):
         """Sleep action"""
         active = await app.orch.setup_and_contain_action()
-        waittime = active.action.action_params["waittime"]
-        app.orch.print_message(' ... wait action:', waittime)
-        start_time = time.time()
-        # last_time = start_time
-        while time.time() - start_time < waittime:
-            await asyncio.sleep(1)
-            app.orch.print_message(
-                f" ... orch waited {(time.time()-start_time):.1f} sec / {waittime:.1f} sec"
-            )
-        # await asyncio.sleep(waittime)
-        app.orch.print_message(' ... wait action done')
-        finished_action = await active.finish()
-        return finished_action.as_dict()
+        partial_action = active.action.as_dict()
+        app.orch.start_wait(active)
+        return partial_action.as_dict()
 
     # @app.post("/append_experiment")
     # async def append_experiment(
@@ -332,6 +322,10 @@ class Orch(Base):
 
         # pointer to dispatch_loop_task
         self.loop_task = None
+
+        # pointer to wait_task
+        self.wait_task = None
+
         self.status_subscriber = asyncio.create_task(self.subscribe_all())
 
     def start_operator(self):
@@ -1145,6 +1139,26 @@ class Orch(Base):
     async def update_operator(self, msg):
         if self.op_enabled and self.orch_op:
             await self.orch_op.update_q.put(msg)
+
+    def start_wait(self, active: Base.Active):
+        self.loop_task = asyncio.create_task(self.dispatch_loop_task(active))
+
+    async def dispatch_wait_task(self, active: Base.Active):
+        # handle long waits as a separate task so HTTP timeout doesn't occur
+        waittime = active.action.action_params["waittime"]
+        self.print_message(' ... wait action:', waittime)
+        start_time = time.time()
+        sleep_counter = 0
+        while time.time() - start_time < waittime:
+            await asyncio.sleep(0.001)  # msec sleep
+            sleep_counter += 1
+            if sleep_counter % 10000 == 0:  # 10 second print
+                self.print_message(
+                    f" ... orch waited {(time.time()-start_time):.1f} sec / {waittime:.1f} sec"
+                )
+        self.print_message(' ... wait action done')
+        finished_action = await active.finish()
+        return finished_action
 
 
 class return_sequence_lib(BaseModel):
