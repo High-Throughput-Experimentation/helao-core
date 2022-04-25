@@ -26,10 +26,10 @@ async def yml_finisher(yml_path: str, yml_type: str, base: object = None, retry:
         for i in range(retry):
             async with session.post(req_url, params=req_params) as resp:
                 if resp.status == 200:
-                    print_msg(f"Finished experiment: {yml_path}.")
+                    print_msg(f"Finished {yml_type}: {yml_path}.")
                     return True
                 else:
-                    print_msg(f"Retry [{i}/{retry}] finish experiment {yml_path}.")
+                    print_msg(f"Retry [{i}/{retry}] finish {yml_type} {yml_path}.")
                     await asyncio.sleep(1)
         print_msg(f"Could not finish {yml_path} after {retry} tries.")
         return False
