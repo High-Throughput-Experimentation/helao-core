@@ -505,7 +505,7 @@ class Base(object):
         # except WebSocketDisconnect:
         except Exception as e:
             self.print_message(
-                f"Status websocket client {websocket.client[0]}:{websocket.client[1]} disconnected.",
+                f"Status websocket client {websocket.client[0]}:{websocket.client[1]} disconnected. {repr(e)}",
                 error=True,
             )
 
@@ -519,7 +519,7 @@ class Base(object):
         # except WebSocketDisconnect:
         except Exception as e:
             self.print_message(
-                f"Data websocket client {websocket.client[0]}:{websocket.client[1]} disconnected.",
+                f"Data websocket client {websocket.client[0]}:{websocket.client[1]} disconnected. {repr(e)}",
                 error=True,
             )
 
@@ -587,7 +587,7 @@ class Base(object):
 
         # except asyncio.CancelledError:
         except Exception as e:
-            self.print_message("status logger task was cancelled with error: {e}", error=True)
+            self.print_message(f"status logger task was cancelled with error: {repr(e)}", error=True)
 
     async def detach_subscribers(self):
         await self.status_q.put(StopAsyncIteration)
@@ -1173,7 +1173,7 @@ class Base(object):
 
             # except asyncio.CancelledError:
             except Exception as e:
-                self.base.print_message(f"data logger task was cancelled with error: {e}", error=True)
+                self.base.print_message(f"data logger task was cancelled with error: {repr(e)}", error=True)
 
         async def write_file(
             self,

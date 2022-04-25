@@ -45,7 +45,7 @@ async def async_action_dispatcher(world_config_dict: dict, A: Action):
                 print_message(
                     actd,
                     A.action_server.server_name,
-                    f"async_action_dispatcher could not decide response: '{resp}', error={e}",
+                    f"async_action_dispatcher could not decide response: '{resp}', error={repr(e)}",
                     error=True,
                 )
                 response = None
@@ -83,7 +83,7 @@ async def async_private_dispatcher(
                 print_message(
                     actd,
                     server,
-                    f"{private_action} POST request returned status {resp.status}: '{resp.json()}', error={e}",
+                    f"{private_action} POST request returned status {resp.status}: '{resp.json()}', error={repr(e)}",
                     error=True,
                 )
             try:
@@ -92,7 +92,7 @@ async def async_private_dispatcher(
                 print_message(
                     actd,
                     server,
-                    f"async_private_dispatcher could not decide response: '{resp}', error={e}",
+                    f"async_private_dispatcher could not decide response: '{resp}', error={repr(e)}",
                     error=True,
                 )
                 response = None
