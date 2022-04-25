@@ -179,18 +179,18 @@ class Experiment(Sequence, ExperimentModel):
             if len(locs) > 1:
                 isunique = False
 
-        if not isunique:
-            print_message(
-                {},
-                "experiment",
-                "\n----------------------------------"
-                "\nDuplicate but 'unique' samples."
-                "\nExperiment needs to be split."
-                "\n----------------------------------",
-                error=True,
-            )
-            print_message({}, "experiment", f"samples_in labels: {in_labels}", error=True)
-            print_message({}, "experiment", f"samples_out labels: {out_labels}", error=True)
+        # if not isunique:
+        #     print_message(
+        #         {},
+        #         "experiment",
+        #         "\n----------------------------------"
+        #         "\nDuplicate but 'unique' samples."
+        #         "\nExperiment needs to be split."
+        #         "\n----------------------------------",
+        #         error=True,
+        #     )
+        #     print_message({}, "experiment", f"samples_in labels: {in_labels}", error=True)
+        #     print_message({}, "experiment", f"samples_out labels: {out_labels}", error=True)
 
 
 class Action(Experiment, ActionModel):
