@@ -1141,7 +1141,7 @@ class Orch(Base):
             await self.orch_op.update_q.put(msg)
 
     def start_wait(self, active: Base.Active):
-        self.loop_task = asyncio.create_task(self.dispatch_loop_task(active))
+        self.wait_task = asyncio.create_task(self.dispatch_wait_task(active))
 
     async def dispatch_wait_task(self, active: Base.Active):
         # handle long waits as a separate task so HTTP timeout doesn't occur
@@ -1158,6 +1158,7 @@ class Orch(Base):
                 )
         self.print_message(' ... wait action done')
         finished_action = await active.finish()
+        self.wait_task = None
         return finished_action
 
 
