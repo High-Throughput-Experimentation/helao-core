@@ -194,7 +194,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         active = await app.orch.setup_and_contain_action()
         partial_action = active.action.as_dict()
         app.orch.start_wait(active)
-        return partial_action.as_dict()
+        return partial_action
 
     # @app.post("/append_experiment")
     # async def append_experiment(
