@@ -399,7 +399,7 @@ class Orch(Base):
                             params_dict={"client_servkey": self.server.server_name},
                             json_dict={},
                         )
-                        if response == True and error_code == ErrorCodes.none:
+                        if response and error_code == ErrorCodes.none:
                             success = True
                             break
                     except aiohttp.client_exceptions.ClientConnectorError:
@@ -2070,7 +2070,7 @@ class Operator:
             def_val = f"{defaults[idx]}"
             # if args[idx] == "experiment":
             #     continue
-            disabled = False
+            # disabled = False
 
             param_input.append(
                 TextInput(
