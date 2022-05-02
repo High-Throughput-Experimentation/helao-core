@@ -131,20 +131,22 @@ def makeActionServ(
         return finished_action.as_dict()
 
     @app.post("/shutdown", tags=["private"])
-    def post_shutdown():
-        shutdown_event()
+    async def post_shutdown():
+        await shutdown_event()
 
     @app.on_event("shutdown")
-    def shutdown_event():
+    async def shutdown_event():
         app.base.print_message("action shutdown", info=True)
+        await app.base.shutdown()
 
         shutdown = getattr(app.driver, "shutdown", None)
         if shutdown is not None and callable(shutdown):
             app.driver.base.print_message("driver has shutdown function", info=True)
-            shutdown()
+            retval = shutdown()
         else:
             app.driver.base.print_message("driver has NO shutdown function", error=True)
-        return {"shutdown"}
+            retval = {"shutdown"}
+        return retval
 
     return app
 
@@ -453,27 +455,27 @@ class Base(object):
                     f"Client {client_servkey} is already subscribed to "
                     f"{self.server.server_name} status updates."
                 )
-                success = True
-            else:
-                self.status_clients.add(client_servkey)
+                self.detach_client(client_servkey)
 
-                # sends current status of all endpoints (action_name = None)
-                for _ in range(retry_limit):
-                    response, error_code = await self.send_statuspackage(
-                        action_name=None, client_servkey=client_servkey
+            self.status_clients.add(client_servkey)
+
+            # sends current status of all endpoints (action_name = None)
+            for _ in range(retry_limit):
+                response, error_code = await self.send_statuspackage(
+                    action_name=None, client_servkey=client_servkey
+                )
+                if response == True and error_code == ErrorCodes.none:
+                    self.print_message(
+                        f"Added {client_servkey} to {self.server.server_name} status subscriber list."
                     )
-                    if response == True and error_code == ErrorCodes.none:
-                        self.print_message(
-                            f"Added {client_servkey} to {self.server.server_name} status subscriber list."
-                        )
-                        success = True
-                        break
-                    else:
-                        self.print_message(
-                            f"Failed to add {client_servkey} to "
-                            f"{self.server.server_name} status subscriber list.",
-                            error=True,
-                        )
+                    success = True
+                    break
+                else:
+                    self.print_message(
+                        f"Failed to add {client_servkey} to "
+                        f"{self.server.server_name} status subscriber list.",
+                        error=True,
+                    )
 
             if success:
                 self.print_message(f"Attched {client_servkey} to status ws on {self.server.server_name}.")
