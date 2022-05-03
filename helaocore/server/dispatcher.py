@@ -1,5 +1,6 @@
 __all__ = ["async_action_dispatcher", "async_private_dispatcher"]
 
+import traceback
 import aiohttp
 
 from ..schema import Action
@@ -36,16 +37,17 @@ async def async_action_dispatcher(world_config_dict: dict, A: Action):
                 print_message(
                     actd,
                     A.action_server.server_name,
-                    f"{private_action} POST request returned status {resp.status}: '{resp.json()}', error={e}",
+                    f"{A.action_name} POST request returned status {resp.status}: '{resp.json()}', error={e}",
                     error=True,
                 )
             try:
                 response = await resp.json()
             except Exception as e:
+                tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
                 print_message(
                     actd,
                     A.action_server.server_name,
-                    f"async_action_dispatcher could not decide response: '{resp}', error={repr(e)}",
+                    f"async_action_dispatcher could not decide response: '{resp}', error={repr(e), tb,}",
                     error=True,
                 )
                 response = None
@@ -83,16 +85,17 @@ async def async_private_dispatcher(
                 print_message(
                     actd,
                     server,
-                    f"{private_action} POST request returned status {resp.status}: '{resp.json()}', error={repr(e)}",
+                    f"{private_action} POST request returned status {resp.status}: '{resp.json()}', error={repr(e), tb,}",
                     error=True,
                 )
             try:
                 response = await resp.json()
             except Exception as e:
+                tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
                 print_message(
                     actd,
                     server,
-                    f"async_private_dispatcher could not decide response: '{resp}', error={repr(e)}",
+                    f"async_private_dispatcher could not decide response: '{resp}', error={repr(e), tb,}",
                     error=True,
                 )
                 response = None

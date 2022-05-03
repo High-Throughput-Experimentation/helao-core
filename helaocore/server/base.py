@@ -11,6 +11,7 @@ from uuid import UUID
 import hashlib
 from copy import deepcopy
 import inspect
+import traceback
 
 import aiofiles
 import colorama
@@ -506,8 +507,9 @@ class Base(object):
                 await websocket.send_text(json.dumps(status_msg.json_dict()))
         # except WebSocketDisconnect:
         except Exception as e:
+            tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
             self.print_message(
-                f"Status websocket client {websocket.client[0]}:{websocket.client[1]} disconnected. {repr(e)}",
+                f"Status websocket client {websocket.client[0]}:{websocket.client[1]} disconnected. {repr(e), tb,}",
                 error=True,
             )
 
@@ -520,8 +522,9 @@ class Base(object):
                 await websocket.send_text(json.dumps(data_msg.json_dict()))
         # except WebSocketDisconnect:
         except Exception as e:
+            tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
             self.print_message(
-                f"Data websocket client {websocket.client[0]}:{websocket.client[1]} disconnected. {repr(e)}",
+                f"Data websocket client {websocket.client[0]}:{websocket.client[1]} disconnected. {repr(e), tb,}",
                 error=True,
             )
 
@@ -589,7 +592,8 @@ class Base(object):
 
         # except asyncio.CancelledError:
         except Exception as e:
-            self.print_message(f"status logger task was cancelled with error: {repr(e)}", error=True)
+            tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+            self.print_message(f"status logger task was cancelled with error: {repr(e), tb,}", error=True)
 
     async def detach_subscribers(self):
         await self.status_q.put(StopAsyncIteration)
@@ -1175,7 +1179,8 @@ class Base(object):
 
             # except asyncio.CancelledError:
             except Exception as e:
-                self.base.print_message(f"data logger task was cancelled with error: {repr(e)}", error=True)
+                tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+                self.base.print_message(f"data logger task was cancelled with error: {repr(e), tb,}", error=True)
 
         async def write_file(
             self,

@@ -14,6 +14,7 @@ import numpy as np
 import json
 import io
 from pybase64 import b64decode
+import traceback
 
 import aiohttp
 import colorama
@@ -668,7 +669,8 @@ class Orch(Base):
             try:
                 result_action = Action(**result_actiondict)
             except Exception as e:
-                self.print_message(f"returned result is not a valid Action BaseModel: {repr(e)}", error=True)
+                tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+                self.print_message(f"returned result is not a valid Action BaseModel: {repr(e), tb,}", error=True)
                 return ErrorCodes.critical
 
             if result_action.error_code is not ErrorCodes.none:
@@ -766,8 +768,9 @@ class Orch(Base):
         #     return False
 
         except Exception as e:
+            tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
             self.print_message("serious orch exception occurred", error=True)
-            self.print_message(f"ERROR: {repr(e)}", error=True)
+            self.print_message(f"ERROR: {repr(e), tb,}", error=True)
             return False
 
     async def orch_wait_for_all_actions(self):
@@ -874,9 +877,10 @@ class Orch(Base):
             try:
                 _ = await async_action_dispatcher(self.world_cfg, A)
             except Exception as e:
+                tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
                 # no estop endpoint for this action server?
                 self.print_message(
-                    f"estop for {actionservermodel.action_server.disp_name()} failed with: {repr(e)}",
+                    f"estop for {actionservermodel.action_server.disp_name()} failed with: {repr(e), tb,}",
                     error=True,
                 )
 
@@ -2484,4 +2488,5 @@ class Operator:
                 self.vis.doc.add_next_tick_callback(partial(self.update_tables))
                 _ = await self.update_q.get()
             except Exception as e:
-                self.vis.print_message(f"Operator IOloop error: {repr(e)}", error=True)
+                tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+                self.vis.print_message(f"Operator IOloop error: {repr(e), tb,}", error=True)
