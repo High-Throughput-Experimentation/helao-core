@@ -200,7 +200,7 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
         partial_action = active.action.as_dict()
         app.orch.start_wait(active)
         while app.orch.last_wait_ts == app.orch.current_wait_ts:
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.01)
         return partial_action
 
     # @app.post("/append_experiment")
@@ -324,6 +324,8 @@ class Orch(Base):
         # this queue is simply used for waiting for any interrupt
         # but it does not do anything with its content
         self.interrupt_q = asyncio.Queue()
+        self.incoming_status = asyncio.Queue()
+        self.incoming = None
 
         self.init_success = False  # need to subscribe to all fastapi servers in config
 
@@ -384,10 +386,16 @@ class Orch(Base):
         # empty it and then return
 
         # get at least one status
-        _ = await self.interrupt_q.get()
+        interrupt = await self.interrupt_q.get()
+        if isinstance(interrupt, GlobalStatusModel):
+            self.incoming = interrupt
+        
         # if not empty clear it
         while not self.interrupt_q.empty():
-            _ = await self.interrupt_q.get()
+            interrupt = await self.interrupt_q.get()
+            if isinstance(interrupt, GlobalStatusModel):
+                self.incoming = interrupt
+
 
     async def subscribe_all(self, retry_limit: int = 5):
         """Subscribe to all fastapi servers in config."""
@@ -639,7 +647,21 @@ class Orch(Base):
             self.orchstatusmodel.counter_dispatched_actions[self.active_experiment.experiment_uuid] += 1
 
             A.init_act(time_offset=self.ntp_offset)
+            # while not self.incoming_status.empty():
+            #     _ = await self.incoming_status.get()
+            #     self.incoming_status.task_done()
+            num_current_actives = len(self.orchstatusmodel.server_dict[A.action_server.as_key()].endpoints[A.action_name].active_dict)
+            # self.print_message(f"There are {num_current_actives} active '{A.action_name}' actions.")
             result_actiondict, error_code = await async_action_dispatcher(self.world_cfg, A)
+            while A.action_name=='wait':
+                self.print_message(f"Waiting for dispatched {A.action_name} request to register in global status.")
+                await self.wait_for_interrupt()
+                num_new_actives = len(self.incoming.server_dict[A.action_server.as_key()].endpoints[A.action_name].active_dict)
+                self.print_message(f"Incoming status has {num_current_actives} active '{A.action_name}' actions.")
+                if num_new_actives > num_current_actives:
+                    self.print_message(f"New status registered on {A.action_name}.")
+                    break
+                num_current_actives = num_new_actives
             if error_code is not ErrorCodes.none:
                 return error_code
 
@@ -693,6 +715,7 @@ class Orch(Base):
                 self.print_message(f"current content of experiment_dq: {self.experiment_dq}")
                 self.print_message(f"current content of sequence_dq: {self.sequence_dq}")
                 await asyncio.sleep(0.001)
+                num_exp_actions = deepcopy(self.orchstatusmodel.counter_dispatched_actions)
 
                 # if no acts and no exps, disptach next sequence
                 if not self.experiment_dq and not self.action_dq:
@@ -707,6 +730,8 @@ class Orch(Base):
                 else:
                     self.print_message("!!!dispatchinng next action", info=True)
                     error_code = await self.loop_task_dispatch_action()
+                    while num_exp_actions == self.orchstatusmodel.counter_dispatched_actions:
+                        await asyncio.sleep(0.001)
 
                 if error_code is not ErrorCodes.none:
                     self.print_message(f"stopping orch with error code: {error_code}", error=True)
@@ -1165,12 +1190,11 @@ class Orch(Base):
                     f" ... orch waited {(check_time-self.current_wait_ts):.1f} sec / {waittime:.1f} sec"
                 )
                 last_print_time = check_time
-            await asyncio.sleep(0.1)  # 10 msec sleep
+            await asyncio.sleep(0.01)  # 10 msec sleep
             check_time = time.time()
         self.print_message(' ... wait action done')
         finished_action = await active.finish()
         self.last_wait_ts = check_time
-        self.wait_task = None
         return finished_action
 
 
