@@ -75,13 +75,7 @@ def makeActionServ(
 
     @app.on_event("startup")
     def startup_event():
-        app.base = Base(app)
-        if driver_class:
-            app.driver = driver_class(app.base)
-
-        # if provided add more dynmaic endpoints after driver initialization
-        if callable(dyn_endpoints):
-            asyncio.gather(dyn_endpoints(app=app))
+        app.base = Base(app, driver_class, dyn_endpoints)
 
     @app.websocket("/ws_status")
     async def websocket_status(websocket: WebSocket):
@@ -180,7 +174,7 @@ class Base(object):
     and folders will be written as follows: TBD
     """
 
-    def __init__(self, fastapp: HelaoFastAPI):
+    def __init__(self, fastapp: HelaoFastAPI, driver_class=None, dyn_endpoints=None):
         self.server = MachineModel(server_name=fastapp.helao_srv, machine_name=gethostname())
 
         self.fastapp = fastapp
@@ -233,7 +227,16 @@ class Base(object):
 
         if self.ntp_last_sync is None:
             asyncio.gather(self.get_ntp_time())
-        self.init_endpoint_status()
+
+        if driver_class is not None:
+            self.fastapp.driver = driver_class(self)
+
+        # # if provided add more dynmaic endpoints after driver initialization
+        # if callable(dyn_endpoints):
+        #     asyncio.gather(dyn_endpoints(app=self.fastapp))
+        
+        asyncio.gather(self.init_endpoint_status(dyn_endpoints))
+
         self.fast_urls = self.get_endpoint_urls()
         self.status_logger = self.aloop.create_task(self.log_status_task())
         self.sync_ntp_task_run = False
@@ -244,10 +247,13 @@ class Base(object):
             self.server_cfg, self.server.server_name, log_dir=self.helaodirs.log_root, *args, **kwargs
         )
 
-    def init_endpoint_status(self):
+    async def init_endpoint_status(self, dyn_endpoints = None):
         """Populate status dict
         with FastAPI server endpoints for monitoring."""
+        if callable(dyn_endpoints):
+            await dyn_endpoints(app=self.fastapp)
         for route in self.fastapp.routes:
+            print(route.path)
             if route.path.startswith(f"/{self.server.server_name}"):
                 self.actionserver.endpoints.update({route.name: EndpointModel(endpoint_name=route.name)})
 
