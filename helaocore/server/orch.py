@@ -493,6 +493,9 @@ class Orch(Base):
             await self.finish_active_sequence()
             self.print_message("getting new sequence from sequence_dq")
             self.active_sequence = self.sequence_dq.popleft()
+            self.print_message(f"new active sequence is {self.active_sequence.sequence_name}")
+            if self.world_cfg.get("dummy", "False"):
+                self.active_sequence.dummy = True
             self.active_sequence.init_seq(time_offset=self.ntp_offset)
 
             # todo: this is for later, for now the operator needs to unpack the sequence
@@ -542,7 +545,8 @@ class Orch(Base):
         # generate timestamp when acquring
         self.active_experiment = self.experiment_dq.popleft()
         self.print_message(f"new active experiment is {self.active_experiment.experiment_name}")
-
+        if self.world_cfg.get("dummy", "False"):
+            self.active_experiment.dummy = True
         self.active_experiment.technique_name = self.technique_name
         self.active_experiment.orchestrator = self.server
         self.active_experiment.init_exp(time_offset=self.ntp_offset)
