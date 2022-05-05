@@ -52,7 +52,7 @@ class _BaseSampleAPI(object):
               sample_creation_action_uuid VARCHAR(255),
               server_name VARCHAR(255),
               chemical TEXT,
-              mass TEXT,
+              partial_molarity TEXT,
               supplier TEXT,
               lot_number TEXT,
               source TEXT,
@@ -77,7 +77,7 @@ class _BaseSampleAPI(object):
         self._con = None
         self._cur = None
         # convert these to json when saving them to the db
-        self._jsonkeys = ["chemical", "mass", "supplier", "lot_number", "source", "status", "action_uuid"]
+        self._jsonkeys = ["chemical", "partial_molarity", "supplier", "lot_number", "source", "status", "action_uuid"]
         self.ready = False
 
     async def _open_db(self):

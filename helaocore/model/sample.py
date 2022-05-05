@@ -104,7 +104,7 @@ class _BaseSample(SampleModel):
     inheritance: Optional[SampleInheritance]  # only for internal use
     status: List[SampleStatus] = Field(default_factory=list)  # only for internal use
     chemical: List[str] = Field(default_factory=list)
-    mass: List[str] = Field(default_factory=list)
+    partial_molarity: List[str] = Field(default_factory=list)
     supplier: List[str] = Field(default_factory=list)
     lot_number: List[str] = Field(default_factory=list)
     source: List[str] = Field(default_factory=list)
