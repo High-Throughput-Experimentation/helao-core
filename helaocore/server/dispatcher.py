@@ -32,16 +32,16 @@ async def async_action_dispatcher(world_config_dict: dict, A: Action):
             json={"action": A.json_dict()},
         ) as resp:
             error_code = ErrorCodes.none
-            if resp.status != 200:
-                error_code = ErrorCodes.http
-                print_message(
-                    actd,
-                    A.action_server.server_name,
-                    f"{A.action_name} POST request returned status {resp.status}: '{await resp.json()}', error={e}",
-                    error=True,
-                )
             try:
                 response = await resp.json()
+                if resp.status != 200:
+                    error_code = ErrorCodes.http
+                    print_message(
+                        actd,
+                        A.action_server.server_name,
+                        f"{A.action_name} POST request returned status {resp.status}: '{response}', error={e}",
+                        error=True,
+                    )
             except Exception as e:
                 tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
                 print_message(
@@ -80,22 +80,22 @@ async def async_private_dispatcher(
             json=json_dict,
         ) as resp:
             error_code = ErrorCodes.none
-            if resp.status != 200:
-                error_code = ErrorCodes.http
-                print_message(
-                    actd,
-                    server,
-                    f"{private_action} POST request returned status {resp.status}: '{await resp.json()}', error={repr(e), tb,}",
-                    error=True,
-                )
             try:
                 response = await resp.json()
+                if resp.status != 200:
+                    error_code = ErrorCodes.http
+                    print_message(
+                        actd,
+                        server,
+                        f"{private_action} POST request returned status {resp.status}: '{response}', error={repr(e)}",
+                        error=True,
+                    )
             except Exception as e:
                 tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
                 print_message(
                     actd,
                     server,
-                    f"async_private_dispatcher could not decide response: '{resp}', error={repr(e), tb,}",
+                    f"async_private_dispatcher could not decide response: '{resp}', error={repr(e), tb}",
                     error=True,
                 )
                 response = None
