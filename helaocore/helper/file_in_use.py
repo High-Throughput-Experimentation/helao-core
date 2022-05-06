@@ -12,7 +12,6 @@ def file_in_use(file_path):
 
     try:
         path.rename(path)
+        return False
     except PermissionError:
         return True
-    else:
-        return False
