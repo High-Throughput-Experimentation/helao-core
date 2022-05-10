@@ -390,13 +390,12 @@ class Orch(Base):
         interrupt = await self.interrupt_q.get()
         if isinstance(interrupt, GlobalStatusModel):
             self.incoming = interrupt
-        
+
         # if not empty clear it
         while not self.interrupt_q.empty():
             interrupt = await self.interrupt_q.get()
             if isinstance(interrupt, GlobalStatusModel):
                 self.incoming = interrupt
-
 
     async def subscribe_all(self, retry_limit: int = 5):
         """Subscribe to all fastapi servers in config."""
@@ -655,14 +654,24 @@ class Orch(Base):
             # while not self.incoming_status.empty():
             #     _ = await self.incoming_status.get()
             #     self.incoming_status.task_done()
-            num_current_actives = len(self.orchstatusmodel.server_dict[A.action_server.as_key()].endpoints[A.action_name].active_dict)
+            num_current_actives = len(
+                self.orchstatusmodel.server_dict[A.action_server.as_key()]
+                .endpoints[A.action_name]
+                .active_dict
+            )
             # self.print_message(f"There are {num_current_actives} active '{A.action_name}' actions.")
             result_actiondict, error_code = await async_action_dispatcher(self.world_cfg, A)
-            while A.action_name=='wait':
-                self.print_message(f"Waiting for dispatched {A.action_name} request to register in global status.")
+            while A.action_name == 'wait':
+                self.print_message(
+                    f"Waiting for dispatched {A.action_name} request to register in global status."
+                )
                 await self.wait_for_interrupt()
-                num_new_actives = len(self.incoming.server_dict[A.action_server.as_key()].endpoints[A.action_name].active_dict)
-                self.print_message(f"Incoming status has {num_current_actives} active '{A.action_name}' actions.")
+                num_new_actives = len(
+                    self.incoming.server_dict[A.action_server.as_key()].endpoints[A.action_name].active_dict
+                )
+                self.print_message(
+                    f"Incoming status has {num_current_actives} active '{A.action_name}' actions."
+                )
                 if num_new_actives > num_current_actives:
                     self.print_message(f"New status registered on {A.action_name}.")
                     break
@@ -674,7 +683,9 @@ class Orch(Base):
                 result_action = Action(**result_actiondict)
             except Exception as e:
                 tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
-                self.print_message(f"returned result is not a valid Action BaseModel: {repr(e), tb,}", error=True)
+                self.print_message(
+                    f"returned result is not a valid Action BaseModel: {repr(e), tb,}", error=True
+                )
                 return ErrorCodes.critical
 
             if result_action.error_code is not ErrorCodes.none:
@@ -721,22 +732,26 @@ class Orch(Base):
                 self.print_message(f"current content of experiment_dq: {self.experiment_dq}")
                 self.print_message(f"current content of sequence_dq: {self.sequence_dq}")
                 await asyncio.sleep(0.001)
-                num_exp_actions = deepcopy(self.orchstatusmodel.counter_dispatched_actions)
 
                 # if no acts and no exps, disptach next sequence
                 if not self.experiment_dq and not self.action_dq:
-                    self.print_message("!!!dispatchinng next sequence", info=True)
+                    self.print_message("!!!waiting for all actions to finish before dispatching next sequence", info=True)
+                    await self.orch_wait_for_all_actions()
+                    self.print_message("!!!dispatching next sequence", info=True)
                     error_code = await self.loop_task_dispatch_sequence()
 
                 # check if we have still actions to dispatch
                 elif not self.action_dq:
-                    self.print_message("!!!dispatchinng next experiment", info=True)
+                    self.print_message("!!!waiting for all actions to finish before dispatching next experiment", info=True)
+                    await self.orch_wait_for_all_actions()
+                    self.print_message("!!!dispatching next experiment", info=True)
                     error_code = await self.loop_task_dispatch_experiment()
 
                 else:
-                    self.print_message("!!!dispatchinng next action", info=True)
+                    self.print_message("!!!dispatching next action", info=True)
+                    num_exp_actions = deepcopy(self.orchstatusmodel.counter_dispatched_actions[self.active_experiment.experiment_uuid])
                     error_code = await self.loop_task_dispatch_action()
-                    while num_exp_actions == self.orchstatusmodel.counter_dispatched_actions:
+                    while num_exp_actions == self.orchstatusmodel.counter_dispatched_actions[self.active_experiment.experiment_uuid]:
                         await asyncio.sleep(0.001)
 
                 if error_code is not ErrorCodes.none:
@@ -782,22 +797,16 @@ class Orch(Base):
 
         self.print_message("orch is waiting for all action_dq to finish")
 
-        if not self.orchstatusmodel.actions_idle():
-            # some actions are active
-            # we need to wait for them to finish
-            while True:
-                self.print_message("some actions are still active, waiting for status update")
-                # we check again once the active action
-                # updates its status again
-                await self.wait_for_interrupt()
-                self.print_message("got status update")
-                # we got a status update
-                # check if all actions are idle now
-                if self.orchstatusmodel.actions_idle():
-                    self.print_message("all actions are idle now")
-                    break
-        else:
-            self.print_message("all actions are idle")
+        # some actions are active
+        # we need to wait for them to finish
+        while not self.orchstatusmodel.actions_idle():
+            self.print_message("some actions are still active, waiting for status update")
+            # we check again once the active action
+            # updates its status again
+            await self.wait_for_interrupt()
+            self.print_message("got status update")
+            # we got a status update
+        self.print_message("all actions are idle")
 
     async def start(self):
         """Begin experimenting experiment and action queues."""
@@ -1193,7 +1202,7 @@ class Orch(Base):
         last_print_time = self.current_wait_ts
         check_time = self.current_wait_ts
         while check_time - self.current_wait_ts < waittime:
-            if check_time - last_print_time > print_every_secs - 0.01: 
+            if check_time - last_print_time > print_every_secs - 0.01:
                 self.print_message(
                     f" ... orch waited {(check_time-self.current_wait_ts):.1f} sec / {waittime:.1f} sec"
                 )
