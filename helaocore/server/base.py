@@ -234,7 +234,7 @@ class Base(object):
         # # if provided add more dynmaic endpoints after driver initialization
         # if callable(dyn_endpoints):
         #     asyncio.gather(dyn_endpoints(app=self.fastapp))
-        
+
         asyncio.gather(self.init_endpoint_status(dyn_endpoints))
 
         self.fast_urls = self.get_endpoint_urls()
@@ -247,7 +247,7 @@ class Base(object):
             self.server_cfg, self.server.server_name, log_dir=self.helaodirs.log_root, *args, **kwargs
         )
 
-    async def init_endpoint_status(self, dyn_endpoints = None):
+    async def init_endpoint_status(self, dyn_endpoints=None):
         """Populate status dict
         with FastAPI server endpoints for monitoring."""
         if callable(dyn_endpoints):
@@ -576,7 +576,7 @@ class Base(object):
                             action_name=status_msg.act.action_name, client_servkey=client_servkey
                         )
 
-                        if response == True and error_code == ErrorCodes.none:
+                        if response and error_code == ErrorCodes.none:
                             success = True
                             break
 
@@ -1188,7 +1188,9 @@ class Base(object):
             # except asyncio.CancelledError:
             except Exception as e:
                 tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
-                self.base.print_message(f"data logger task was cancelled with error: {repr(e), tb,}", error=True)
+                self.base.print_message(
+                    f"data logger task was cancelled with error: {repr(e), tb,}", error=True
+                )
 
         async def write_file(
             self,
