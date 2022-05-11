@@ -108,6 +108,7 @@ class _BaseSample(SampleModel):
     supplier: List[str] = Field(default_factory=list)
     lot_number: List[str] = Field(default_factory=list)
     source: List[str] = Field(default_factory=list)
+    prep_date: Optional[str]
     comment: Optional[str]
 
     def create_initial_exp_dict(self):
@@ -216,6 +217,7 @@ class LiquidSample(_BaseSample):
     volume_ml: Optional[float] = 0.0
     ph: Optional[float] = None
     dilution_factor: Optional[float] = 1.0
+    electrolyte: Optional[str] = None
 
     def exp_dict(self):
         exp_dict = self.create_initial_exp_dict()
