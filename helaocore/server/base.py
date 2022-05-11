@@ -253,7 +253,7 @@ class Base(object):
         if callable(dyn_endpoints):
             await dyn_endpoints(app=self.fastapp)
         for route in self.fastapp.routes:
-            print(route.path)
+            # print(route.path)
             if route.path.startswith(f"/{self.server.server_name}"):
                 self.actionserver.endpoints.update({route.name: EndpointModel(endpoint_name=route.name)})
 
