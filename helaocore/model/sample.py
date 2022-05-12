@@ -25,6 +25,7 @@ from enum import Enum
 from pydantic import BaseModel, validator, root_validator, Field
 from pydantic.tools import parse_obj_as
 
+import datetime
 from typing import List, Optional, Union, Literal
 from typing import ForwardRef
 
@@ -108,7 +109,7 @@ class _BaseSample(SampleModel):
     supplier: List[str] = Field(default_factory=list)
     lot_number: List[str] = Field(default_factory=list)
     source: List[str] = Field(default_factory=list)
-    prep_date: Optional[str]
+    prep_date: Optional[datetime.date]
     comment: Optional[str]
 
     def create_initial_exp_dict(self):
