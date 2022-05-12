@@ -56,6 +56,7 @@ class _BaseSampleAPI(object):
               supplier TEXT,
               lot_number TEXT,
               source TEXT,
+              prep_date TEXT,
               comment TEXT,
               {self.extra_columns}"""
 
@@ -421,7 +422,7 @@ class LiquidSampleAPI(_BaseSampleAPI):
         super().__init__(
             sampleclass=LiquidSample(),
             Serv_class=Serv_class,
-            extra_columns="volume_ml REAL NOT NULL, ph REAL, dilution_factor REAL NOT NULL",
+            extra_columns="volume_ml REAL NOT NULL, ph REAL, dilution_factor REAL NOT NULL, prep_date REAL",
         )
 
     async def _key_checks(self, sample):
