@@ -1,6 +1,6 @@
 __all__ = ["HelaoDict"]
 
-from datetime import datetime
+from datetime import datetime, date
 from uuid import UUID
 import types
 from pydantic import BaseModel
@@ -33,7 +33,7 @@ class HelaoDict:
             return val
         elif isinstance(val, (Path)):
             return str(val.as_posix())
-        elif isinstance(val, (UUID, datetime)):
+        elif isinstance(val, (UUID, datetime, date)):
             return str(val)
         elif isinstance(val, list):
             return [self._serialize_item(val=item) for item in val]
