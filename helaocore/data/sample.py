@@ -422,7 +422,7 @@ class LiquidSampleAPI(_BaseSampleAPI):
         super().__init__(
             sampleclass=LiquidSample(),
             Serv_class=Serv_class,
-            extra_columns="volume_ml REAL NOT NULL, ph REAL, dilution_factor REAL NOT NULL, electrolyte REAL",
+            extra_columns="volume_ml REAL NOT NULL, ph REAL, dilution_factor REAL NOT NULL, electrolyte TEXT",
         )
 
     async def _key_checks(self, sample):
