@@ -128,6 +128,22 @@ class GlobalStatusModel(BaseModel, HelaoDict):
     # counter for dispatched actions, keyed by experiment uuid
     counter_dispatched_actions: Dict[UUID, int] = Field(default_factory=dict)
 
+    def as_json(self):
+        json_dict = {
+            k: vars(self)[k]
+            for k in (
+                'orchestrator',
+                'active_dict',
+                'finished_dict',
+                'loop_intent',
+                'loop_state',
+                'orch_state',
+                'counter_dispatched_actions',
+            )
+        }
+        json_dict['server_dict'] = {f"{k[0]}@{k[1]}": v for k,v in self.server_dict.items()}
+        return json_dict
+
     def actions_idle(self) -> bool:
         """checks if all action servers for this orch are idle"""
         if self.active_dict:

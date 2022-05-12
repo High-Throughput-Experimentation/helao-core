@@ -93,8 +93,8 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
 
     @app.post("/get_status", tags=["private"])
     def get_status():
-        print(app.orch.orchstatusmodel.as_dict())
-        return False
+        # print(app.orch.orchstatusmodel.as_json())
+        return app.orch.orchstatusmodel.as_json()
 
     @app.post("/update_status", tags=["private"])
     async def update_status(actionserver: Optional[ActionServerModel] = Body({}, embed=True)):
@@ -223,6 +223,11 @@ def makeOrchServ(config, server_key, server_title, description, version, driver_
     # async def insert_experiment(
     # ):
     #     """Insert a experiment object at experiment queue index.
+
+    @app.post("/list_sequences", tags=["private"])
+    def list_sequences():
+        """Return the current list of sequences."""
+        return app.orch.list_sequences()
 
     @app.post("/list_experiments", tags=["private"])
     def list_experiments():
@@ -699,15 +704,23 @@ class Orch(Base):
                 )
                 return result_action.error_code
 
-            self.print_message("copying global vars back to experiment")
+            if result_action.to_global_params:
+                self.print_message(
+                    f"copying global vars {', '.join(result_action.to_global_params)} back to experiment"
+                )
 
-            for k in result_action.to_global_params:
-                if k in result_action.action_params:
-                    if result_action.action_params[k] is None and k in self.active_experiment.global_params:
-                        self.active_experiment.global_params.pop(k)
-                    else:
-                        self.active_experiment.global_params.update({k: result_action.action_params[k]})
-            self.print_message("done copying global vars back to experiment")
+                for k in result_action.to_global_params:
+                    if k in result_action.action_params:
+                        if (
+                            result_action.action_params[k] is None
+                            and k in self.active_experiment.global_params
+                        ):
+                            self.print_message(f"clearing {k} in global vars")
+                            self.active_experiment.global_params.pop(k)
+                        else:
+                            self.print_message(f"updating {k} in global vars")
+                            self.active_experiment.global_params.update({k: result_action.action_params[k]})
+                self.print_message("done copying global vars back to experiment")
 
         return ErrorCodes.none
 
@@ -735,23 +748,36 @@ class Orch(Base):
 
                 # if no acts and no exps, disptach next sequence
                 if not self.experiment_dq and not self.action_dq:
-                    self.print_message("!!!waiting for all actions to finish before dispatching next sequence", info=True)
+                    self.print_message(
+                        "!!!waiting for all actions to finish before dispatching next sequence", info=True
+                    )
                     await self.orch_wait_for_all_actions()
                     self.print_message("!!!dispatching next sequence", info=True)
                     error_code = await self.loop_task_dispatch_sequence()
 
                 # check if we have still actions to dispatch
                 elif not self.action_dq:
-                    self.print_message("!!!waiting for all actions to finish before dispatching next experiment", info=True)
+                    self.print_message(
+                        "!!!waiting for all actions to finish before dispatching next experiment", info=True
+                    )
                     await self.orch_wait_for_all_actions()
                     self.print_message("!!!dispatching next experiment", info=True)
                     error_code = await self.loop_task_dispatch_experiment()
 
                 else:
                     self.print_message("!!!dispatching next action", info=True)
-                    num_exp_actions = deepcopy(self.orchstatusmodel.counter_dispatched_actions[self.active_experiment.experiment_uuid])
+                    num_exp_actions = deepcopy(
+                        self.orchstatusmodel.counter_dispatched_actions[
+                            self.active_experiment.experiment_uuid
+                        ]
+                    )
                     error_code = await self.loop_task_dispatch_action()
-                    while num_exp_actions == self.orchstatusmodel.counter_dispatched_actions[self.active_experiment.experiment_uuid]:
+                    while (
+                        num_exp_actions
+                        == self.orchstatusmodel.counter_dispatched_actions[
+                            self.active_experiment.experiment_uuid
+                        ]
+                    ):
                         await asyncio.sleep(0.001)
 
                 if error_code is not ErrorCodes.none:
