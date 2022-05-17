@@ -20,7 +20,9 @@ async def yml_finisher(yml_path: str, yml_type: str, base: object = None, retry:
         print_msg("DB server not found in config. Cannot finish yml.")
         return False
 
-    req_params = {"yml_path": yml_path, "yml_type": yml_type}
+    priority = {'action': 0, 'experiment': 1, 'sequence': 2}
+
+    req_params = {"yml_path": yml_path, "priority": priority[yml_type]}
     req_url = f"http://{dbp_host}:{dbp_port}/finish_yml"
     async with aiohttp.ClientSession() as session:
         for i in range(retry):
