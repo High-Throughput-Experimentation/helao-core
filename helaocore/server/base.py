@@ -1480,13 +1480,13 @@ class Base(object):
                     await self.enqueue_data(
                         datamodel=DataModel(data={}, errors=[], status=HloStatus.finished)
                     )
-                    await asyncio.sleep(0.5)
                     self.base.print_message(
                         f"Waiting for data_stream finished"
                         f" packge: "
                         f" {[action.data_stream_status for action in self.action_list]}",
                         info=True,
                     )
+                    await asyncio.sleep(0.5)
 
                 # self.action_list[-1] is the very first action
                 if self.action_list[-1].manual_action:
