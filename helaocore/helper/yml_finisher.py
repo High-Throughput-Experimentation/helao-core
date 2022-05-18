@@ -20,7 +20,7 @@ async def yml_finisher(yml_path: str, yml_type: str, base: object = None, retry:
         print_msg("DB server not found in config. Cannot finish yml.")
         return False
 
-    priority = {'action': 0, 'experiment': 1, 'sequence': 2}
+    priority = {'action': 0, 'experiment': 0, 'sequence': 2}
 
     req_params = {"yml_path": yml_path, "priority": priority[yml_type]}
     req_url = f"http://{dbp_host}:{dbp_port}/finish_yml"
