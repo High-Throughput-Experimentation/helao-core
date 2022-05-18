@@ -430,7 +430,7 @@ class Orch(Base):
                             f"{serv_key} at "
                             f"{serv_addr}:{serv_port}, "
                             "trying again in 1sec",
-                            error=True,
+                            info=True,
                         )
                         await asyncio.sleep(1)
 
