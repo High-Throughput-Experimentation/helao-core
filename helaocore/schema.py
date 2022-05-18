@@ -322,7 +322,7 @@ class ActionPlanMaker(object):
                     f"{self.expname}: local var '{key}'"
                     f" not found in Experiment, "
                     f"adding it to self.pars",
-                    error=True,
+                    info=True,
                 )
                 setattr(self.pars, key, val)
 
