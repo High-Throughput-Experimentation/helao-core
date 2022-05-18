@@ -17,10 +17,8 @@ def config_loader(confArg, helao_root):
         conf_spec.loader.exec_module(conf_mod)
         config = conf_mod.config
     elif confArg.endswith(".py") and not os.path.exists(confArg):
-        print_message({}, "launcher", f"Config not found at {confArg}", error=True)
-        raise FileNotFoundError(
-            "Launcher argument ends with .py, expected path not found."
-        )
+        print_message({}, "launcher", f"Config not found at {os.path.abspath(confArg)}", error=True)
+        raise FileNotFoundError("Launcher argument ends with .py, expected path not found.")
     else:
         print_message(
             {},
