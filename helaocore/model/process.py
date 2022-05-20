@@ -32,7 +32,7 @@ class ProcessModel(ProcessTemplate):
     orchestrator: MachineModel = MachineModel()
     access: Optional[str] = 'hte'
     dummy: bool = False
-    # name of "instrument": sdc, anec, adss etc. defined in world config
+    # name of "instrument": eche, anec, adss etc. defined in world config
     technique_name: Optional[str]
     sequence_uuid: Optional[UUID]
     experiment_uuid: Optional[UUID]
