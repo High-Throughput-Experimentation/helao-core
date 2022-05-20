@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*-checkpoint.py
 
 # C extensions
 *.so
