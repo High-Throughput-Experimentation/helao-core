@@ -33,9 +33,10 @@ class ProcessModel(ProcessTemplate):
     access: Optional[str] = 'hte'
     dummy: bool = False
     # name of "instrument": eche, anec, adss etc. defined in world config
-    technique_name: Optional[str]
     sequence_uuid: Optional[UUID]
     experiment_uuid: Optional[UUID]
+    type: Optional[str]
+    technique: Optional[str]
     process_timestamp: Optional[datetime]
     process_group_index: Optional[int]
     process_uuid: Optional[UUID]

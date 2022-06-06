@@ -367,7 +367,7 @@ class Orch(Base):
             server_key=self.server.server_name,
             doc=doc,
             server_title=self.server.server_name,
-            description=f"{self.technique_name} Operator",
+            description=f"{self.run_type} Operator",
             version=2.0,
             driver_class=None,
         )
@@ -551,7 +551,7 @@ class Orch(Base):
         self.print_message(f"new active experiment is {self.active_experiment.experiment_name}")
         if self.world_cfg.get("dummy", "False"):
             self.active_experiment.dummy = True
-        self.active_experiment.technique_name = self.technique_name
+        self.active_experiment.run_type = self.run_type
         self.active_experiment.orchestrator = self.server
         self.active_experiment.init_exp(time_offset=self.ntp_offset)
 
@@ -888,7 +888,7 @@ class Orch(Base):
             exp.sequence_status = [HloStatus.estopped, HloStatus.finished]
             exp.init_seq(time_offset=self.ntp_offset)
 
-            exp.technique_name = self.technique_name
+            exp.run_type = self.run_type
             exp.orchestrator = self.server
             exp.experiment_status = [HloStatus.estopped, HloStatus.finished]
             exp.init_exp(time_offset=self.ntp_offset)

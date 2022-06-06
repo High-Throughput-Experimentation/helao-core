@@ -34,7 +34,7 @@ class ExperimentModel(ExperimentTemplate):
     access: Optional[str] = 'hte'
     dummy: bool = False
     # name of "instrument": eche, anec, adss etc. defined in world config
-    technique_name: Optional[str]
+    run_type: Optional[str]
     sequence_uuid: Optional[UUID]
     experiment_uuid: Optional[UUID]
     experiment_timestamp: Optional[datetime]

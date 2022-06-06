@@ -33,7 +33,7 @@ class Vis(object):
                 error=True,
             )
 
-        # self.technique_name = None
+        # self.run_type = None
         # self.aloop = asyncio.get_running_loop()
 
     def print_message(self, *args, **kwargs):

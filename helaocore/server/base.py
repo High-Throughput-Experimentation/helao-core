@@ -181,7 +181,7 @@ class Base(object):
         self.server_cfg = self.fastapp.helao_cfg["servers"][self.server.server_name]
         self.server_params = self.fastapp.helao_cfg["servers"][self.server.server_name].get("params", {})
         self.world_cfg = self.fastapp.helao_cfg
-        self.technique_name = None
+        self.run_type = None
         self.aloop = asyncio.get_running_loop()
 
         self.helaodirs = helao_dirs(self.world_cfg)
@@ -192,14 +192,14 @@ class Base(object):
                 error=True,
             )
 
-        if "technique_name" in self.world_cfg:
+        if "run_type" in self.world_cfg:
             self.print_message(
-                f"Found technique_name in config: {self.world_cfg['technique_name']}",
+                f"Found run_type in config: {self.world_cfg['run_type']}",
             )
-            self.technique_name = self.world_cfg["technique_name"]
+            self.run_type = self.world_cfg["run_type"]
         else:
             raise ValueError(
-                "Missing 'technique_name' in config, cannot create server object.",
+                "Missing 'run_type' in config, cannot create server object.",
                 error=True,
             )
 
@@ -352,8 +352,8 @@ class Base(object):
             action.action_abbr = action.action_name
 
         # setting some default values if action was not submitted via orch
-        if action.technique_name is None:
-            action.technique_name = self.technique_name
+        if action.run_type is None:
+            action.run_type = self.run_type
             action.orchestrator = MachineModel(server_name="MANUAL", machine_name=gethostname())
         return action
 
