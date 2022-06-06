@@ -45,7 +45,7 @@ from ..model.data import DataModel, DataPackageModel
 from ..model.machine import MachineModel
 from ..model.server import StatusModel, ActionServerModel, EndpointModel
 from ..model.active import ActiveParams
-from ..model.file import FileConn, FileConnParams, HloFileGroup, FileInfo
+from ..model.file import FileConn, FileConnParams, HloFileGroup, FileInfo, HloHeaderModel
 from ..helper.file_in_use import file_in_use
 from ..error import ErrorCodes
 
@@ -365,6 +365,7 @@ class Base(object):
         json_data_keys: List[str] = [],
         action_abbr: Optional[str] = None,
         file_type: Optional[str] = "helao__file",
+        hloheader: Optional[HloHeaderModel] = HloHeaderModel(),
     ) -> object:
         """This is a simple shortcut for very basic endpoints
         which just want to return some simple data"""
@@ -379,7 +380,8 @@ class Base(object):
                         file_conn_key=self.dflt_file_conn_key(),
                         json_data_keys=json_data_keys,
                         file_type=file_type,
-                    )
+                        hloheader=hloheader
+                    )   
                 },
             )
         )
@@ -606,11 +608,11 @@ class Base(object):
         await self.data_q.put(StopAsyncIteration)
         await asyncio.sleep(5)
 
-    async def set_realtime(self, epoch_ns: Optional[float] = None, offset: Optional[float] = None) -> float:
+    async def get_realtime(self, epoch_ns: Optional[float] = None, offset: Optional[float] = None) -> float:
         """returns epoch in ns"""
-        return self.set_realtime_nowait(epoch_ns=epoch_ns, offset=offset)
+        return self.get_realtime_nowait(epoch_ns=epoch_ns, offset=offset)
 
-    def set_realtime_nowait(self, epoch_ns: Optional[float] = None, offset: Optional[float] = None) -> float:
+    def get_realtime_nowait(self, epoch_ns: Optional[float] = None, offset: Optional[float] = None) -> float:
         """returns epoch in ns"""
         if offset is None:
             if self.ntp_offset is not None:
@@ -908,7 +910,7 @@ class Base(object):
             """this just adds a timestamp for the data"""
             # needs to be a sync function
             if realtime is None:
-                realtime = self.set_realtime_nowait()
+                realtime = self.get_realtime_nowait()
 
             if file_conn_keys is None:
                 # get all fileconn_keys
@@ -953,15 +955,15 @@ class Base(object):
                 error=True,
             )
 
-        async def set_realtime(
+        async def get_realtime(
             self, epoch_ns: Optional[float] = None, offset: Optional[float] = None
         ) -> float:
-            return self.base.set_realtime_nowait(epoch_ns=epoch_ns, offset=offset)
+            return self.base.get_realtime_nowait(epoch_ns=epoch_ns, offset=offset)
 
-        def set_realtime_nowait(
+        def get_realtime_nowait(
             self, epoch_ns: Optional[float] = None, offset: Optional[float] = None
         ) -> float:
-            return self.base.set_realtime_nowait(epoch_ns=epoch_ns, offset=offset)
+            return self.base.get_realtime_nowait(epoch_ns=epoch_ns, offset=offset)
 
         async def write_live_data(self, output_str: str, file_conn_key: UUID):
             """Appends lines to file_conn."""
@@ -1037,7 +1039,7 @@ class Base(object):
             # before data can be added to the file
             if self.file_conn_dict[file_conn_key].params.hloheader.epoch_ns is None:
                 self.base.print_message("realtime_ns was not set, adding it now.")
-                self.file_conn_dict[file_conn_key].params.hloheader.epoch_ns = self.set_realtime_nowait()
+                self.file_conn_dict[file_conn_key].params.hloheader.epoch_ns = self.get_realtime_nowait()
 
             header, file_info = self.init_datafile(
                 header=self.file_conn_dict[file_conn_key].params.hloheader.clean_dict(),
@@ -1378,7 +1380,7 @@ class Base(object):
             for file_conn_key in prev_action.file_conn_keys:
                 # await asyncio.sleep(0.1)
                 self.base.print_message("Creating new file_conn for split action", info=True)
-                new_file_conn_key = self.base.new_file_conn_key(key=str(self.set_realtime_nowait()))
+                new_file_conn_key = self.base.new_file_conn_key(key=str(self.get_realtime_nowait()))
                 if new_fileconnparams is None:
                     # get last file conn
                     new_file_conn = self.file_conn_dict[file_conn_key].deepcopy()
@@ -1387,7 +1389,7 @@ class Base(object):
                     # reset some of the file conn parameters
                     new_file_conn.reset_file_conn()
                     # add new timestamp
-                    new_file_conn.params.hloheader.epoch_ns = self.set_realtime_nowait()
+                    new_file_conn.params.hloheader.epoch_ns = self.get_realtime_nowait()
                 else:
                     new_file_conn = FileConn(params=new_fileconnparams)
                     new_file_conn.params.file_conn_key = new_file_conn_key

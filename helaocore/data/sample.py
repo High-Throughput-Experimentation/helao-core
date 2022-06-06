@@ -142,9 +142,9 @@ class _BaseSampleAPI(object):
             #     atime = datetime.fromtimestamp(datetime.now().timestamp() + self._base.ntp_offset)
             #     sample.action_timestamp = atime.strftime("%Y%m%d.%H%M%S%f")
             if sample.sample_creation_timecode is None:
-                sample.sample_creation_timecode = self._base.set_realtime_nowait()
+                sample.sample_creation_timecode = self._base.get_realtime_nowait()
             if sample.last_update is None:
-                sample.last_update = self._base.set_realtime_nowait()
+                sample.last_update = self._base.get_realtime_nowait()
             sample.global_label = sample.get_global_label()
 
             dfdict = sample.json_dict()
@@ -382,7 +382,7 @@ class _BaseSampleAPI(object):
                     continue
 
                 # update the last_update timecode
-                sample.last_update = self._base.set_realtime_nowait()
+                sample.last_update = self._base.get_realtime_nowait()
 
                 # update the old sample now
                 dfdict = sample.json_dict()
