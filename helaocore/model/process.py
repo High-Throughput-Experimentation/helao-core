@@ -35,7 +35,7 @@ class ProcessModel(ProcessTemplate):
     # name of "instrument": eche, anec, adss etc. defined in world config
     sequence_uuid: Optional[UUID]
     experiment_uuid: Optional[UUID]
-    type: Optional[str]
+    run_type: Optional[str]
     technique: Optional[str]
     process_timestamp: Optional[datetime]
     process_group_index: Optional[int]

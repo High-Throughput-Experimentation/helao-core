@@ -51,7 +51,7 @@ from ..helper.unpack_samples import unpack_samples_helper
 from ..helper.yml_finisher import yml_finisher
 from ..schema import Sequence, Experiment, Action
 
-from ..model.experiment_sequence import ExperimentSequenceModel
+from ..model.sequence import SequenceModel
 from ..model.experiment import ExperimentTemplate
 
 from ..model.hlostatus import HloStatus
@@ -1006,7 +1006,7 @@ class Orch(Base):
 
     async def add_experiment(
         self,
-        seq: ExperimentSequenceModel,
+        seq: SequenceModel,
         experimenttemplate: ExperimentTemplate,
         # orchestrator: str = None,
         # experiment_name: str = None,

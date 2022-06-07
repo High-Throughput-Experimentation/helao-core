@@ -23,13 +23,13 @@ class ShortActionModel(BaseModel, HelaoDict):
     action_actual_order: Optional[int] = 0
     orch_submit_order: Optional[int] = 0
     action_server: MachineModel = MachineModel()
-    run_type: Optional[str]
 
 
 class ActionModel(ShortActionModel):
     orchestrator: MachineModel = MachineModel()
     access: Optional[str] = 'hte'
     dummy: bool = False
+    run_type: Optional[str]
     experiment_uuid: Optional[UUID]
     experiment_timestamp: Optional[datetime]
     action_timestamp: Optional[datetime]
@@ -48,7 +48,7 @@ class ActionModel(ShortActionModel):
     samples_out: List[SampleUnion] = Field(default_factory=list)
     files: List[FileInfo] = Field(default_factory=list)
     manual_action: bool = False
-    tehcnique: Optional[str] = None
+    technique: Optional[str] = None
     process_finish: bool = False
     process_contrib: List[ProcessContrib] = Field(default_factory=list)
     error_code: Optional[ErrorCodes] = ErrorCodes.none
