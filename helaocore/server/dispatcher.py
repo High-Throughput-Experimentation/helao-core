@@ -38,16 +38,16 @@ async def async_action_dispatcher(world_config_dict: dict, A: Action):
                     error_code = ErrorCodes.http
                     print_message(
                         actd,
-                        A.action_server.server_name,
-                        f"{A.action_name} POST request returned status {resp.status}: '{response}', error={e}",
+                        "orchestrator",
+                        f"{A.action_server.server_name}/{A.action_name} POST request returned status {resp.status}: '{response}', error={e}",
                         error=True,
                     )
             except Exception as e:
                 tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
                 print_message(
                     actd,
-                    A.action_server.server_name,
-                    f"async_action_dispatcher could not decide response: '{resp}', error={repr(e), tb,}",
+                    "orchestrator",
+                    f"{A.action_server.server_name}/{A.action_name} async_action_dispatcher could not decide response: '{resp}', error={repr(e), tb,}",
                     error=True,
                 )
                 response = None
@@ -86,16 +86,16 @@ async def async_private_dispatcher(
                     error_code = ErrorCodes.http
                     print_message(
                         actd,
-                        server,
-                        f"{private_action} POST request returned status {resp.status}: '{response}', error={repr(e)}",
+                        "orchestrator",
+                        f"{server}/{private_action} POST request returned status {resp.status}: '{response}', error={repr(e)}",
                         error=True,
                     )
             except Exception as e:
                 tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
                 print_message(
                     actd,
-                    server,
-                    f"async_private_dispatcher could not decide response: '{resp}', error={repr(e), tb}",
+                    "orchestrator",
+                    f"{server}/{private_action} async_private_dispatcher could not decide response: '{resp}', error={repr(e), tb}",
                     error=True,
                 )
                 response = None

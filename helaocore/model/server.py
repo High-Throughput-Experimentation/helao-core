@@ -159,7 +159,7 @@ class GlobalStatusModel(BaseModel, HelaoDict):
         free = True
         if action_server.as_key() in self.server_dict:
             actionservermodel = self.server_dict[action_server.as_key()]
-            for endpoint_name, endpointmodel in actionservermodel.endpoints:
+            for endpoint_name, endpointmodel in actionservermodel.endpoints.items():
                 # loop through all of its active uuids
                 for uuid, statusmodel in endpointmodel.active_dict:
                     if statusmodel.act.orchestrator == self.orchestrator:
@@ -178,7 +178,7 @@ class GlobalStatusModel(BaseModel, HelaoDict):
         if action_server.as_key() in self.server_dict:
             actionservermodel = self.server_dict[action_server.as_key()]
             # check if the action server has the requested endpoint
-            if endpoint_name in actionservermodel.endpoints:
+            if endpoint_name in actionservermodel.endpoints.keys():
                 endpointmodel = actionservermodel.endpoints[endpoint_name]
                 # loop through all of its active uuids
                 for uuid, statusmodel in endpointmodel.active_dict:
