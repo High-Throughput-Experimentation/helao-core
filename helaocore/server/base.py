@@ -1120,7 +1120,7 @@ class Base(object):
                             )
                             continue
 
-                        if not file_conn_key in self.file_conn_dict:
+                        if file_conn_key not in self.file_conn_dict:
                             if output_action.save_data:
                                 self.base.print_message(
                                     f"'{file_conn_key}' does not exist in "
