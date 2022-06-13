@@ -25,7 +25,7 @@ class Vis(object):
         self.world_cfg = bokehapp.helao_cfg
         self.doc = bokehapp.doc
 
-        self.helaodirs = helao_dirs(self.world_cfg)
+        self.helaodirs = helao_dirs(self.world_cfg, self.server.server_name)
 
         if self.helaodirs.root is None:
             raise ValueError(
