@@ -66,7 +66,7 @@ def helao_dirs(world_cfg: dict, server_name: str) -> HelaoDirs:
         timestamp = re.findall('[0-9]{2}:[0-9]{2}:[0-9]{2}', line0)[0].replace(":","")
         zipname = old_log.replace(".txt", f"{timestamp}.zip")
         arcname = os.path.basename(old_log).replace(".txt", f"{timestamp}.txt")
-        zipfile.Zipfile(zipname, "w").write(old_log, arcname)
+        zipfile.ZipFile(zipname, "w").write(old_log, arcname)
         os.remove(old_log)
 
     return helaodirs
