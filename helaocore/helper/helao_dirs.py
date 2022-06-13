@@ -9,7 +9,7 @@ from .print_message import print_message
 from ..model.helaodirs import HelaoDirs
 
 
-def helao_dirs(world_cfg: dict) -> HelaoDirs:
+def helao_dirs(world_cfg: dict, server_name: str) -> HelaoDirs:
     def check_dir(path):
         if not os.path.isdir(path):
             print_message(
@@ -60,7 +60,7 @@ def helao_dirs(world_cfg: dict) -> HelaoDirs:
     )
 
     # zip and remove old txt logs (start new log for every helao launch)
-    old_log_txts = glob(os.path.join(log_root, "*.txt"))
+    old_log_txts = glob(os.path.join(log_root, server_name, "*.txt"))
     for old_log in old_log_txts:
         line0 = open(old_log).readline()
         timestamp = re.findall('[0-9]{2}:[0-9]{2}:[0-9]{2}', line0)[0].replace(":","")

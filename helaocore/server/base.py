@@ -185,7 +185,7 @@ class Base(object):
         self.run_type = None
         self.aloop = asyncio.get_running_loop()
 
-        self.helaodirs = helao_dirs(self.world_cfg)
+        self.helaodirs = helao_dirs(self.world_cfg, self.server.server_name)
 
         if self.helaodirs.root is None:
             raise ValueError(
