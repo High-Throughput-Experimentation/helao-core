@@ -15,6 +15,7 @@ import json
 import io
 from pybase64 import b64decode
 import traceback
+from pathlib import Path
 
 import aiohttp
 import colorama
@@ -1149,11 +1150,18 @@ class Orch(Base):
             self.active_sequence = None
 
             # DB server call to finish_yml if DB exists
-            yml_dir = os.path.join(self.helaodirs.save_root.__str__(), self.last_sequence.get_sequence_dir())
-            yml_path = os.path.join(
-                yml_dir, f"{self.last_sequence.sequence_timestamp.strftime('%Y%m%d.%H%M%S%f')}.yml"
+            yml_dir = Path(
+                os.path.join(self.helaodirs.save_root.__str__(), self.last_sequence.get_sequence_dir())
             )
-            await yml_finisher(yml_path, "sequence", self)
+            yml_dir = yml_dir.replace(
+                Path(
+                    os.path.join([x.replace("RUNS_ACTIVE", "RUNS_FINSIHED") for x in yml_dir.resolve().parts])
+                )
+            )
+            yml_path = yml_dir.joinpath(
+                f"{self.last_sequence.sequence_timestamp.strftime('%Y%m%d.%H%M%S%f')}.yml"
+            )
+            await yml_finisher(yml_path.__str__(), "sequence", self)
 
     async def finish_active_experiment(self):
         # we need to wait for all actions to finish first
@@ -1193,13 +1201,18 @@ class Orch(Base):
             self.active_experiment = None
 
             # DB server call to finish_yml if DB exists
-            yml_dir = os.path.join(
-                self.helaodirs.save_root.__str__(), self.last_experiment.get_experiment_dir()
+            yml_dir = Path(
+                os.path.join(self.helaodirs.save_root.__str__(), self.last_experiment.get_experiment_dir())
             )
-            yml_path = os.path.join(
-                yml_dir, f"{self.last_experiment.experiment_timestamp.strftime('%Y%m%d.%H%M%S%f')}.yml"
+            yml_dir = yml_dir.replace(
+                Path(
+                    os.path.join([x.replace("RUNS_ACTIVE", "RUNS_FINSIHED") for x in yml_dir.resolve().parts])
+                )
             )
-            await yml_finisher(yml_path, "experiment", self)
+            yml_path = yml_dir.joinpath(
+                f"{self.last_experiment.experiment_timestamp.strftime('%Y%m%d.%H%M%S%f')}.yml"
+            )
+            await yml_finisher(yml_path.__str__(), "experiment", self)
 
     async def write_active_experiment_exp(self):
         await self.write_exp(self.active_experiment)

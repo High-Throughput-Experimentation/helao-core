@@ -12,6 +12,7 @@ import hashlib
 from copy import deepcopy
 import inspect
 import traceback
+from pathlib import Path
 
 import aiofiles
 import colorama
@@ -380,8 +381,8 @@ class Base(object):
                         file_conn_key=self.dflt_file_conn_key(),
                         json_data_keys=json_data_keys,
                         file_type=file_type,
-                        hloheader=hloheader
-                    )   
+                        hloheader=hloheader,
+                    )
                 },
             )
         )
@@ -1508,11 +1509,19 @@ class Base(object):
 
                 # DB server call to finish_yml if DB exists
                 for action in self.action_list:
-                    yml_dir = os.path.join(self.base.helaodirs.save_root.__str__(), action.get_action_dir())
-                    yml_path = os.path.join(
-                        yml_dir, f"{action.action_timestamp.strftime('%Y%m%d.%H%M%S%f')}.yml"
+
+                    yml_dir = Path(
+                        os.path.join(self.base.helaodirs.save_root.__str__(), action.get_action_dir())
                     )
-                    await yml_finisher(yml_path, "action", base=self.base)
+                    yml_dir = yml_dir.replace(
+                        Path(
+                            os.path.join(
+                                [x.replace("RUNS_ACTIVE", "RUNS_FINSIHED") for x in yml_dir.resolve().parts]
+                            )
+                        )
+                    )
+                    yml_path = yml_dir.joinpath(f"{action.action_timestamp.strftime('%Y%m%d.%H%M%S%f')}.yml")
+                    await yml_finisher(yml_path.__str__(), "action", base=self.base)
 
             # always returns the most recent action of active
             return self.action
