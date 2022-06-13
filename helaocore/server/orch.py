@@ -1154,8 +1154,8 @@ class Orch(Base):
                 os.path.join(self.helaodirs.save_root.__str__(), self.last_sequence.get_sequence_dir())
             )
             new_dir = os.path.join(
-                        *[x.replace("RUNS_ACTIVE", "RUNS_FINSIHED") for x in yml_dir.resolve().parts]
-                    )
+                *[x.replace("RUNS_ACTIVE", "RUNS_FINISHED") for x in yml_dir.resolve().parts]
+            )
             os.makedirs(os.path.dirname(new_dir), exist_ok=True)
             yml_dir = yml_dir.replace(Path(new_dir))
             yml_path = yml_dir.joinpath(
@@ -1205,8 +1205,8 @@ class Orch(Base):
                 os.path.join(self.helaodirs.save_root.__str__(), self.last_experiment.get_experiment_dir())
             )
             new_dir = os.path.join(
-                        *[x.replace("RUNS_ACTIVE", "RUNS_FINSIHED") for x in yml_dir.resolve().parts]
-                    )
+                *[x.replace("RUNS_ACTIVE", "RUNS_FINISHED") for x in yml_dir.resolve().parts]
+            )
             os.makedirs(os.path.dirname(new_dir), exist_ok=True)
             yml_dir = yml_dir.replace(Path(new_dir))
             yml_path = yml_dir.joinpath(
