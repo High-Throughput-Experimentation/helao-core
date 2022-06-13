@@ -1514,10 +1514,11 @@ class Base(object):
                         os.path.join(self.base.helaodirs.save_root.__str__(), action.get_action_dir())
                     )
                     new_dir = os.path.join(
-                        *[x.replace("RUNS_ACTIVE", "RUNS_FINISHED") for x in yml_dir.resolve().parts]
+                        *[x.replace("RUNS_ACTIVE", "RUNS_FINSIHED") for x in yml_dir.resolve().parts]
                     )
                     os.makedirs(os.path.dirname(new_dir), exist_ok=True)
-                    yml_dir = yml_dir.replace(Path(new_dir))
+                    os.rename(yml_dir.__str__(), new_dir)
+                    yml_dir = Path(new_dir)
                     yml_path = yml_dir.joinpath(f"{action.action_timestamp.strftime('%Y%m%d.%H%M%S%f')}.yml")
                     await yml_finisher(yml_path.__str__(), "action", base=self.base)
 
