@@ -1516,7 +1516,7 @@ class Base(object):
                     yml_dir = yml_dir.replace(
                         Path(
                             os.path.join(
-                                [x.replace("RUNS_ACTIVE", "RUNS_FINSIHED") for x in yml_dir.resolve().parts]
+                                **[x.replace("RUNS_ACTIVE", "RUNS_FINSIHED") for x in yml_dir.resolve().parts]
                             )
                         )
                     )

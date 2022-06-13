@@ -1155,7 +1155,7 @@ class Orch(Base):
             )
             yml_dir = yml_dir.replace(
                 Path(
-                    os.path.join([x.replace("RUNS_ACTIVE", "RUNS_FINSIHED") for x in yml_dir.resolve().parts])
+                    os.path.join(**[x.replace("RUNS_ACTIVE", "RUNS_FINSIHED") for x in yml_dir.resolve().parts])
                 )
             )
             yml_path = yml_dir.joinpath(
@@ -1206,7 +1206,7 @@ class Orch(Base):
             )
             yml_dir = yml_dir.replace(
                 Path(
-                    os.path.join([x.replace("RUNS_ACTIVE", "RUNS_FINSIHED") for x in yml_dir.resolve().parts])
+                    os.path.join(**[x.replace("RUNS_ACTIVE", "RUNS_FINSIHED") for x in yml_dir.resolve().parts])
                 )
             )
             yml_path = yml_dir.joinpath(
