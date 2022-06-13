@@ -16,6 +16,8 @@ import io
 from pybase64 import b64decode
 import traceback
 from pathlib import Path
+from glob import glob
+import shutil
 
 import aiohttp
 import colorama
@@ -1156,13 +1158,22 @@ class Orch(Base):
             new_dir = os.path.join(
                 *[x.replace("RUNS_ACTIVE", "RUNS_FINISHED") for x in yml_dir.resolve().parts]
             )
-            os.makedirs(os.path.dirname(new_dir), exist_ok=True)
-            os.rename(yml_dir.__str__(), new_dir)
-            yml_dir = Path(new_dir)
-            yml_path = yml_dir.joinpath(
-                f"{self.last_sequence.sequence_timestamp.strftime('%Y%m%d.%H%M%S%f')}.yml"
-            )
-            await yml_finisher(yml_path.__str__(), "sequence", self)
+            os.makedirs(new_dir, exist_ok=True)
+            move_success = False
+            try:
+                for p in glob(os.path.join(yml_dir.__str__(), '**', '*')):
+                    shutil.copy(p, p.replace("RUNS_ACTIVE", "RUNS_FINISHED"))
+                    move_success = True
+            except Exception as e:
+                tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+                self.print_message(f"Could not move all files to FINISHED: {repr(e), tb,}", error=True)
+            if move_success:
+                shutil.rmtree(yml_dir.__str__())
+                yml_dir = Path(new_dir)
+                yml_path = yml_dir.joinpath(
+                    f"{self.last_sequence.sequence_timestamp.strftime('%Y%m%d.%H%M%S%f')}.yml"
+                )
+                await yml_finisher(yml_path.__str__(), "sequence", self)
 
     async def finish_active_experiment(self):
         # we need to wait for all actions to finish first
@@ -1208,13 +1219,22 @@ class Orch(Base):
             new_dir = os.path.join(
                 *[x.replace("RUNS_ACTIVE", "RUNS_FINISHED") for x in yml_dir.resolve().parts]
             )
-            os.makedirs(os.path.dirname(new_dir), exist_ok=True)
-            os.rename(yml_dir.__str__(), new_dir)
-            yml_dir = Path(new_dir)
-            yml_path = yml_dir.joinpath(
-                f"{self.last_experiment.experiment_timestamp.strftime('%Y%m%d.%H%M%S%f')}.yml"
-            )
-            await yml_finisher(yml_path.__str__(), "experiment", self)
+            os.makedirs(new_dir, exist_ok=True)
+            move_success = False
+            try:
+                for p in glob(os.path.join(yml_dir.__str__(), '**', '*')):
+                    shutil.copy(p, p.replace("RUNS_ACTIVE", "RUNS_FINISHED"))
+                    move_success = True
+            except Exception as e:
+                tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+                self.print_message(f"Could not move all files to FINISHED: {repr(e), tb,}", error=True)
+            if move_success:
+                shutil.rmtree(yml_dir.__str__())
+                yml_dir = Path(new_dir)
+                yml_path = yml_dir.joinpath(
+                    f"{self.last_experiment.experiment_timestamp.strftime('%Y%m%d.%H%M%S%f')}.yml"
+                )
+                await yml_finisher(yml_path.__str__(), "experiment", self)
 
     async def write_active_experiment_exp(self):
         await self.write_exp(self.active_experiment)

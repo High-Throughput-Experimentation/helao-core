@@ -13,6 +13,8 @@ from copy import deepcopy
 import inspect
 import traceback
 from pathlib import Path
+from glob import glob
+import shutil
 
 import aiofiles
 import colorama
@@ -1516,11 +1518,24 @@ class Base(object):
                     new_dir = os.path.join(
                         *[x.replace("RUNS_ACTIVE", "RUNS_FINISHED") for x in yml_dir.resolve().parts]
                     )
-                    os.makedirs(os.path.dirname(new_dir), exist_ok=True)
-                    os.rename(yml_dir.__str__(), new_dir)
-                    yml_dir = Path(new_dir)
-                    yml_path = yml_dir.joinpath(f"{action.action_timestamp.strftime('%Y%m%d.%H%M%S%f')}.yml")
-                    await yml_finisher(yml_path.__str__(), "action", base=self.base)
+                    os.makedirs(new_dir, exist_ok=True)
+                    move_success = False
+                    try:
+                        for p in glob(os.path.join(yml_dir.__str__(), '**', '*')):
+                            shutil.copy(p, p.replace("RUNS_ACTIVE", "RUNS_FINISHED"))
+                            move_success = True
+                    except Exception as e:
+                        tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+                        self.print_message(
+                            f"Could not move all files to FINISHED: {repr(e), tb,}", error=True
+                        )
+                    if move_success:
+                        shutil.rmtree(yml_dir.__str__())
+                        yml_dir = Path(new_dir)
+                        yml_path = yml_dir.joinpath(
+                            f"{action.action_timestamp.strftime('%Y%m%d.%H%M%S%f')}.yml"
+                        )
+                        await yml_finisher(yml_path.__str__(), "action", base=self.base)
 
             # always returns the most recent action of active
             return self.action
