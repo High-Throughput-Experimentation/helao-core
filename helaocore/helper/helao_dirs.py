@@ -1,6 +1,9 @@
 __all__ = ["helao_dirs"]
 
 import os
+import zipfile
+import re
+from glob import glob
 
 from .print_message import print_message
 from ..model.helaodirs import HelaoDirs
@@ -55,5 +58,15 @@ def helao_dirs(world_cfg: dict) -> HelaoDirs:
         user_exp=user_exp,
         user_seq=user_seq,
     )
+
+    # zip and remove old txt logs (start new log for every helao launch)
+    old_log_txts = glob(os.path.join(log_root, "*.txt"))
+    for old_log in old_log_txts:
+        line0 = open(old_log).readline()
+        timestamp = re.findall('[0-9]{2}:[0-9]{2}:[0-9]{2}', line0)[0].replace(":","")
+        zipname = old_log.replace(".txt", f"{timestamp}.zip")
+        arcname = os.path.basename(old_log).replace(".txt", f"{timestamp}.txt")
+        zipfile.Zipfile(zipname, "w").write(old_log, arcname)
+        os.remove(old_log)
 
     return helaodirs
