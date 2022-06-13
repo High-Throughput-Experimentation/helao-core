@@ -474,7 +474,7 @@ class Base(object):
                 response, error_code = await self.send_statuspackage(
                     action_name=None, client_servkey=client_servkey
                 )
-                if response == True and error_code == ErrorCodes.none:
+                if response is not None and error_code == ErrorCodes.none:
                     self.print_message(
                         f"Added {client_servkey} to {self.server.server_name} status subscriber list."
                     )
