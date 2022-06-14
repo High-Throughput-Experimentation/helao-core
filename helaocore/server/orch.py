@@ -1163,7 +1163,7 @@ class Orch(Base):
             try:
                 for p in glob(os.path.join(yml_dir.__str__(), '*')):
                     shutil.copy(p, p.replace("RUNS_ACTIVE", "RUNS_FINISHED"))
-                    move_success = True
+                move_success = True
             except Exception as e:
                 tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
                 self.print_message(f"Could not move all files to FINISHED: {repr(e), tb,}", error=True)
@@ -1224,7 +1224,7 @@ class Orch(Base):
             try:
                 for p in glob(os.path.join(yml_dir.__str__(), '*')):
                     shutil.copy(p, p.replace("RUNS_ACTIVE", "RUNS_FINISHED"))
-                    move_success = True
+                move_success = True
             except Exception as e:
                 tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
                 self.print_message(f"Could not move all files to FINISHED: {repr(e), tb,}", error=True)
