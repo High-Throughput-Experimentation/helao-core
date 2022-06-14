@@ -1,7 +1,7 @@
 __all__ = ["ActionModel", "ShortActionModel"]
 
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Union
 from uuid import UUID
 from pathlib import Path
 from pydantic import BaseModel, Field
@@ -48,7 +48,7 @@ class ActionModel(ShortActionModel):
     samples_out: List[SampleUnion] = Field(default_factory=list)
     files: List[FileInfo] = Field(default_factory=list)
     manual_action: bool = False
-    technique: Optional[str] = None
+    technique: Optional[Union[str, list]] = None
     process_finish: bool = False
     process_contrib: List[ProcessContrib] = Field(default_factory=list)
     error_code: Optional[ErrorCodes] = ErrorCodes.none
