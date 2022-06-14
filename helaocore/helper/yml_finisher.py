@@ -60,7 +60,7 @@ async def move_dir(hobj: Union[Action, Experiment, Sequence], base: object = Non
     elif obj_type == 'experiment':
         yml_dir = os.path.join(save_dir, hobj.get_experiment_dir())
     elif obj_type == 'sequence':
-        yml_dir = os.path.join(save_dir, hobj.get_experiment_dir())
+        yml_dir = os.path.join(save_dir, hobj.get_sequence_dir())
     else:
         yml_dir = None
         print_msg(f'Invalid object {obj_type} was provided. Can only move Action, Experiment, or Sequence.')
