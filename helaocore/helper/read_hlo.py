@@ -21,7 +21,7 @@ def read_hlo(path: str) -> Tuple[dict, dict]:
     data = defaultdict(list)
     for line in lines[sep_index + 1 :]:
         line_dict = json.loads(line)
-        print(line_dict)
+        # print(line_dict)
         for k, v in line_dict.items():
             if isinstance(v, list):
                 data[k] += v
