@@ -10,7 +10,7 @@ import aiohttp
 import aioshutil
 
 from .print_message import print_message
-from .server.schema import Sequence, Experiment, Action
+from ..server.schema import Sequence, Experiment, Action
 
 
 async def yml_finisher(yml_path: str, yml_type: str, base: object = None, retry: int = 3):
