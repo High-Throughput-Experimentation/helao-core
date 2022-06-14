@@ -8,6 +8,7 @@ from glob import glob
 
 import aiohttp
 import aioshutil
+import aiofiles
 
 from .print_message import print_message
 from ..schema import Sequence, Experiment, Action
@@ -52,7 +53,7 @@ async def move_dir(hobj: Union[Action, Experiment, Sequence], base: object = Non
     else:
         print_msg = lambda msg: print_message({}, "yml_finisher", msg, info=True)
         
-    obj_type = hobj.__class__.__name__
+    obj_type = hobj.__class__.__name__.lower()
     save_dir = base.helaodirs.save_root.__str__()
     if obj_type == 'action':
         yml_dir = os.path.join(save_dir, hobj.get_action_dir())
@@ -62,11 +63,11 @@ async def move_dir(hobj: Union[Action, Experiment, Sequence], base: object = Non
         yml_dir = os.path.join(save_dir, hobj.get_experiment_dir())
     else:
         yml_dir = None
-        print_msg('Invalid object was provided. Can only move Action, Experiment, or Sequence.')
+        print_msg(f'Invalid object {obj_type} was provided. Can only move Action, Experiment, or Sequence.')
         return {}
     
     new_dir = os.path.join(yml_dir.replace("RUNS_ACTIVE", "RUNS_FINISHED"))
-    os.makedirs(new_dir, exist_ok=True)
+    await aiofiles.os.makedirs(new_dir, exist_ok=True)
 
     copy_success = False
     copy_retries = 0
