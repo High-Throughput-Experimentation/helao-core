@@ -33,7 +33,7 @@ async def yml_finisher(yml_path: str, base: object = None, retry: int = 3):
         print_msg("DB server not found in config. Cannot finish yml.")
         return False
 
-    priority = {'action': 0, 'experiment': 0, 'sequence': 2}
+    priority = {'action': 0, 'experiment': 1, 'sequence': 2}
 
     req_params = {"yml_path": yml_path, "priority": priority[yml_type]}
     req_url = f"http://{dbp_host}:{dbp_port}/finish_yml"
@@ -50,7 +50,7 @@ async def yml_finisher(yml_path: str, base: object = None, retry: int = 3):
         return False
 
 
-async def move_dir(hobj: Union[Action, Experiment, Sequence], base: object = None, retry_delay: int = 2):
+async def move_dir(hobj: Union[Sequence, Experiment, Action], base: object = None, retry_delay: int = 2):
     """Move directory from RUNS_ACTIVE to RUNS_FINISHED. """
     
     if base is not None:

@@ -1146,7 +1146,7 @@ class Base(object):
                                     "no json_data_keys defined, "
                                     f"using keys from first "
                                     f"data message: "
-                                    f"{jsonkeys}",
+                                    f"{jsonkeys[:10]}",
                                     info=True,
                                 )
 
