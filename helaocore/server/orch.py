@@ -1161,25 +1161,30 @@ class Orch(Base):
             os.makedirs(new_dir, exist_ok=True)
             copy_success = False
             copy_retries = 0
-            while not copy_success and copy_retries <= 5:
+            while not copy_success and copy_retries <= 10:
                 try:
                     for p in glob(os.path.join(yml_dir.__str__(), '*')):
                         shutil.copy(p, p.replace("RUNS_ACTIVE", "RUNS_FINISHED"))
                     copy_success = True
                 except Exception as e:
                     tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
-                    self.print_message(f"Could not move all files to FINISHED: {repr(e), tb,}, retrying after 1 second", warning=True)
+                    self.print_message(
+                        f"Could not move all files to FINISHED: {repr(e), tb,}, retrying after 1 second",
+                        warning=True,
+                    )
                     copy_retries += 1
                     await asyncio.sleep(1)
             if copy_success:
                 rm_success = False
                 rm_retries = 0
-                while not rm_success and rm_retries<=5:
+                while not rm_success and rm_retries <= 10:
                     try:
                         shutil.rmtree(yml_dir.__str__())
                         rm_success = True
                     except PermissionError:
-                        self.print_message(f"Could not remove directory from ACTIVE, retrying after 1 second", warning=True)
+                        self.print_message(
+                            f"Could not remove directory from ACTIVE, retrying after 1 second", warning=True
+                        )
                         rm_retries += 1
                         await asyncio.sleep(1)
                 if rm_success:
@@ -1236,25 +1241,30 @@ class Orch(Base):
             os.makedirs(new_dir, exist_ok=True)
             copy_success = False
             copy_retries = 0
-            while not copy_success and copy_retries <= 5:
+            while not copy_success and copy_retries <= 10:
                 try:
                     for p in glob(os.path.join(yml_dir.__str__(), '*')):
                         shutil.copy(p, p.replace("RUNS_ACTIVE", "RUNS_FINISHED"))
                     copy_success = True
                 except Exception as e:
                     tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
-                    self.print_message(f"Could not move all files to FINISHED: {repr(e), tb,}, retrying after 1 second", warning=True)
+                    self.print_message(
+                        f"Could not move all files to FINISHED: {repr(e), tb,}, retrying after 1 second",
+                        warning=True,
+                    )
                     copy_retries += 1
                     await asyncio.sleep(1)
             if copy_success:
                 rm_success = False
                 rm_retries = 0
-                while not rm_success and rm_retries<=5:
+                while not rm_success and rm_retries <= 10:
                     try:
                         shutil.rmtree(yml_dir.__str__())
                         rm_success = True
                     except PermissionError:
-                        self.print_message(f"Could not remove directory from ACTIVE, retrying after 1 second", warning=True)
+                        self.print_message(
+                            f"Could not remove directory from ACTIVE, retrying after 1 second", warning=True
+                        )
                         rm_retries += 1
                         await asyncio.sleep(1)
                 if rm_success:
