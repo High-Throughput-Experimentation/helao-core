@@ -15,9 +15,6 @@ import json
 import io
 from pybase64 import b64decode
 import traceback
-from pathlib import Path
-from glob import glob
-import shutil
 
 import aiohttp
 import colorama
@@ -51,7 +48,7 @@ from .dispatcher import async_private_dispatcher, async_action_dispatcher
 from ..model.action_start_condition import ActionStartCondition
 from ..helper.to_json import to_json
 from ..helper.unpack_samples import unpack_samples_helper
-from ..helper.yml_finisher import yml_finisher
+from ..helper.yml_finisher import move_dir
 from ..schema import Sequence, Experiment, Action
 
 from ..model.sequence import SequenceModel
@@ -1152,47 +1149,7 @@ class Orch(Base):
             self.active_sequence = None
 
             # DB server call to finish_yml if DB exists
-            yml_dir = Path(
-                os.path.join(self.helaodirs.save_root.__str__(), self.last_sequence.get_sequence_dir())
-            )
-            new_dir = os.path.join(
-                *[x.replace("RUNS_ACTIVE", "RUNS_FINISHED") for x in yml_dir.resolve().parts]
-            )
-            os.makedirs(new_dir, exist_ok=True)
-            copy_success = False
-            copy_retries = 0
-            while not copy_success and copy_retries <= 10:
-                try:
-                    for p in glob(os.path.join(yml_dir.__str__(), '*')):
-                        shutil.copy(p, p.replace("RUNS_ACTIVE", "RUNS_FINISHED"))
-                    copy_success = True
-                except Exception as e:
-                    tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
-                    self.print_message(
-                        f"Could not move all files to FINISHED: {repr(e), tb,}, retrying after 1 second",
-                        warning=True,
-                    )
-                    copy_retries += 1
-                    await asyncio.sleep(1)
-            if copy_success:
-                rm_success = False
-                rm_retries = 0
-                while not rm_success and rm_retries <= 10:
-                    try:
-                        shutil.rmtree(yml_dir.__str__())
-                        rm_success = True
-                    except PermissionError:
-                        self.print_message(
-                            f"Could not remove directory from ACTIVE, retrying after 1 second", warning=True
-                        )
-                        rm_retries += 1
-                        await asyncio.sleep(1)
-                if rm_success:
-                    yml_dir = Path(new_dir)
-                    yml_path = yml_dir.joinpath(
-                        f"{self.last_sequence.sequence_timestamp.strftime('%Y%m%d.%H%M%S%f')}.yml"
-                    )
-                    await yml_finisher(yml_path.__str__(), "sequence", self)
+            self.aloop.create_task(move_dir(self.last_sequence, base=self))
 
     async def finish_active_experiment(self):
         # we need to wait for all actions to finish first
@@ -1232,47 +1189,7 @@ class Orch(Base):
             self.active_experiment = None
 
             # DB server call to finish_yml if DB exists
-            yml_dir = Path(
-                os.path.join(self.helaodirs.save_root.__str__(), self.last_experiment.get_experiment_dir())
-            )
-            new_dir = os.path.join(
-                *[x.replace("RUNS_ACTIVE", "RUNS_FINISHED") for x in yml_dir.resolve().parts]
-            )
-            os.makedirs(new_dir, exist_ok=True)
-            copy_success = False
-            copy_retries = 0
-            while not copy_success and copy_retries <= 10:
-                try:
-                    for p in glob(os.path.join(yml_dir.__str__(), '*')):
-                        shutil.copy(p, p.replace("RUNS_ACTIVE", "RUNS_FINISHED"))
-                    copy_success = True
-                except Exception as e:
-                    tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
-                    self.print_message(
-                        f"Could not move all files to FINISHED: {repr(e), tb,}, retrying after 1 second",
-                        warning=True,
-                    )
-                    copy_retries += 1
-                    await asyncio.sleep(1)
-            if copy_success:
-                rm_success = False
-                rm_retries = 0
-                while not rm_success and rm_retries <= 10:
-                    try:
-                        shutil.rmtree(yml_dir.__str__())
-                        rm_success = True
-                    except PermissionError:
-                        self.print_message(
-                            f"Could not remove directory from ACTIVE, retrying after 1 second", warning=True
-                        )
-                        rm_retries += 1
-                        await asyncio.sleep(1)
-                if rm_success:
-                    yml_dir = Path(new_dir)
-                    yml_path = yml_dir.joinpath(
-                        f"{self.last_experiment.experiment_timestamp.strftime('%Y%m%d.%H%M%S%f')}.yml"
-                    )
-                    await yml_finisher(yml_path.__str__(), "experiment", self)
+            self.aloop.create_task(move_dir(self.last_experiment, base=self))
 
     async def write_active_experiment_exp(self):
         await self.write_exp(self.active_experiment)
