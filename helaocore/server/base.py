@@ -1521,7 +1521,7 @@ class Base(object):
                     os.makedirs(new_dir, exist_ok=True)
                     move_success = False
                     try:
-                        for p in glob(os.path.join(yml_dir.__str__(), '**', '*')):
+                        for p in glob(os.path.join(yml_dir.__str__(), '*')):
                             shutil.copy(p, p.replace("RUNS_ACTIVE", "RUNS_FINISHED"))
                             move_success = True
                     except Exception as e:
