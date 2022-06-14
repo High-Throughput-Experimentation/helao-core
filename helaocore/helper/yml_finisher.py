@@ -5,16 +5,21 @@ import asyncio
 import traceback
 from typing import Union
 from glob import glob
+from pathlib import Path
 
 import aiohttp
 import aioshutil
 import aiofiles
+from ruamel.yaml import YAML
 
 from .print_message import print_message
 from ..schema import Sequence, Experiment, Action
 
 
-async def yml_finisher(yml_path: str, yml_type: str, base: object = None, retry: int = 3):
+async def yml_finisher(yml_path: str, base: object = None, retry: int = 3):
+    yaml = YAML(typ="safe")
+    ymld = yaml.load(Path(yml_path))
+    yml_type = ymld["file_type"]
 
     if base is not None:
         print_msg = lambda msg: base.print_message(msg, info=True)
@@ -86,7 +91,7 @@ async def move_dir(hobj: Union[Action, Experiment, Sequence], base: object = Non
         rm_retries = 0
         while not rm_success and rm_retries <= 30:
             try:
-                await aioshutil.rmtree(yml_dir.__str__())
+                await aioshutil.rmtree(yml_dir)
                 rm_success = True
             except PermissionError:
                 print_msg(f"Could not remove directory from ACTIVE, retrying after {retry_delay} seconds", warning=True)
@@ -95,5 +100,5 @@ async def move_dir(hobj: Union[Action, Experiment, Sequence], base: object = Non
         if rm_success:
             timestamp = getattr(hobj, f"{obj_type}_timestamp").strftime('%Y%m%d.%H%M%S%f')
             yml_path = os.path.join(new_dir, f"{timestamp}.yml")
-            await yml_finisher(yml_path, obj_type, base=base)
+            await yml_finisher(yml_path, base=base)
     
