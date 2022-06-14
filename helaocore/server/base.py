@@ -1508,7 +1508,7 @@ class Base(object):
 
                 # DB server call to finish_yml if DB exists
                 for action in self.action_list:
-                    self.aloop.create_task(move_dir(action), base=self.base)
+                    self.base.aloop.create_task(move_dir(action), base=self.base)
 
             # always returns the most recent action of active
             return self.action
