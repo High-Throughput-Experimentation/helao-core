@@ -52,12 +52,12 @@ async def yml_finisher(yml_path: str, base: object = None, retry: int = 3):
 
 async def move_dir(hobj: Union[Sequence, Experiment, Action], base: object = None, retry_delay: int = 2):
     """Move directory from RUNS_ACTIVE to RUNS_FINISHED. """
-    
+ 
     if base is not None:
         print_msg = lambda msg: base.print_message(msg, info=True)
     else:
         print_msg = lambda msg: print_message({}, "yml_finisher", msg, info=True)
-        
+ 
     obj_type = hobj.__class__.__name__.lower()
     save_dir = base.helaodirs.save_root.__str__()
     if obj_type == 'action':
@@ -70,30 +70,33 @@ async def move_dir(hobj: Union[Sequence, Experiment, Action], base: object = Non
         yml_dir = None
         print_msg(f'Invalid object {obj_type} was provided. Can only move Action, Experiment, or Sequence.')
         return {}
-    
+ 
     new_dir = os.path.join(yml_dir.replace("RUNS_ACTIVE", "RUNS_FINISHED"))
     await aiofiles.os.makedirs(new_dir, exist_ok=True)
 
     copy_success = False
     copy_retries = 0
+    file_list = glob(os.path.join(yml_dir, '*'))
+ 
     while not copy_success and copy_retries <= 30:
-        try:
-            for p in glob(os.path.join(yml_dir, '*')):
-                await aioshutil.copy(p, p.replace("RUNS_ACTIVE", "RUNS_FINISHED"))
+        copy_results = await asyncio.gather(*[aioshutil.copy(p, p.replace("RUNS_ACTIVE", "RUNS_FINISHED")) for p in file_list], return_exceptions=True)
+        copied_idx = [i for i,v in enumerate(copy_results) if isinstance(v, str)]
+        exists_idx = [i for i in copied_idx if os.path.exists(copy_results[i])]
+        if len(exists_idx) == len(file_list):
             copy_success = True
-        except Exception as e:
-            tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
-            print_msg(f"Could not move all files to FINISHED: {repr(e), tb,}, retrying after {retry_delay} seconds", warning=True)
+        else:
+            file_list = [v for i,v in enumerate(file_list) if i not in exists_idx]
+            print_msg(f"Could not move {len(file_list)} files to FINISHED, retrying after {retry_delay} seconds", warning=True)
             copy_retries += 1
             await asyncio.sleep(retry_delay)
     if copy_success:
         rm_success = False
         rm_retries = 0
         while not rm_success and rm_retries <= 30:
-            try:
-                await aioshutil.rmtree(yml_dir)
+            rm_result = await asyncio.gather(aioshutil.rmtree(yml_dir))[0]
+            if not isinstance(rm_result, Exception):
                 rm_success = True
-            except PermissionError:
+            else:
                 print_msg(f"Could not remove directory from ACTIVE, retrying after {retry_delay} seconds", warning=True)
                 rm_retries += 1
                 await asyncio.sleep(retry_delay)
@@ -101,4 +104,4 @@ async def move_dir(hobj: Union[Sequence, Experiment, Action], base: object = Non
             timestamp = getattr(hobj, f"{obj_type}_timestamp").strftime('%Y%m%d.%H%M%S%f')
             yml_path = os.path.join(new_dir, f"{timestamp}.yml")
             await yml_finisher(yml_path, base=base)
-    
+ 
