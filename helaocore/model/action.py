@@ -48,7 +48,7 @@ class ActionModel(ShortActionModel):
     samples_out: List[SampleUnion] = Field(default_factory=list)
     files: List[FileInfo] = Field(default_factory=list)
     manual_action: bool = False
-    technique: Optional[Union[str, list]] = None
+    technique_name: Optional[Union[str, list]] = None
     process_finish: bool = False
     process_contrib: List[ProcessContrib] = Field(default_factory=list)
     error_code: Optional[ErrorCodes] = ErrorCodes.none

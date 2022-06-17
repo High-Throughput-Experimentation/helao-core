@@ -36,7 +36,7 @@ class ProcessModel(ProcessTemplate):
     sequence_uuid: Optional[UUID]
     experiment_uuid: Optional[UUID]
     run_type: Optional[str]
-    technique: Optional[str]
+    technique_name: Optional[str]
     process_timestamp: Optional[datetime]
     process_group_index: Optional[int]
     process_uuid: Optional[UUID]
