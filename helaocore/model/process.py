@@ -32,6 +32,7 @@ class ProcessModel(ProcessTemplate):
     orchestrator: MachineModel = MachineModel()
     access: Optional[str] = 'hte'
     dummy: bool = False
+    simulation: bool = False
     # name of "instrument": eche, anec, adss etc. defined in world config
     sequence_uuid: Optional[UUID]
     experiment_uuid: Optional[UUID]

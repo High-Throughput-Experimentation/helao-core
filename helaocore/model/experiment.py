@@ -33,6 +33,7 @@ class ExperimentModel(ExperimentTemplate):
     orchestrator: MachineModel = MachineModel()
     access: Optional[str] = 'hte'
     dummy: bool = False
+    simulation: bool = False
     # name of "instrument": eche, anec, adss etc. defined in world config
     run_type: Optional[str]
     sequence_uuid: Optional[UUID]

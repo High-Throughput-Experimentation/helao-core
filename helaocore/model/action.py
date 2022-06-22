@@ -29,6 +29,7 @@ class ActionModel(ShortActionModel):
     orchestrator: MachineModel = MachineModel()
     access: Optional[str] = 'hte'
     dummy: bool = False
+    simulation: bool = False
     run_type: Optional[str]
     experiment_uuid: Optional[UUID]
     experiment_timestamp: Optional[datetime]

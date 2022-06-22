@@ -25,6 +25,7 @@ class SequenceModel(SequenceTemplate):
     hlo_version: Optional[str] = get_hlo_version()
     access: Optional[str] = 'hte'
     dummy: bool = False
+    simulation: bool = False
     sequence_uuid: Optional[UUID]
     sequence_timestamp: Optional[datetime]
     sequence_status: List[HloStatus] = Field(default_factory=list)
