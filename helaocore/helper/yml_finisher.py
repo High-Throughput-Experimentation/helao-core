@@ -93,7 +93,8 @@ async def move_dir(hobj: Union[Sequence, Experiment, Action], base: object = Non
         rm_success = False
         rm_retries = 0
         while not rm_success and rm_retries <= 30:
-            rm_result = await asyncio.gather(aioshutil.rmtree(yml_dir))[0]
+            rm_result = await asyncio.gather(aioshutil.rmtree(yml_dir))
+            rm_result = rm_result[0]
             if not isinstance(rm_result, Exception):
                 rm_success = True
             else:
