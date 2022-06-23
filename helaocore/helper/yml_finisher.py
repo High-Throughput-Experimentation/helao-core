@@ -86,7 +86,7 @@ async def move_dir(hobj: Union[Sequence, Experiment, Action], base: object = Non
             copy_success = True
         else:
             file_list = [v for i,v in enumerate(file_list) if i not in exists_idx]
-            print_msg(f"Could not move {len(file_list)} files to FINISHED, retrying after {retry_delay} seconds", warning=True)
+            print_msg(f"Could not move {len(file_list)} files to FINISHED, retrying after {retry_delay} seconds")
             copy_retries += 1
             await asyncio.sleep(retry_delay)
     if copy_success:
@@ -97,7 +97,7 @@ async def move_dir(hobj: Union[Sequence, Experiment, Action], base: object = Non
             if not isinstance(rm_result, Exception):
                 rm_success = True
             else:
-                print_msg(f"Could not remove directory from ACTIVE, retrying after {retry_delay} seconds", warning=True)
+                print_msg(f"Could not remove directory from ACTIVE, retrying after {retry_delay} seconds")
                 rm_retries += 1
                 await asyncio.sleep(retry_delay)
         if rm_success:
