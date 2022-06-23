@@ -2,7 +2,6 @@ __all__ = ["yml_finisher"]
 
 import os
 import asyncio
-import traceback
 from typing import Union
 from glob import glob
 from pathlib import Path
@@ -93,16 +92,15 @@ async def move_dir(hobj: Union[Sequence, Experiment, Action], base: object = Non
         rm_success = False
         rm_retries = 0
         while not rm_success and rm_retries <= 30:
-            rm_result = await asyncio.gather(aioshutil.rmtree(yml_dir), return_exceptions=True)
-            rm_result = rm_result[0]
-            if not isinstance(rm_result, Exception) or isinstance(rm_result, FileNotFoundError):
-                rm_success = True
+            rm_list = glob(os.path.join(yml_dir, '**'), recursive=True)
+            _ = await asyncio.gather(*[aiofiles.remove(f) for f in rm_list], return_exceptions=True)
+            rm_idx = [i for i,f in enumerate(rm_list) if not os.path.exists(f)]
+            if len(rm_idx)==len(rm_list):
+                timestamp = getattr(hobj, f"{obj_type}_timestamp").strftime('%Y%m%d.%H%M%S%f')
+                yml_path = os.path.join(new_dir, f"{timestamp}.yml")
+                await yml_finisher(yml_path, base=base)
             else:
                 print_msg(f"Could not remove directory from ACTIVE, retrying after {retry_delay} seconds")
                 rm_retries += 1
                 await asyncio.sleep(retry_delay)
-        if rm_success:
-            timestamp = getattr(hobj, f"{obj_type}_timestamp").strftime('%Y%m%d.%H%M%S%f')
-            yml_path = os.path.join(new_dir, f"{timestamp}.yml")
-            await yml_finisher(yml_path, base=base)
  
