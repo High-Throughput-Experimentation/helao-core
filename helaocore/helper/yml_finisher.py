@@ -93,7 +93,7 @@ async def move_dir(hobj: Union[Sequence, Experiment, Action], base: object = Non
         rm_retries = 0
         while not rm_success and rm_retries <= 30:
             rm_list = glob(os.path.join(yml_dir, '**'), recursive=True)
-            _ = await asyncio.gather(*[aiofiles.remove(f) for f in rm_list], return_exceptions=True)
+            _ = await asyncio.gather(*[aiofiles.os.remove(f) for f in rm_list], return_exceptions=True)
             rm_idx = [i for i,f in enumerate(rm_list) if not os.path.exists(f)]
             if len(rm_idx)==len(rm_list):
                 timestamp = getattr(hobj, f"{obj_type}_timestamp").strftime('%Y%m%d.%H%M%S%f')
