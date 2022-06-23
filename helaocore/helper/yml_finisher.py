@@ -93,12 +93,16 @@ async def move_dir(hobj: Union[Sequence, Experiment, Action], base: object = Non
         rm_retries = 0
         while not rm_success and rm_retries <= 30:
             rm_list = glob(os.path.join(yml_dir, '**'), recursive=True)
-            _ = await asyncio.gather(*[aiofiles.os.remove(f) for f in rm_list], return_exceptions=True)
-            rm_idx = [i for i,f in enumerate(rm_list) if not os.path.exists(f)]
-            if len(rm_idx)==len(rm_list):
-                timestamp = getattr(hobj, f"{obj_type}_timestamp").strftime('%Y%m%d.%H%M%S%f')
-                yml_path = os.path.join(new_dir, f"{timestamp}.yml")
-                await yml_finisher(yml_path, base=base)
+            rm_files = [x for x in rm_list if os.path.isfile(x)]
+            _ = await asyncio.gather(*[aiofiles.os.remove(f) for f in rm_files], return_exceptions=True)
+            rm_files_idx = [i for i,f in enumerate(rm_files) if not os.path.exists(f)]
+            if len(rm_files_idx) == len(rm_files):
+                _ = await asyncio.gather(aioshutil.rmtree(yml_dir), return_exceptions=True)
+                if not os.path.exists(yml_dir):
+                    rm_success = True
+                    timestamp = getattr(hobj, f"{obj_type}_timestamp").strftime('%Y%m%d.%H%M%S%f')
+                    yml_path = os.path.join(new_dir, f"{timestamp}.yml")
+                    await yml_finisher(yml_path, base=base)
             else:
                 print_msg(f"Could not remove directory from ACTIVE, retrying after {retry_delay} seconds")
                 rm_retries += 1
