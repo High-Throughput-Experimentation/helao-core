@@ -76,17 +76,17 @@ async def move_dir(hobj: Union[Sequence, Experiment, Action], base: object = Non
 
     copy_success = False
     copy_retries = 0
-    file_list = glob(os.path.join(yml_dir, '*'))
+    src_list = glob(os.path.join(yml_dir, '*'))
  
     while not copy_success and copy_retries <= 60:
-        copy_results = await asyncio.gather(*[aioshutil.copy(p, p.replace("RUNS_ACTIVE", "RUNS_FINISHED")) for p in file_list], return_exceptions=True)
-        copied_idx = [i for i,v in enumerate(copy_results)]
-        exists_idx = [i for i in copied_idx if os.path.exists(copy_results[i])]
-        if len(exists_idx) == len(file_list):
+        dst_list = [p.replace("RUNS_ACTIVE", "RUNS_FINISHED") for p in src_list]
+        _ = await asyncio.gather(*[aioshutil.copy(src,dst) for src,dst in zip(src_list, dst_list)], return_exceptions=True)
+        exists_idx = [i for i,v in enumerate(dst_list) if os.path.exists(v)]
+        if len(exists_idx) == len(dst_list):
             copy_success = True
         else:
-            file_list = [v for i,v in enumerate(file_list) if i not in exists_idx]
-            print_msg(f"Could not move {len(file_list)} files to FINISHED, retrying after {retry_delay} seconds")
+            src_list = [v for i,v in enumerate(src_list) if i not in exists_idx]
+            print_msg(f"Could not move {len(src_list)} files to FINISHED, retrying after {retry_delay} seconds")
             copy_retries += 1
             await asyncio.sleep(retry_delay)
     if copy_success:
