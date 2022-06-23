@@ -50,7 +50,7 @@ async def yml_finisher(yml_path: str, base: object = None, retry: int = 3):
         return False
 
 
-async def move_dir(hobj: Union[Sequence, Experiment, Action], base: object = None, retry_delay: int = 2):
+async def move_dir(hobj: Union[Sequence, Experiment, Action], base: object = None, retry_delay: int = 5):
     """Move directory from RUNS_ACTIVE to RUNS_FINISHED. """
  
     if base is not None:
@@ -78,9 +78,9 @@ async def move_dir(hobj: Union[Sequence, Experiment, Action], base: object = Non
     copy_retries = 0
     file_list = glob(os.path.join(yml_dir, '*'))
  
-    while not copy_success and copy_retries <= 30:
+    while not copy_success and copy_retries <= 60:
         copy_results = await asyncio.gather(*[aioshutil.copy(p, p.replace("RUNS_ACTIVE", "RUNS_FINISHED")) for p in file_list], return_exceptions=True)
-        copied_idx = [i for i,v in enumerate(copy_results) if isinstance(v, str)]
+        copied_idx = [i for i,v in enumerate(copy_results)]
         exists_idx = [i for i in copied_idx if os.path.exists(copy_results[i])]
         if len(exists_idx) == len(file_list):
             copy_success = True
