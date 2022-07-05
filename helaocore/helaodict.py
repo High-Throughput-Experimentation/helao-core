@@ -9,6 +9,8 @@ from enum import Enum
 from pathlib import Path
 from copy import deepcopy
 
+import numpy as np
+
 
 class HelaoDict:
     """implements dict and serialization methods for helao"""
@@ -129,6 +131,8 @@ class HelaoDict:
                 elif isinstance(v, str):
                     if len(v) != 0:
                         clean[k] = v
+                elif np.isnan(v):
+                    clean[k] = None
                 else:
                     clean[k] = v
         return clean
