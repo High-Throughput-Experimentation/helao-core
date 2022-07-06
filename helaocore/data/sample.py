@@ -78,7 +78,15 @@ class _BaseSampleAPI(object):
         self._con = None
         self._cur = None
         # convert these to json when saving them to the db
-        self._jsonkeys = ["chemical", "partial_molarity", "supplier", "lot_number", "source", "status", "action_uuid"]
+        self._jsonkeys = [
+            "chemical",
+            "partial_molarity",
+            "supplier",
+            "lot_number",
+            "source",
+            "status",
+            "action_uuid",
+        ]
         self.ready = False
 
     async def _open_db(self):
@@ -324,7 +332,7 @@ class _BaseSampleAPI(object):
             self._close_db()
         return ret_samples
 
-    async def list_new_samples(self, limit: int = 10) -> List[SampleUnion]:
+    async def list_new_samples(self, limit: int = 10, give_only: bool = False) -> List[SampleUnion]:
         """this will only use the sample_no for local sample, or global_label for external samples
         and fills in the rest from the db and returns the list again.
         We expect to not have mixed sample types here.
@@ -334,22 +342,25 @@ class _BaseSampleAPI(object):
             await asyncio.sleep(0.1)
         await asyncio.sleep(0.001)
         ret_samples = []
-
+        inherit = 'WHERE inheritance = "give_only"' if give_only else ''
         lock = asyncio.Lock()
         async with lock:
             await self._open_db()
             self._base.print_message(f"getting {limit} samples of type {self._sample_type}")
             await asyncio.sleep(0.001)
             retdf = pd.read_sql_query(
-                f"""SELECT 
-                        * 
-                    FROM
-                        {self._sample_type}
-                    ORDER BY
-                        sample_creation_timecode DESC
-                    LIMIT
-                        {limit};
-                """, con=self._con
+                f"""
+                SELECT 
+                    * 
+                FROM
+                    {self._sample_type}
+                {inherit}
+                ORDER BY
+                    sample_creation_timecode DESC
+                LIMIT
+                    {limit};
+                """,
+                con=self._con,
             )
             retsample_list = self._df_to_samples(retdf)
             for retsample in retsample_list:
@@ -880,8 +891,8 @@ class UnifiedSampleDataAPI:
             "liquid": await self.liquidAPI.list_new_samples(limit),
             "solid": await self.solidAPI.list_new_samples(limit),
             "gas": await self.gasAPI.list_new_samples(limit),
-            "assembly": await self.assemblyAPI.list_new_samples(limit)
-        } 
+            "assembly": await self.assemblyAPI.list_new_samples(limit),
+        }
         return retdict
 
     async def update_samples(self, samples: List[SampleUnion] = []) -> None:
