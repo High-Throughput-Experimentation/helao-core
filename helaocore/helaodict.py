@@ -8,8 +8,7 @@ from typing import Any
 from enum import Enum
 from pathlib import Path
 from copy import deepcopy
-
-import numpy as np
+import math
 
 
 class HelaoDict:
@@ -131,7 +130,7 @@ class HelaoDict:
                 elif isinstance(v, str):
                     if len(v) != 0:
                         clean[k] = v
-                elif np.isnan(v):
+                elif math.isnan(v):
                     clean[k] = None
                 else:
                     clean[k] = v
