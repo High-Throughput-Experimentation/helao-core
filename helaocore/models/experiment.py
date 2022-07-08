@@ -7,14 +7,14 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
-from .hlostatus import HloStatus
-from .sample import SampleUnion
-from .action import ShortActionModel
-from .file import FileInfo
-from .machine import MachineModel
+from helaocore.models.hlostatus import HloStatus
+from helaocore.models.sample import SampleUnion
+from helaocore.models.action import ShortActionModel
+from helaocore.models.file import FileInfo
+from helaocore.models.machine import MachineModel
 
-from ..version import get_hlo_version
-from ..helper.helaodict import HelaoDict
+from helaocore.version import get_hlo_version
+from helaocore.helaodict import HelaoDict
 
 
 class ShortExperimentModel(BaseModel, HelaoDict):

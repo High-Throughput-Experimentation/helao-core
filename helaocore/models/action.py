@@ -6,14 +6,14 @@ from uuid import UUID
 from pathlib import Path
 from pydantic import BaseModel, Field
 
-from .hlostatus import HloStatus
-from .process_contrib import ProcessContrib
-from .sample import SampleUnion
-from .file import FileInfo
-from .machine import MachineModel
-from ..version import get_hlo_version
-from ..helper.helaodict import HelaoDict
-from ..error import ErrorCodes
+from helaocore.models.hlostatus import HloStatus
+from helaocore.models.process_contrib import ProcessContrib
+from helaocore.models.sample import SampleUnion
+from helaocore.models.file import FileInfo
+from helaocore.models.machine import MachineModel
+from helaocore.version import get_hlo_version
+from helaocore.helaodict import HelaoDict
+from helaocore.error import ErrorCodes
 
 
 class ShortActionModel(BaseModel, HelaoDict):

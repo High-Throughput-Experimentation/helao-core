@@ -9,11 +9,11 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
-from .orchstatus import OrchStatus
-from .machine import MachineModel
-from .action import ActionModel
-from .hlostatus import HloStatus
-from ..helper.helaodict import HelaoDict
+from helaocore.models.orchstatus import OrchStatus
+from helaocore.models.machine import MachineModel
+from helaocore.models.action import ActionModel
+from helaocore.models.hlostatus import HloStatus
+from helaocore.helaodict import HelaoDict
 
 
 # additional finished categories which contain one of these
@@ -56,11 +56,11 @@ class EndpointModel(BaseModel, HelaoDict):
             if HloStatus.finished in status.act.action_status:
                 del_keys.append(uuid)
 
-                is_sub_status = False
+                # is_sub_status = False
                 for hlostatus in main_finished_status:
                     if hlostatus in status.act.action_status:
                         if hlostatus not in self.finished_dict:
-                            is_sub_status = True
+                            # is_sub_status = True
                             self.finished_dict[hlostatus] = {}
                             break
                         self.finished_dict[hlostatus].update({uuid: status})
@@ -141,7 +141,7 @@ class GlobalStatusModel(BaseModel, HelaoDict):
                 'counter_dispatched_actions',
             )
         }
-        json_dict['server_dict'] = {f"{k[0]}@{k[1]}": v for k,v in self.server_dict.items()}
+        json_dict['server_dict'] = {f"{k[0]}@{k[1]}": v for k, v in self.server_dict.items()}
         return json_dict
 
     def actions_idle(self) -> bool:

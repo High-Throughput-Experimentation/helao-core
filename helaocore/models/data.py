@@ -4,9 +4,9 @@ from typing import List, Dict, Optional
 from uuid import UUID
 from pydantic import BaseModel, Field
 
-from .hlostatus import HloStatus
-from ..helper.helaodict import HelaoDict
-from ..error import ErrorCodes
+from helaocore.models.hlostatus import HloStatus
+from helaocore.helaodict import HelaoDict
+from helaocore.error import ErrorCodes
 
 
 class DataModel(BaseModel, HelaoDict):
