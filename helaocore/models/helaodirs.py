@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from pathlib import Path
 from typing import Optional
 
-from ..helper.helaodict import HelaoDict
+from helaocore.helaodict import HelaoDict
 
 
 class HelaoDirs(BaseModel, HelaoDict):

@@ -29,9 +29,8 @@ import datetime
 from typing import List, Optional, Union, Literal
 from typing import ForwardRef
 
-from ..helper.print_message import print_message
-from ..version import get_hlo_version
-from ..helper.helaodict import HelaoDict
+from helaocore.version import get_hlo_version
+from helaocore.helaodict import HelaoDict
 
 
 SampleUnion = ForwardRef('SampleUnion')
@@ -134,35 +133,6 @@ class _BaseSample(SampleModel):
 
     def get_global_label(self):
         pass
-
-    def update_vol(self, delta_vol_ml: float, dilute: bool):
-        if hasattr(self, "volume_ml"):
-            old_vol = self.volume_ml
-            tot_vol = old_vol + delta_vol_ml
-            if tot_vol <= 0:
-                print_message(
-                    {},
-                    "model",
-                    "new volume is <= 0, setting it to zero and setting status to destroyed",
-                    error=True,
-                )
-                self.zero_volume()
-                tot_vol = 0
-            self.volume_ml = tot_vol
-            if dilute:
-                if hasattr(self, "dilution_factor"):
-                    old_df = self.dilution_factor
-                    if old_vol <= 0:
-                        print_message(
-                            {}, "model", "previous volume is <= 0, setting new df to 0.", error=True
-                        )
-                        new_df = -1
-                    else:
-                        new_df = tot_vol / (old_vol / old_df)
-                    self.dilution_factor = new_df
-                    print_message(
-                        {}, "model", f"updated sample dilution-factor: {self.dilution_factor}", info=True
-                    )
 
     def zero_volume(self):
         if hasattr(self, "volume_ml"):

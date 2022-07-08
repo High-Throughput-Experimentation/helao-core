@@ -6,8 +6,8 @@ from pydantic import BaseModel, Field, validator
 from uuid import UUID
 from copy import deepcopy
 
-from ..version import get_hlo_version
-from ..helper.helaodict import HelaoDict
+from helaocore.version import get_hlo_version
+from helaocore.helaodict import HelaoDict
 
 
 class HloFileGroup(str, Enum):
