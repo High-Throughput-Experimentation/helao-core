@@ -10,6 +10,8 @@ from pathlib import Path
 from copy import deepcopy
 import math
 
+import numpy as np
+
 
 class HelaoDict:
     """implements dict and serialization methods for helao"""
