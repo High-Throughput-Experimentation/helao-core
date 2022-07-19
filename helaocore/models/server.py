@@ -198,6 +198,7 @@ class GlobalStatusModel(BaseModel, HelaoDict):
         for action_server, actionservermodel in self.server_dict.items():
             # loop through all endpoints on this server
             for action_name, endpointmodel in actionservermodel.endpoints.items():
+                endpointmodel.sort_status()
                 # loop through all active uuids on this endpoint
                 for uuid, statusmodel in endpointmodel.active_dict.items():
                     if statusmodel.act.orchestrator == self.orchestrator:
