@@ -105,6 +105,10 @@ class ActionServerModel(BaseModel, HelaoDict):
 
         return json_dict
 
+    def init_endpoints(self):
+        for _, endpoint in self.endpoints.items():
+            endpoint.clear_finished()
+
 
 class GlobalStatusModel(BaseModel, HelaoDict):
     orchestrator: MachineModel
