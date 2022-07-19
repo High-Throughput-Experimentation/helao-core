@@ -43,10 +43,10 @@ class EndpointModel(BaseModel, HelaoDict):
     # todo: - add local queue and priority lists here?
 
     def __repr__(self):
-        return f"<active:{[uuid for uuid in self.active_dict.keys()]}, finished:{[uuid for uuid in self.finished_dict.keys()]}>"
+        return f"<active:{[uuid for uuid in self.active_dict.keys()]}, finished:{list(self.finished_dict[HloStatus.finished].keys())}>"
 
     def __str__(self):
-        return f"active:{[uuid for uuid in self.active_dict.keys()]}, finished:{[uuid for uuid in self.finished_dict.keys()]}"
+        return f"active:{[uuid for uuid in self.active_dict.keys()]}, finished:{list(self.finished_dict[HloStatus.finished].keys())}"
 
     def sort_status(self):
         del_keys = []
