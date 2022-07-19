@@ -50,6 +50,8 @@ class EndpointModel(BaseModel, HelaoDict):
 
     def sort_status(self):
         del_keys = []
+        if HloStatus.finished not in self.finished_dict:
+            self.finished_dict[HloStatus.finished] = {}
         for uuid, status in self.active_dict.items():
             print(uuid, status.act.action_status)
             # check if action is finished
@@ -68,8 +70,6 @@ class EndpointModel(BaseModel, HelaoDict):
                 # # no main substatus, add it under finished key
                 # if not is_sub_status:
                 # also always add it to finished
-                if HloStatus.finished not in self.finished_dict:
-                    self.finished_dict[HloStatus.finished] = {}
                 self.finished_dict[HloStatus.finished].update({uuid: status})
 
         # delete all finished actions from active_dict
@@ -79,6 +79,7 @@ class EndpointModel(BaseModel, HelaoDict):
     def clear_finished(self):
         """clears all status dicts except active_dict"""
         self.finished_dict = {}
+        self.finished_dict[HloStatus.finished] = {}
 
 
 class ActionServerModel(BaseModel, HelaoDict):
