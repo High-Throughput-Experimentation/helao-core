@@ -5,32 +5,12 @@ name = "helaocore"
 version = "0.1.0"
 
 [tool.poetry.dependencies]
-aiohttp = "^3.7.4"
-colorama = "^0.4.4"
-fastapi = "^0.70.0"
-ntplib = "^0.4.0"
-numpy = "^1.21.2"
-pandas = "^1.3.4"
-pyaml = "^21.10.1"
-pydantic = "^1.8.2"
-python = ">=3.7.1,<3.11"
-shortuuid = "^1.0.1"
-aiofiles = "^0.7.0"
-pydasher = "^0.0.3"
-
-[tool.poetry.dev-dependencies]
-black = "^21.9b0"
-flake8 = "^4.0.1"
-isort = "^5.9.3"
-mypy = "^0.910"
-pytest = "^6.2.5"
-pytest-sugar = "^0.9.4"
-types-aiofiles = "^0.7.0"
-autoflake = "^1.4"
+pydantic = "^1.9.1"
+python = ">=3.8,<4.0"
 
 [build-system]
 build-backend = "poetry.core.masonry.api"
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=1.1.0b3"]
 
 [tool.black]
 line-length = 110
