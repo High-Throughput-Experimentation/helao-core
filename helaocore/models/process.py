@@ -15,6 +15,7 @@ from helaocore.models.file import FileInfo
 from helaocore.models.machine import MachineModel
 from helaocore.version import get_hlo_version
 from helaocore.helaodict import HelaoDict
+from helaocore.models.run_use import RunUse
 
 
 class ShortProcessModel(BaseModel, HelaoDict):
@@ -30,13 +31,14 @@ class ProcessTemplate(BaseModel, HelaoDict):
 class ProcessModel(ProcessTemplate):
     hlo_version: Optional[str] = get_hlo_version()
     orchestrator: MachineModel = MachineModel()
-    access: Optional[str] = 'hte'
+    access: Optional[str] = "hte"
     dummy: bool = False
     simulation: bool = False
     # name of "instrument": eche, anec, adss etc. defined in world config
     sequence_uuid: Optional[UUID]
     experiment_uuid: Optional[UUID]
     run_type: Optional[str]
+    run_use: Optional[RunUse] = "data"
     technique_name: Optional[str]
     process_timestamp: Optional[datetime]
     process_group_index: Optional[int]

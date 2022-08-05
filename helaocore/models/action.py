@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from helaocore.models.hlostatus import HloStatus
 from helaocore.models.process_contrib import ProcessContrib
+from helaocore.models.run_use import RunUse
 from helaocore.models.sample import SampleUnion
 from helaocore.models.file import FileInfo
 from helaocore.models.machine import MachineModel
@@ -27,10 +28,11 @@ class ShortActionModel(BaseModel, HelaoDict):
 
 class ActionModel(ShortActionModel):
     orchestrator: MachineModel = MachineModel()
-    access: Optional[str] = 'hte'
+    access: Optional[str] = "hte"
     dummy: bool = False
     simulation: bool = False
     run_type: Optional[str]
+    run_use: Optional[RunUse] = "data"
     experiment_uuid: Optional[UUID]
     experiment_timestamp: Optional[datetime]
     action_timestamp: Optional[datetime]

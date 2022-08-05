@@ -7,3 +7,4 @@ class ProcessContrib(str, Enum):
     files = "files"
     samples_in = "samples_in"
     samples_out = "samples_out"
+    run_use = "run_use"
