@@ -280,7 +280,7 @@ class GlobalStatusModel(BaseModel, HelaoDict):
 
         # clear finished
         self.finished_dict = {}
-        if exp_uuid in self.counter_dispatched_actions:
-            del self.counter_dispatched_actions[exp_uuid]
+        # if exp_uuid in self.counter_dispatched_actions:
+        #     del self.counter_dispatched_actions[exp_uuid]
 
         return finished_dict
