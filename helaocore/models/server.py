@@ -36,14 +36,14 @@ class EndpointModel(BaseModel, HelaoDict):
 
     # holds the finished uuids
     # keyed by either main_finished_status or "finished"
-    finished_dict: Dict[HloStatus, Dict[UUID, StatusModel]] = Field(default_factory=dict)
+    nonactive_dict: Dict[HloStatus, Dict[UUID, StatusModel]] = Field(default_factory=dict)
 
     # none is infinite
     max_uuids: Optional[int] = None
     # todo: - add local queue and priority lists here?
 
     def __str__(self):
-        finished_uuids = [uuid.hex for uuid in self.finished_dict.get(HloStatus.finished, {}).keys()]
+        finished_uuids = [uuid.hex for uuid in self.nonactive_dict.get(HloStatus.finished, {}).keys()]
         return f"active:{[uuid.hex for uuid in self.active_dict.keys()]}, finished:{finished_uuids}"
 
     def __repr__(self):
@@ -51,8 +51,8 @@ class EndpointModel(BaseModel, HelaoDict):
 
     def sort_status(self):
         del_keys = []
-        if HloStatus.finished not in self.finished_dict:
-            self.finished_dict[HloStatus.finished] = {}
+        if HloStatus.finished not in self.nonactive_dict:
+            self.nonactive_dict[HloStatus.finished] = {}
         for uuid, status in self.active_dict.items():
             print(uuid, status.act.action_status)
             # check if action is finished
@@ -62,16 +62,16 @@ class EndpointModel(BaseModel, HelaoDict):
                 # is_sub_status = False
                 for hlostatus in main_finished_status:
                     if hlostatus in status.act.action_status:
-                        if hlostatus not in self.finished_dict:
+                        if hlostatus not in self.nonactive_dict:
                             # is_sub_status = True
-                            self.finished_dict[hlostatus] = {}
+                            self.nonactive_dict[hlostatus] = {}
                             break
-                        self.finished_dict[hlostatus].update({uuid: status})
+                        self.nonactive_dict[hlostatus].update({uuid: status})
 
                 # # no main substatus, add it under finished key
                 # if not is_sub_status:
                 # also always add it to finished
-                self.finished_dict[HloStatus.finished].update({uuid: status})
+                self.nonactive_dict[HloStatus.finished].update({uuid: status})
 
         # delete all finished actions from active_dict
         for key in del_keys:
@@ -79,8 +79,8 @@ class EndpointModel(BaseModel, HelaoDict):
 
     def clear_finished(self):
         """clears all status dicts except active_dict"""
-        self.finished_dict = {}
-        self.finished_dict[HloStatus.finished] = {}
+        self.nonactive_dict = {}
+        self.nonactive_dict[HloStatus.finished] = {}
 
 
 class ActionServerModel(BaseModel, HelaoDict):
@@ -121,7 +121,7 @@ class GlobalStatusModel(BaseModel, HelaoDict):
     active_dict: Dict[UUID, StatusModel] = Field(default_factory=dict)
     # a dict of all finished actions
     # keyed by either main_finished_status or "finished"
-    finished_dict: Dict[HloStatus, Dict[UUID, StatusModel]] = Field(default_factory=dict)
+    nonactive_dict: Dict[HloStatus, Dict[UUID, StatusModel]] = Field(default_factory=dict)
 
     # some control parameters for the orch
 
@@ -140,7 +140,7 @@ class GlobalStatusModel(BaseModel, HelaoDict):
             for k in (
                 'orchestrator',
                 'active_dict',
-                'finished_dict',
+                'nonactive_dict',
                 'loop_intent',
                 'loop_state',
                 'orch_state',
@@ -210,15 +210,15 @@ class GlobalStatusModel(BaseModel, HelaoDict):
                     if statusmodel.act.orchestrator == self.orchestrator:
                         self.active_dict.update({uuid: statusmodel})
                 # loop through all finished uuids on this endpoint
-                for hlostatus, status_dict in endpointmodel.finished_dict.items():
+                for hlostatus, status_dict in endpointmodel.nonactive_dict.items():
                     for uuid, statusmodel in status_dict.items():
                         if statusmodel.act.orchestrator == self.orchestrator:
                             # check if its in active and remove it from there first
                             if uuid in self.active_dict:
                                 del self.active_dict[uuid]
-                            if hlostatus not in self.finished_dict:
-                                self.finished_dict[hlostatus] = {}
-                            self.finished_dict[hlostatus].update({uuid: statusmodel})
+                            if hlostatus not in self.nonactive_dict:
+                                self.nonactive_dict[hlostatus] = {}
+                            self.nonactive_dict[hlostatus].update({uuid: statusmodel})
 
     def update_global_with_acts(self, actionserver: ActionServerModel):
         if actionserver.action_server.as_key() not in self.server_dict:
@@ -233,31 +233,31 @@ class GlobalStatusModel(BaseModel, HelaoDict):
         """returns a dict of uuids for actions which contain hlostatus"""
         uuid_dict = {}
 
-        if hlostatus in self.finished_dict:
+        if hlostatus in self.nonactive_dict:
             # all of them have this status
-            for uuid, statusmodel in self.finished_dict[hlostatus].items():
+            for uuid, statusmodel in self.nonactive_dict[hlostatus].items():
                 uuid_dict.update({uuid: statusmodel})
-        elif HloStatus.finished in self.finished_dict:
+        elif HloStatus.finished in self.nonactive_dict:
             # can only be in finsihed, but need to look for substatus
-            for uuid, statusmodel in self.finished_dict[HloStatus.finished].items():
+            for uuid, statusmodel in self.nonactive_dict[HloStatus.finished].items():
                 if hlostatus in statusmodel.act.action_status:
                     uuid_dict.update({uuid: statusmodel})
 
         return uuid_dict
 
     def clear_in_finished(self, hlostatus: HloStatus):
-        if hlostatus in self.finished_dict:
-            self.finished_dict[hlostatus] = {}
-        elif HloStatus.finished in self.finished_dict:
+        if hlostatus in self.nonactive_dict:
+            self.nonactive_dict[hlostatus] = {}
+        elif HloStatus.finished in self.nonactive_dict:
             # can only be in finsihed, but need to look for substatus
             del_keys = []
-            for uuid, statusmodel in self.finished_dict[HloStatus.finished].items():
+            for uuid, statusmodel in self.nonactive_dict[HloStatus.finished].items():
                 if hlostatus in statusmodel.act.action_status:
                     del_keys.append(uuid)
 
             # delete uuids
             for key in del_keys:
-                del self.finished_dict[HloStatus.finished][key]
+                del self.nonactive_dict[HloStatus.finished][key]
 
     def new_experiment(self, exp_uuid: UUID):
         self.counter_dispatched_actions[exp_uuid] = 0
@@ -265,22 +265,22 @@ class GlobalStatusModel(BaseModel, HelaoDict):
     def finish_experiment(self, exp_uuid: UUID) -> List[ActionModel]:
         """returns all finished experiments"""
         # we don't filter by orch as this should have happened already when they
-        # were added to the finished_dict
-        finished_dict = []
-        for hlostatus, status_dict in self.finished_dict.items():
+        # were added to the nonactive_dict
+        nonactive_dict = []
+        for hlostatus, status_dict in self.nonactive_dict.items():
             for uuid, statusmodel in status_dict.items():
                 # TODO all acts should contain "finished", else
                 # something went wrong
                 # if HloStatus.finished not in statusmodel.act.action_status:
                 #     ERROR
-                finished_dict.append(statusmodel.act)
+                nonactive_dict.append(statusmodel.act)
 
         # if self.active_dict:
         #     ERROR
 
         # clear finished
-        self.finished_dict = {}
+        self.nonactive_dict = {}
         # if exp_uuid in self.counter_dispatched_actions:
         #     del self.counter_dispatched_actions[exp_uuid]
 
-        return finished_dict
+        return nonactive_dict

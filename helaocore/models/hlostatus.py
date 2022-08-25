@@ -12,3 +12,4 @@ class HloStatus(str, Enum):
     estopped = "estopped"
     split = "split"
     busy = "busy"
+    retired = "retired"
