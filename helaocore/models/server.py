@@ -265,22 +265,20 @@ class GlobalStatusModel(BaseModel, HelaoDict):
     def finish_experiment(self, exp_uuid: UUID) -> List[ActionModel]:
         """returns all finished experiments"""
         # we don't filter by orch as this should have happened already when they
-        # were added to the nonactive_dict
-        nonactive_dict = []
+        # were added to the finished_exps
+        finished_exps = []
         for hlostatus, status_dict in self.nonactive_dict.items():
             for uuid, statusmodel in status_dict.items():
-                # TODO all acts should contain "finished", else
-                # something went wrong
-                # if HloStatus.finished not in statusmodel.act.action_status:
-                #     ERROR
-                nonactive_dict.append(statusmodel.act)
+                if exp_uuid == uuid:
+                    finished_exps.append(statusmodel.act)
+        # TODO: properly clear actions from endpointstatusmodel only for exp_uuid
 
         # if self.active_dict:
         #     ERROR
 
         # clear finished
         self.nonactive_dict = {}
-        # if exp_uuid in self.counter_dispatched_actions:
-        #     del self.counter_dispatched_actions[exp_uuid]
+        if exp_uuid in self.counter_dispatched_actions:
+            del self.counter_dispatched_actions[exp_uuid]
 
-        return nonactive_dict
+        return finished_exps
