@@ -89,6 +89,7 @@ class ActionServerModel(BaseModel, HelaoDict):
     endpoints: Dict[str, EndpointModel] = Field(default_factory=dict)
     # signals estop of the action server
     estop: bool = False
+    last_action_uuid: Optional[UUID]
 
     def get_fastapi_json(self, action_name: Optional[str] = None):
         json_dict = {}
@@ -102,6 +103,7 @@ class ActionServerModel(BaseModel, HelaoDict):
                     action_server=self.action_server,
                     # status_msg should be a StatusModel
                     endpoints={action_name: self.endpoints[action_name]},
+                    last_action_uuid=self.last_action_uuid,
                 ).json_dict()
 
         return json_dict
@@ -165,9 +167,9 @@ class GlobalStatusModel(BaseModel, HelaoDict):
         free = True
         if action_server.as_key() in self.server_dict:
             actionservermodel = self.server_dict[action_server.as_key()]
-            for endpoint_name, endpointmodel in actionservermodel.endpoints.items():
+            for _, endpointmodel in actionservermodel.endpoints.items():
                 # loop through all of its active uuids
-                for uuid, statusmodel in endpointmodel.active_dict:
+                for _, statusmodel in endpointmodel.active_dict.items():
                     if statusmodel.act.orchestrator == self.orchestrator:
                         # found an acive action for this orch
                         # endpoint is not yet free for this orch
@@ -220,13 +222,16 @@ class GlobalStatusModel(BaseModel, HelaoDict):
                                 self.nonactive_dict[hlostatus] = {}
                             self.nonactive_dict[hlostatus].update({uuid: statusmodel})
 
-    def update_global_with_acts(self, actionserver: ActionServerModel):
-        if actionserver.action_server.as_key() not in self.server_dict:
+    def update_global_with_acts(self, actionservermodel: ActionServerModel):
+        if actionservermodel.action_server.as_key() not in self.server_dict:
             # add it for the first time
-            self.server_dict.update({actionserver.action_server.as_key(): actionserver})
+            self.server_dict.update({actionservermodel.action_server.as_key(): actionservermodel})
         else:
-            self.server_dict[actionserver.action_server.as_key()].endpoints.update(actionserver.endpoints)
+            self.server_dict[actionservermodel.action_server.as_key()].endpoints.update(
+                actionservermodel.endpoints
+            )
         # sort it into active and finished
+        self.last_action_uuid = actionservermodel.last_action_uuid
         self._sort_status()
 
     def find_hlostatus_in_finished(self, hlostatus: HloStatus) -> Dict[UUID, StatusModel]:
@@ -250,13 +255,7 @@ class GlobalStatusModel(BaseModel, HelaoDict):
             self.nonactive_dict[hlostatus] = {}
         elif HloStatus.finished in self.nonactive_dict:
             # can only be in finsihed, but need to look for substatus
-            del_keys = []
-            for uuid, statusmodel in self.nonactive_dict[HloStatus.finished].items():
-                if hlostatus in statusmodel.act.action_status:
-                    del_keys.append(uuid)
-
-            # delete uuids
-            for key in del_keys:
+            for key in self.nonactive_dict[HloStatus.finished].keys():
                 del self.nonactive_dict[HloStatus.finished][key]
 
     def new_experiment(self, exp_uuid: UUID):
