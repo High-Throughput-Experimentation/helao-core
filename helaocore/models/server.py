@@ -231,7 +231,6 @@ class GlobalStatusModel(BaseModel, HelaoDict):
                 actionservermodel.endpoints
             )
         # sort it into active and finished
-        self.last_action_uuid = actionservermodel.last_action_uuid
         self._sort_status()
 
     def find_hlostatus_in_finished(self, hlostatus: HloStatus) -> Dict[UUID, StatusModel]:
