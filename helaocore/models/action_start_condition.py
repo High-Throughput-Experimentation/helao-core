@@ -8,3 +8,4 @@ class ActionStartCondition(int, Enum):
     wait_for_endpoint = 1  # orch is waiting for endpoint to become available
     wait_for_server = 2  # orch is waiting for server to become available
     wait_for_all = 3  # (or other): orch is waiting for all action_dq to finish
+    wait_for_orch = 4  # orch is waiting for "wait" action on orch to finish
