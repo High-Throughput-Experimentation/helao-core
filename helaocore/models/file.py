@@ -17,12 +17,12 @@ class HloFileGroup(str, Enum):
 
 class HloHeaderModel(BaseModel, HelaoDict):
     hlo_version: Optional[str] = get_hlo_version()
-    action_name: Optional[str]
+    action_name: Optional[str] = None
     column_headings: List[str] = Field(default_factory=list)
     # this can hold instrument/server specific optional header
     # entries
     optional: Optional[Dict] = Field(default_factory=dict)
-    epoch_ns: Optional[float]
+    epoch_ns: Optional[float] = None
 
 
 class FileConnParams(BaseModel, HelaoDict):
@@ -39,7 +39,7 @@ class FileConnParams(BaseModel, HelaoDict):
     file_type: str = "helao__file"
     file_group: Optional[HloFileGroup] = HloFileGroup.helao_files
     # None will trigger autogeneration of a file name
-    file_name: Optional[str]
+    file_name: Optional[str] = None
     # the header of the hlo file as dict (will be written as yml)
     hloheader: Optional[HloHeaderModel] = HloHeaderModel()
 
