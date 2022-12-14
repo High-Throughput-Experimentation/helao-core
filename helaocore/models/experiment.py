@@ -1,7 +1,7 @@
 __all__ = ["ExperimentTemplate", "ExperimentModel", "ShortExperimentModel"]
 
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Union
 from uuid import UUID
 from pathlib import Path
 
@@ -26,6 +26,8 @@ class ShortExperimentModel(BaseModel, HelaoDict):
 class ExperimentTemplate(BaseModel, HelaoDict):
     experiment_name: Optional[str]
     experiment_params: Optional[dict] = Field(default_factory=dict)
+    from_globalseq_params: Optional[dict] = Field(default_factory=dict)
+    to_globalseq_params: Optional[Union[list, dict]] = Field(default_factory=list)
 
 
 class ExperimentModel(ExperimentTemplate):
