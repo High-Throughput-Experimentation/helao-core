@@ -26,8 +26,8 @@ class ShortExperimentModel(BaseModel, HelaoDict):
 class ExperimentTemplate(BaseModel, HelaoDict):
     experiment_name: Optional[str]
     experiment_params: Optional[dict] = Field(default_factory=dict)
-    from_globalseq_params: Optional[dict] = Field(default_factory=dict)
-    to_globalseq_params: Optional[Union[list, dict]] = Field(default_factory=list)
+    _from_globalseq_params: Optional[dict] = Field(default_factory=dict)
+    _to_globalseq_params: Optional[Union[list, dict]] = Field(default_factory=list)
 
 
 class ExperimentModel(ExperimentTemplate):
