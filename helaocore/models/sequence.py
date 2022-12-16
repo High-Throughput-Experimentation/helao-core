@@ -16,9 +16,9 @@ from helaocore.helaodict import HelaoDict
 
 class SequenceTemplate(BaseModel, HelaoDict):
     sequence_name: Optional[str]
-    sequence_params: Optional[dict] = Field(default_factory=dict)
+    sequence_params: Optional[dict] = {}
     sequence_label: Optional[str] = "noLabel"
-    experiment_plan_list: List[ExperimentTemplate] = Field(default_factory=list)
+    experiment_plan_list: List[ExperimentTemplate] = Field(default=[])
 
 
 class SequenceModel(SequenceTemplate):
@@ -28,6 +28,6 @@ class SequenceModel(SequenceTemplate):
     simulation: bool = False
     sequence_uuid: Optional[UUID]
     sequence_timestamp: Optional[datetime]
-    sequence_status: List[HloStatus] = Field(default_factory=list)
+    sequence_status: List[HloStatus] = Field(default=[])
     sequence_output_dir: Optional[Path]
-    experiment_list: List[ShortExperimentModel] = Field(default_factory=list)
+    experiment_list: List[ShortExperimentModel] = Field(default=[])

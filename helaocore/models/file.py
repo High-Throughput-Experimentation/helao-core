@@ -18,10 +18,10 @@ class HloFileGroup(str, Enum):
 class HloHeaderModel(BaseModel, HelaoDict):
     hlo_version: Optional[str] = get_hlo_version()
     action_name: Optional[str] = None
-    column_headings: List[str] = Field(default_factory=list)
+    column_headings: List[str] = Field(default=[])
     # this can hold instrument/server specific optional header
     # entries
-    optional: Optional[Dict] = Field(default_factory=dict)
+    optional: Optional[Dict] = Field(default={})
     epoch_ns: Optional[float] = None
 
 
@@ -33,8 +33,8 @@ class FileConnParams(BaseModel, HelaoDict):
 
     # but samples are optional
     # only need the global label, but not the full sample basemodel
-    sample_global_labels: List[str] = Field(default_factory=list)
-    json_data_keys: List[str] = Field(default_factory=list)
+    sample_global_labels: List[str] = Field(default=[])
+    json_data_keys: List[str] = Field(default=[])
     # type of file
     file_type: str = "helao__file"
     file_group: Optional[HloFileGroup] = HloFileGroup.helao_files
@@ -75,6 +75,6 @@ class FileConn(BaseModel, HelaoDict):
 class FileInfo(BaseModel, HelaoDict):
     file_type: Optional[str]
     file_name: Optional[str]
-    data_keys: List[str] = Field(default_factory=list)
-    sample: List[str] = Field(default_factory=list)
+    data_keys: List[str] = Field(default=[])
+    sample: List[str] = Field(default=[])
     action_uuid: Optional[UUID]

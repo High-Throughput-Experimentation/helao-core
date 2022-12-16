@@ -36,24 +36,24 @@ class ActionModel(ShortActionModel):
     experiment_uuid: Optional[UUID]
     experiment_timestamp: Optional[datetime]
     action_timestamp: Optional[datetime]
-    action_status: List[HloStatus] = Field(default_factory=list)
+    action_status: List[HloStatus] = Field(default=[])
     action_order: Optional[int] = 0
     action_retry: Optional[int] = 0
     action_split: Optional[int] = 0
     action_name: Optional[str]
     action_sub_name: Optional[str]
     action_abbr: Optional[str]
-    action_params: dict = Field(default_factory=dict)
+    action_params: dict = Field(default={})
     action_etc: Optional[float]  # expected time to completion
     parent_action_uuid: Optional[UUID]
     child_action_uuid: Optional[UUID]
-    samples_in: List[SampleUnion] = Field(default_factory=list)
-    samples_out: List[SampleUnion] = Field(default_factory=list)
-    files: List[FileInfo] = Field(default_factory=list)
+    samples_in: List[SampleUnion] = Field(default=[])
+    samples_out: List[SampleUnion] = Field(default=[])
+    files: List[FileInfo] = Field(default=[])
     manual_action: bool = False
     technique_name: Optional[Union[str, list]] = None
     process_finish: bool = False
-    process_contrib: List[ProcessContrib] = Field(default_factory=list)
+    process_contrib: List[ProcessContrib] = Field(default=[])
     error_code: Optional[ErrorCodes] = ErrorCodes.none
 
     # process_group_index: Optional[int] = 0 # unnecessary if we rely on process_finish as group terminator

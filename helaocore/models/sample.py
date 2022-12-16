@@ -95,19 +95,19 @@ class _BaseSample(SampleModel):
     server_name: Optional[str]
 
     # action related
-    action_uuid: List[UUID] = Field(default_factory=list)
+    action_uuid: List[UUID] = Field(default=[])
     sample_creation_action_uuid: Optional[UUID]
     sample_creation_experiment_uuid: Optional[UUID]
 
     # metadata
     sample_position: Optional[str]
     inheritance: Optional[SampleInheritance]  # only for internal use
-    status: List[SampleStatus] = Field(default_factory=list)  # only for internal use
-    chemical: List[str] = Field(default_factory=list)
-    partial_molarity: List[str] = Field(default_factory=list)
-    supplier: List[str] = Field(default_factory=list)
-    lot_number: List[str] = Field(default_factory=list)
-    source: List[str] = Field(default_factory=list)
+    status: List[SampleStatus] = Field(default=[])  # only for internal use
+    chemical: List[str] = Field(default=[])
+    partial_molarity: List[str] = Field(default=[])
+    supplier: List[str] = Field(default=[])
+    lot_number: List[str] = Field(default=[])
+    source: List[str] = Field(default=[])
     prep_date: Optional[datetime.date]
     comment: Optional[str]
 
@@ -166,7 +166,7 @@ class NoneSample(SampleModel):
     sample_type: Literal[None] = None
     global_label: Literal[None] = None
     inheritance: Optional[SampleInheritance]  # only for internal use
-    status: List[SampleStatus] = Field(default_factory=list)  # only for internal use
+    status: List[SampleStatus] = Field(default=[])  # only for internal use
 
     def get_global_label(self):
         return None
@@ -265,8 +265,8 @@ class GasSample(_BaseSample):
 
 class AssemblySample(_BaseSample):
     sample_type: Literal[SampleType.assembly] = SampleType.assembly
-    # parts: List[SampleUnion] = Field(default_factory=list)
-    parts: List[SamplePartUnion] = Field(default_factory=list)
+    # parts: List[SampleUnion] = Field(default=[])
+    parts: List[SamplePartUnion] = Field(default=[])
     sample_position: Optional[str] = "cell1_we"  # usual default assembly position
 
     def get_global_label(self):
@@ -308,7 +308,7 @@ class SampleList(BaseModel, HelaoDict):
     """a combi basemodel which can contain all possible samples
     Its also a list and we should enforce samples as being a list"""
 
-    samples: Optional[List[SampleUnion]] = Field(default_factory=list)
+    samples: Optional[List[SampleUnion]] = Field(default=[])
 
 
 SampleUnion = Union[

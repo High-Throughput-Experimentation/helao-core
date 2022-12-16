@@ -32,11 +32,11 @@ class EndpointModel(BaseModel, HelaoDict):
     endpoint_name: str
     # status is a dict (keyed by action uuid)
     # which hold a dict of active actions
-    active_dict: Dict[UUID, StatusModel] = Field(default_factory=dict)
+    active_dict: Dict[UUID, StatusModel] = Field(default={})
 
     # holds the finished uuids
     # keyed by either main_finished_status or "finished"
-    nonactive_dict: Dict[HloStatus, Dict[UUID, StatusModel]] = Field(default_factory=dict)
+    nonactive_dict: Dict[HloStatus, Dict[UUID, StatusModel]] = Field(default={})
 
     # none is infinite
     max_uuids: Optional[int] = None
@@ -86,7 +86,7 @@ class EndpointModel(BaseModel, HelaoDict):
 class ActionServerModel(BaseModel, HelaoDict):
     action_server: MachineModel
     # endpoints keyed by the name of the endpoint (action_name)
-    endpoints: Dict[str, EndpointModel] = Field(default_factory=dict)
+    endpoints: Dict[str, EndpointModel] = Field(default={})
     # signals estop of the action server
     estop: bool = False
     last_action_uuid: Optional[UUID]
@@ -117,13 +117,13 @@ class GlobalStatusModel(BaseModel, HelaoDict):
     orchestrator: MachineModel
     # a dict of actionserversmodels keyed by the server name
     # use MachineModel.as_key() for the dict key
-    server_dict: Dict[Tuple, ActionServerModel] = Field(default_factory=dict)
+    server_dict: Dict[Tuple, ActionServerModel] = Field(default={})
 
     # a dict of all active actions for this orch
-    active_dict: Dict[UUID, StatusModel] = Field(default_factory=dict)
+    active_dict: Dict[UUID, StatusModel] = Field(default={})
     # a dict of all finished actions
     # keyed by either main_finished_status or "finished"
-    nonactive_dict: Dict[HloStatus, Dict[UUID, StatusModel]] = Field(default_factory=dict)
+    nonactive_dict: Dict[HloStatus, Dict[UUID, StatusModel]] = Field(default={})
 
     # some control parameters for the orch
 
@@ -134,7 +134,7 @@ class GlobalStatusModel(BaseModel, HelaoDict):
     # the state of the orch
     orch_state: OrchStatus = OrchStatus.none
     # counter for dispatched actions, keyed by experiment uuid
-    counter_dispatched_actions: Dict[UUID, int] = Field(default_factory=dict)
+    counter_dispatched_actions: Dict[UUID, int] = Field(default={})
 
     def as_json(self):
         json_dict = {

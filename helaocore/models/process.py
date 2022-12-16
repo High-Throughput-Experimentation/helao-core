@@ -33,9 +33,9 @@ class ProcessModel(ShortProcessModel):
     run_type: Optional[str]
     run_use: Optional[RunUse] = "data"
     process_timestamp: Optional[datetime]
-    process_params: Optional[dict] = Field(default_factory=dict)
+    process_params: Optional[dict] = {}
     process_group_index: Optional[int]
-    action_list: List[ShortActionModel] = Field(default_factory=list)
-    samples_in: List[SampleUnion] = Field(default_factory=list)
-    samples_out: List[SampleUnion] = Field(default_factory=list)
-    files: List[FileInfo] = Field(default_factory=list)
+    action_list: List[ShortActionModel] = Field(default=[])
+    samples_in: List[SampleUnion] = Field(default=[])
+    samples_out: List[SampleUnion] = Field(default=[])
+    files: List[FileInfo] = Field(default=[])

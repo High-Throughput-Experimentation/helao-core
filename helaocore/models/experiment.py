@@ -25,9 +25,7 @@ class ShortExperimentModel(BaseModel, HelaoDict):
 
 class ExperimentTemplate(BaseModel, HelaoDict):
     experiment_name: Optional[str]
-    experiment_params: Optional[dict] = Field(default_factory=dict)
-    _from_globalseq_params: dict = {}
-    _to_globalseq_params: Union[list, dict] = []
+    experiment_params: Optional[dict] = {}
 
 
 class ExperimentModel(ExperimentTemplate):
@@ -41,10 +39,10 @@ class ExperimentModel(ExperimentTemplate):
     sequence_uuid: Optional[UUID]
     experiment_uuid: Optional[UUID]
     experiment_timestamp: Optional[datetime]
-    experiment_status: List[HloStatus] = Field(default_factory=list)
+    experiment_status: List[HloStatus] = Field(default=[])
     experiment_output_dir: Optional[Path]
-    action_list: List[ShortActionModel] = Field(default_factory=list)
-    samples_in: List[SampleUnion] = Field(default_factory=list)
-    samples_out: List[SampleUnion] = Field(default_factory=list)
-    files: List[FileInfo] = Field(default_factory=list)
-    process_list: List[UUID] = Field(default_factory=list)  # populated by DB yml_finisher
+    action_list: List[ShortActionModel] = Field(default=[])
+    samples_in: List[SampleUnion] = Field(default=[])
+    samples_out: List[SampleUnion] = Field(default=[])
+    files: List[FileInfo] = Field(default=[])
+    process_list: List[UUID] = Field(default=[])  # populated by DB yml_finisher
