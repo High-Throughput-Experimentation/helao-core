@@ -51,6 +51,7 @@ class ActionModel(ShortActionModel):
     samples_out: List[SampleUnion] = Field(default=[])
     files: List[FileInfo] = Field(default=[])
     manual_action: bool = False
+    nonblocking: bool = False
     technique_name: Optional[Union[str, list]] = None
     process_finish: bool = False
     process_contrib: List[ProcessContrib] = Field(default=[])
