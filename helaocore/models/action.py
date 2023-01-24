@@ -58,3 +58,7 @@ class ActionModel(ShortActionModel):
     error_code: Optional[ErrorCodes] = ErrorCodes.none
 
     # process_group_index: Optional[int] = 0 # unnecessary if we rely on process_finish as group terminator
+
+
+class ActionModelEx(ActionModel):
+    exid: Optional[str] = None
