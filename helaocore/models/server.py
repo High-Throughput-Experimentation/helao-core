@@ -1,5 +1,4 @@
 __all__ = [
-    "StatusModel",
     "ActionServerModel",
     "GlobalStatusModel",
 ]
@@ -23,20 +22,15 @@ from helaocore.helaodict import HelaoDict
 main_finished_status = [HloStatus.errored]
 
 
-class StatusModel(BaseModel, HelaoDict):
-    # one status model per endpoint
-    act: ActionModel
-
-
 class EndpointModel(BaseModel, HelaoDict):
     endpoint_name: str
     # status is a dict (keyed by action uuid)
     # which hold a dict of active actions
-    active_dict: Dict[UUID, StatusModel] = Field(default={})
+    active_dict: Dict[UUID, ActionModel] = Field(default={})
 
     # holds the finished uuids
     # keyed by either main_finished_status or "finished"
-    nonactive_dict: Dict[HloStatus, Dict[UUID, StatusModel]] = Field(default={})
+    nonactive_dict: Dict[HloStatus, Dict[UUID, ActionModel]] = Field(default={})
 
     # none is infinite
     max_uuids: Optional[int] = None
@@ -54,14 +48,14 @@ class EndpointModel(BaseModel, HelaoDict):
         if HloStatus.finished not in self.nonactive_dict:
             self.nonactive_dict[HloStatus.finished] = {}
         for uuid, status in self.active_dict.items():
-            print(uuid, status.act.action_status)
+            print(uuid, status.action_status)
             # check if action is finished
-            if HloStatus.finished in status.act.action_status:
+            if HloStatus.finished in status.action_status:
                 del_keys.append(uuid)
 
                 # is_sub_status = False
                 for hlostatus in main_finished_status:
-                    if hlostatus in status.act.action_status:
+                    if hlostatus in status.action_status:
                         if hlostatus not in self.nonactive_dict:
                             # is_sub_status = True
                             self.nonactive_dict[hlostatus] = {}
@@ -101,7 +95,7 @@ class ActionServerModel(BaseModel, HelaoDict):
             if action_name in self.endpoints:
                 json_dict = ActionServerModel(
                     action_server=self.action_server,
-                    # status_msg should be a StatusModel
+                    # status_msg should be a ActionModel
                     endpoints={action_name: self.endpoints[action_name]},
                     last_action_uuid=self.last_action_uuid,
                 ).json_dict()
@@ -120,10 +114,10 @@ class GlobalStatusModel(BaseModel, HelaoDict):
     server_dict: Dict[Tuple, ActionServerModel] = Field(default={})
 
     # a dict of all active actions for this orch
-    active_dict: Dict[UUID, StatusModel] = Field(default={})
+    active_dict: Dict[UUID, ActionModel] = Field(default={})
     # a dict of all finished actions
     # keyed by either main_finished_status or "finished"
-    nonactive_dict: Dict[HloStatus, Dict[UUID, StatusModel]] = Field(default={})
+    nonactive_dict: Dict[HloStatus, Dict[UUID, ActionModel]] = Field(default={})
 
     # some control parameters for the orch
 
@@ -170,7 +164,7 @@ class GlobalStatusModel(BaseModel, HelaoDict):
             for _, endpointmodel in actionservermodel.endpoints.items():
                 # loop through all of its active uuids
                 for _, statusmodel in endpointmodel.active_dict.items():
-                    if statusmodel.act.orchestrator == self.orchestrator:
+                    if statusmodel.orchestrator == self.orchestrator:
                         # found an acive action for this orch
                         # endpoint is not yet free for this orch
                         free = False
@@ -189,8 +183,8 @@ class GlobalStatusModel(BaseModel, HelaoDict):
             if endpoint_name in actionservermodel.endpoints.keys():
                 endpointmodel = actionservermodel.endpoints[endpoint_name]
                 # loop through all of its active uuids
-                for uuid, statusmodel in endpointmodel.active_dict:
-                    if statusmodel.act.orchestrator == self.orchestrator:
+                for _, statusmodel in endpointmodel.active_dict.items():
+                    if statusmodel.orchestrator == self.orchestrator:
                         # found an acive action for this orch
                         # endpoint is not yet free for this orch
                         free = False
@@ -209,12 +203,12 @@ class GlobalStatusModel(BaseModel, HelaoDict):
                 endpointmodel.sort_status()
                 # loop through all active uuids on this endpoint
                 for uuid, statusmodel in endpointmodel.active_dict.items():
-                    if statusmodel.act.orchestrator == self.orchestrator:
+                    if statusmodel.orchestrator == self.orchestrator:
                         self.active_dict.update({uuid: statusmodel})
                 # loop through all finished uuids on this endpoint
                 for hlostatus, status_dict in endpointmodel.nonactive_dict.items():
                     for uuid, statusmodel in status_dict.items():
-                        if statusmodel.act.orchestrator == self.orchestrator:
+                        if statusmodel.orchestrator == self.orchestrator:
                             # check if its in active and remove it from there first
                             if uuid in self.active_dict:
                                 del self.active_dict[uuid]
@@ -233,7 +227,7 @@ class GlobalStatusModel(BaseModel, HelaoDict):
         # sort it into active and finished
         self._sort_status()
 
-    def find_hlostatus_in_finished(self, hlostatus: HloStatus) -> Dict[UUID, StatusModel]:
+    def find_hlostatus_in_finished(self, hlostatus: HloStatus) -> Dict[UUID, ActionModel]:
         """returns a dict of uuids for actions which contain hlostatus"""
         uuid_dict = {}
 
@@ -244,7 +238,7 @@ class GlobalStatusModel(BaseModel, HelaoDict):
         elif HloStatus.finished in self.nonactive_dict:
             # can only be in finsihed, but need to look for substatus
             for uuid, statusmodel in self.nonactive_dict[HloStatus.finished].items():
-                if hlostatus in statusmodel.act.action_status:
+                if hlostatus in statusmodel.action_status:
                     uuid_dict.update({uuid: statusmodel})
 
         return uuid_dict
@@ -268,7 +262,7 @@ class GlobalStatusModel(BaseModel, HelaoDict):
         for hlostatus, status_dict in self.nonactive_dict.items():
             for uuid, statusmodel in status_dict.items():
                 if exp_uuid == uuid:
-                    finished_exps.append(statusmodel.act)
+                    finished_exps.append(statusmodel)
         # TODO: properly clear actions from endpointstatusmodel only for exp_uuid
 
         # if self.active_dict:

@@ -52,9 +52,12 @@ class ActionModel(ShortActionModel):
     files: List[FileInfo] = Field(default=[])
     manual_action: bool = False
     nonblocking: bool = False
+    exid: Optional[str] = None
     technique_name: Optional[Union[str, list]] = None
     process_finish: bool = False
     process_contrib: List[ProcessContrib] = Field(default=[])
     error_code: Optional[ErrorCodes] = ErrorCodes.none
 
     # process_group_index: Optional[int] = 0 # unnecessary if we rely on process_finish as group terminator
+
+
