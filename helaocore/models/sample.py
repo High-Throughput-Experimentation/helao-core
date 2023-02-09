@@ -313,19 +313,19 @@ class SampleList(BaseModel, HelaoDict):
 
 SampleUnion = Union[
     AssemblySample,
-    NoneSample,
     LiquidSample,
     GasSample,
     SolidSample,
+    NoneSample,
 ]
 
 
 SamplePartUnion = Union[
     AssemblySample,
-    NoneSample,
     LiquidSample,
     GasSample,
     SolidSample,
+    NoneSample,
 ]
 
 
