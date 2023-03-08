@@ -34,7 +34,7 @@ class HelaoDict:
             return val
         elif isinstance(val, (Path)):
             return str(val.as_posix())
-        elif isinstace(val, datetime):
+        elif isinstance(val, datetime):
             strtime = val.strftime("%Y-%m-%d %H:%M:%S.%f")
             return strtime
         elif isinstance(val, (UUID, date)):
