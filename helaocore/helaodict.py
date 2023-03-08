@@ -34,7 +34,10 @@ class HelaoDict:
             return val
         elif isinstance(val, (Path)):
             return str(val.as_posix())
-        elif isinstance(val, (UUID, datetime, date)):
+        elif isinstace(val, datetime):
+            strtime = val.strftime("%Y-%m-%d %H:%M:%S.%f")
+            return strtime
+        elif isinstance(val, (UUID, date)):
             return str(val)
         elif isinstance(val, list):
             return [self._serialize_item(val=item) for item in val]
