@@ -8,3 +8,4 @@ class ProcessContrib(str, Enum):
     samples_in = "samples_in"
     samples_out = "samples_out"
     run_use = "run_use"
+    technique_name = "technique_name"
