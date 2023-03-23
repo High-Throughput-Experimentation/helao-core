@@ -52,7 +52,7 @@ class ActionModel(ShortActionModel):
     files: List[FileInfo] = Field(default=[])
     manual_action: bool = False
     nonblocking: bool = False
-    exid: Optional[str] = None
+    exec_id: Optional[str] = None
     technique_name: Optional[Union[str, list]] = None
     process_finish: bool = False
     process_contrib: List[ProcessContrib] = Field(default=[])
