@@ -46,4 +46,4 @@ class ExperimentModel(ExperimentTemplate):
     samples_out: List[SampleUnion] = Field(default=[])
     files: List[FileInfo] = Field(default=[])
     process_list: List[UUID] = Field(default=[])  # populated by DB yml_finisher
-    _process_order_groups: Optional[Dict[int, List[int]]] = Field(default={})
+    process_order_groups: Dict[int, List[int]] = Field(default={})
