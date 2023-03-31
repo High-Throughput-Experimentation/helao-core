@@ -59,13 +59,13 @@ class HelaoDict:
         attr_only = self._serialize_dict(dict_in=d)
         return attr_only
 
-    def clean_dict(self):
-        return self._cleanupdict(self.as_dict())
+    def clean_dict(self, strip_private: bool = False):
+        return self._cleanupdict(self.as_dict(), strip_private)
 
-    def _cleanupdict(self, d):
+    def _cleanupdict(self, d: dict, strip_private: bool = False):
         clean = {}
         for k, v in d.items():
-            if k.startswith("_"):
+            if k.startswith("_") and strip_private:
                 continue
             elif isinstance(v, dict):
                 nested = self._cleanupdict(v)
