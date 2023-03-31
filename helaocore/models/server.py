@@ -89,7 +89,7 @@ class ActionServerModel(BaseModel, HelaoDict):
         json_dict = {}
         if action_name is None:
             # send all
-            json_dict = self.json_dict()
+            json_dict = self.clean_dict()
         else:
             # send only selected endpoint status
             if action_name in self.endpoints:
@@ -98,7 +98,7 @@ class ActionServerModel(BaseModel, HelaoDict):
                     # status_msg should be a ActionModel
                     endpoints={action_name: self.endpoints[action_name]},
                     last_action_uuid=self.last_action_uuid,
-                ).json_dict()
+                ).clean_dict()
 
         return json_dict
 
