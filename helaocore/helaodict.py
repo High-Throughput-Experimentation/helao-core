@@ -65,9 +65,9 @@ class HelaoDict:
     def _cleanupdict(self, d: dict, strip_private: bool = False):
         clean = {}
         for k, v in d.items():
-            if k.startswith("_") and strip_private:
+            if str(k).startswith("_") and strip_private:
                 continue
-            elif isinstance(v, dict):
+            if isinstance(v, dict):
                 nested = self._cleanupdict(v)
                 if len(nested.keys()) > 0:
                     clean[k] = nested
