@@ -1,7 +1,7 @@
 __all__ = ["ExperimentTemplate", "ExperimentModel", "ShortExperimentModel"]
 
 from datetime import datetime
-from typing import List, Optional, Union
+from typing import List, Optional, Dict
 from uuid import UUID
 from pathlib import Path
 
@@ -46,3 +46,4 @@ class ExperimentModel(ExperimentTemplate):
     samples_out: List[SampleUnion] = Field(default=[])
     files: List[FileInfo] = Field(default=[])
     process_list: List[UUID] = Field(default=[])  # populated by DB yml_finisher
+    _process_order_groups: Dict[int, List[int]] = Field(default={})
