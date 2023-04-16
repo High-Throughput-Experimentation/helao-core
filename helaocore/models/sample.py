@@ -119,7 +119,7 @@ class _BaseSample(SampleModel):
             "global_label": self.get_global_label(),
             "sample_type": self.sample_type,
             "sample_no": self.sample_no,
-            "machine_name": self.machine_name if self.machine_name is not None else gethostname(),
+            "machine_name": self.machine_name if self.machine_name is not None else gethostname().lower(),
             "sample_creation_timecode": self.sample_creation_timecode,
             "last_update": self.last_update,
             "sample_position": self.sample_position,
@@ -200,7 +200,7 @@ class LiquidSample(_BaseSample):
     def get_global_label(self):
         if self.global_label is None:
             label = None
-            machine_name = self.machine_name if self.machine_name is not None else gethostname()
+            machine_name = self.machine_name if self.machine_name is not None else gethostname().lower()
             label = f"{machine_name}__liquid__{self.sample_no}"
             return label
         else:
@@ -256,7 +256,7 @@ class GasSample(_BaseSample):
     def get_global_label(self):
         if self.global_label is None:
             label = None
-            machine_name = self.machine_name if self.machine_name is not None else gethostname()
+            machine_name = self.machine_name if self.machine_name is not None else gethostname().lower()
             label = f"{machine_name}__gas__{self.sample_no}"
             return label
         else:
@@ -272,7 +272,7 @@ class AssemblySample(_BaseSample):
     def get_global_label(self):
         if self.global_label is None:
             label = None
-            machine_name = self.machine_name if self.machine_name is not None else gethostname()
+            machine_name = self.machine_name if self.machine_name is not None else gethostname().lower()
             label = f"{machine_name}__assembly__{self.sample_position}__{self.sample_creation_timecode}"
             return label
         else:
