@@ -26,15 +26,15 @@ class AnalysisDataModel(BaseModel, HelaoDict):
     action_uuid: UUID
     run_use: RunUse = "data"
     raw_data_path: str
-    sample_label: Optional[SampleUnion]
+    sample_label: str
 
 
 class AnalysisOutputModel(BaseModel, HelaoDict):
     analysis_output_path: str
     output_type: AnalysisOutputType
     output_name: Optional[str]
-    output_keys: List[str]
-    output: dict = Field(default={})
+    output_keys: Optional[List[str]]
+    output: Optional[dict] = Field(default={})
 
 
 class AnalysisModel(ShortAnalysisModel):
