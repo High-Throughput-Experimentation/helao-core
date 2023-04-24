@@ -1,25 +1,19 @@
 __all__ = ["AnalysisModel", "ShortAnalysisModel", "AnalysisDataModel", "AnalysisOutputModel"]
 
 from enum import Enum
-from datetime import datetime
-from typing import List, Optional, Union
+from typing import List, Optional
 from uuid import UUID
-from pathlib import Path
 from pydantic import BaseModel, Field
 
-from helaocore.models.hlostatus import HloStatus
-from helaocore.models.process_contrib import ProcessContrib
 from helaocore.models.run_use import RunUse
 from helaocore.models.sample import SampleUnion
-from helaocore.models.file import FileInfo
-from helaocore.models.machine import MachineModel
 from helaocore.version import get_hlo_version
 from helaocore.helaodict import HelaoDict
-from helaocore.error import ErrorCodes
 
 
 class AnalysisOutputType(str, Enum):
     primary = "primary"
+    auxiliary = "auxiliary"
     intermediate = "intermediate"
 
 
