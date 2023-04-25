@@ -41,6 +41,7 @@ class ExperimentModel(ExperimentTemplate):
     experiment_timestamp: Optional[datetime]
     experiment_status: List[HloStatus] = Field(default=[])
     experiment_output_dir: Optional[Path]
+    experiment_codehash: Optional[str]
     action_list: List[ShortActionModel] = Field(default=[])
     samples_in: List[SampleUnion] = Field(default=[])
     samples_out: List[SampleUnion] = Field(default=[])
