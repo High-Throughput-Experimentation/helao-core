@@ -45,7 +45,7 @@ class ActionModel(ShortActionModel):
     action_abbr: Optional[str]
     action_params: dict = Field(default={})
     action_etc: Optional[float]  # expected time to completion
-    action_hash: Optional[UUID]
+    action_codehash: Optional[UUID]
     parent_action_uuid: Optional[UUID]
     child_action_uuid: Optional[UUID]
     samples_in: List[SampleUnion] = Field(default=[])
