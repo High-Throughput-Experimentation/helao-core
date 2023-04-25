@@ -195,6 +195,7 @@ class GlobalStatusModel(BaseModel, HelaoDict):
     def _sort_status(self):
         """sorts actions from server_dict
         into orch specific separate dicts"""
+        recent_nonactive = []
 
         # loop through all servers
         for action_server, actionservermodel in self.server_dict.items():
@@ -212,9 +213,11 @@ class GlobalStatusModel(BaseModel, HelaoDict):
                             # check if its in active and remove it from there first
                             if uuid in self.active_dict:
                                 del self.active_dict[uuid]
+                                recent_nonactive.append((uuid, hlostatus.name))
                             if hlostatus not in self.nonactive_dict:
                                 self.nonactive_dict[hlostatus] = {}
                             self.nonactive_dict[hlostatus].update({uuid: statusmodel})
+        return recent_nonactive
 
     def update_global_with_acts(self, actionservermodel: ActionServerModel):
         if actionservermodel.action_server.as_key() not in self.server_dict:
@@ -225,7 +228,8 @@ class GlobalStatusModel(BaseModel, HelaoDict):
                 actionservermodel.endpoints
             )
         # sort it into active and finished
-        self._sort_status()
+        recent_nonactive = self._sort_status()
+        return recent_nonactive
 
     def find_hlostatus_in_finished(self, hlostatus: HloStatus) -> Dict[UUID, ActionModel]:
         """returns a dict of uuids for actions which contain hlostatus"""
