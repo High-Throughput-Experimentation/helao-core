@@ -7,6 +7,7 @@ from uuid import UUID
 from copy import deepcopy
 
 from helaocore.version import get_hlo_version
+from helaocore.models.run_use import RunUse
 from helaocore.helaodict import HelaoDict
 
 
@@ -78,3 +79,4 @@ class FileInfo(BaseModel, HelaoDict):
     data_keys: List[str] = Field(default=[])
     sample: List[str] = Field(default=[])
     action_uuid: Optional[UUID]
+    run_use: Optional[RunUse]
