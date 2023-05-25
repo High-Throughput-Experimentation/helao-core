@@ -58,5 +58,6 @@ class ActionModel(ShortActionModel):
     process_finish: bool = False
     process_contrib: List[ProcessContrib] = Field(default=[])
     error_code: Optional[ErrorCodes] = ErrorCodes.none
+    process_uuid: Optional[UUID]
 
     # process_group_index: Optional[int] = 0 # unnecessary if we rely on process_finish as group terminator
