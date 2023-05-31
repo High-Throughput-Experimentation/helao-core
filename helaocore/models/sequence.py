@@ -31,4 +31,5 @@ class SequenceModel(SequenceTemplate):
     sequence_status: List[HloStatus] = Field(default=[])
     sequence_output_dir: Optional[Path]
     sequence_codehash: Optional[str]
+    sequence_comment: Optional[str]
     experiment_list: List[ShortExperimentModel] = Field(default=[])
