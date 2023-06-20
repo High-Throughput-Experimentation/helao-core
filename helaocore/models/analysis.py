@@ -25,7 +25,7 @@ class AnalysisDataModel(BaseModel, HelaoDict):
     action_uuid: UUID
     run_use: RunUse = "data"
     raw_data_path: str
-    global_sample_label: str
+    global_sample_label: Optional[str]
 
 
 class AnalysisOutputModel(BaseModel, HelaoDict):
