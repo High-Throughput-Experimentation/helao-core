@@ -6,7 +6,6 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from helaocore.models.run_use import RunUse
-from helaocore.models.sample import SampleUnion
 from helaocore.version import get_hlo_version
 from helaocore.helaodict import HelaoDict
 
@@ -26,14 +25,14 @@ class AnalysisDataModel(BaseModel, HelaoDict):
     action_uuid: UUID
     run_use: RunUse = "data"
     raw_data_path: str
-    sample_label: str
+    global_sample_label: str
 
 
 class AnalysisOutputModel(BaseModel, HelaoDict):
     analysis_output_path: str
-    output_type: AnalysisOutputType
-    output_name: Optional[str]
     output_keys: Optional[List[str]]
+    output_type: Optional[AnalysisOutputType]
+    output_name: Optional[str]
     output: Optional[dict] = Field(default={})
 
 
@@ -43,6 +42,6 @@ class AnalysisModel(ShortAnalysisModel):
     simulation: bool = False
     analysis_name: str
     analysis_params: dict = Field(default={})
-    analysis_code_path: str
+    analysis_codehash: Optional[str]
     inputs: List[AnalysisDataModel]
-    outputs: List[AnalysisOutputModel]
+    output: AnalysisOutputModel
