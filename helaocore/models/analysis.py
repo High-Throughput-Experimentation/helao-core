@@ -43,5 +43,7 @@ class AnalysisModel(ShortAnalysisModel):
     analysis_name: str
     analysis_params: dict = Field(default={})
     analysis_codehash: Optional[str]
+    process_uuid: Optional[UUID]
+    process_params: dict = Field(default={})
     inputs: List[AnalysisDataModel]
     output: AnalysisOutputModel
