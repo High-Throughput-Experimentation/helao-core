@@ -1,7 +1,7 @@
 __all__ = ["AnalysisModel", "ShortAnalysisModel", "AnalysisDataModel", "AnalysisOutputModel"]
 
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, Union
 from uuid import UUID
 from pydantic import BaseModel, Field
 
@@ -28,7 +28,7 @@ class AnalysisOutputModel(BaseModel, HelaoDict):
     content_type: str
     output_keys: Optional[List[str]]
     output_name: Optional[str]
-    output: Optional[dict[str, float | str | bool | int | None]]
+    output: Optional[dict[str, Union[float, str, bool, int, None]]]
 
 
 class AnalysisModel(ShortAnalysisModel):
