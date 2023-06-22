@@ -8,12 +8,7 @@ from pydantic import BaseModel, Field
 from helaocore.models.run_use import RunUse
 from helaocore.version import get_hlo_version
 from helaocore.helaodict import HelaoDict
-
-
-class AnalysisOutputType(str, Enum):
-    primary = "primary"
-    auxiliary = "auxiliary"
-    intermediate = "intermediate"
+from helaocore.models.s3locator import S3Locator
 
 
 class ShortAnalysisModel(BaseModel, HelaoDict):
@@ -29,11 +24,11 @@ class AnalysisDataModel(BaseModel, HelaoDict):
 
 
 class AnalysisOutputModel(BaseModel, HelaoDict):
-    analysis_output_path: str
+    analysis_output_path: S3Locator
+    content_type: str
     output_keys: Optional[List[str]]
-    output_type: Optional[AnalysisOutputType]
     output_name: Optional[str]
-    output: Optional[dict] = Field(default={})
+    output: Optional[dict[str, float | str | bool | int | None]]
 
 
 class AnalysisModel(ShortAnalysisModel):
@@ -41,9 +36,9 @@ class AnalysisModel(ShortAnalysisModel):
     dummy: bool = False
     simulation: bool = False
     analysis_name: str
-    analysis_params: dict = Field(default={})
+    analysis_params: dict
     analysis_codehash: Optional[str]
     process_uuid: Optional[UUID]
-    process_params: dict = Field(default={})
+    process_params: Optional[dict]
     inputs: List[AnalysisDataModel]
-    output: AnalysisOutputModel
+    outputs: List[AnalysisOutputModel]
