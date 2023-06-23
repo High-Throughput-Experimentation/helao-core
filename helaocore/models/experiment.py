@@ -48,3 +48,4 @@ class ExperimentModel(ExperimentTemplate):
     files: List[FileInfo] = Field(default=[])
     process_list: List[UUID] = Field(default=[])  # populated by DB yml_finisher
     process_order_groups: Dict[int, List[int]] = Field(default={})
+    data_acquisition_request_ids: Optional[List[UUID]]
