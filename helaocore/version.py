@@ -1,3 +1,4 @@
+import os
 import inspect
 import subprocess
 
@@ -12,8 +13,10 @@ def get_hlo_version():
     return hlo_version
 
 def get_filehash(filename: str):
+    filename = os.path.abspath(filename)
+    parent_dir = os.path.dirname(filename)
     command = ['git', 'ls-files', '-s', filename, '--abbrev']
-    response = subprocess.check_output(command).decode('utf8').split()
+    response = subprocess.check_output(command, cwd=parent_dir).decode('utf8').split()
     if response:
         short_hash = response[1]
     else:

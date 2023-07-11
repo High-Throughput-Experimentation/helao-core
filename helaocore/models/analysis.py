@@ -1,20 +1,14 @@
 __all__ = ["AnalysisModel", "ShortAnalysisModel", "AnalysisDataModel", "AnalysisOutputModel"]
 
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, Union, Dict
 from uuid import UUID
 from pydantic import BaseModel, Field
 
 from helaocore.models.run_use import RunUse
-from helaocore.models.sample import SampleUnion
 from helaocore.version import get_hlo_version
 from helaocore.helaodict import HelaoDict
-
-
-class AnalysisOutputType(str, Enum):
-    primary = "primary"
-    auxiliary = "auxiliary"
-    intermediate = "intermediate"
+from helaocore.models.s3locator import S3Locator
 
 
 class ShortAnalysisModel(BaseModel, HelaoDict):
@@ -26,15 +20,15 @@ class AnalysisDataModel(BaseModel, HelaoDict):
     action_uuid: UUID
     run_use: RunUse = "data"
     raw_data_path: str
-    sample_label: str
+    global_sample_label: Optional[str]
 
 
 class AnalysisOutputModel(BaseModel, HelaoDict):
-    analysis_output_path: str
-    output_type: AnalysisOutputType
-    output_name: Optional[str]
+    analysis_output_path: S3Locator
+    content_type: str
     output_keys: Optional[List[str]]
-    output: Optional[dict] = Field(default={})
+    output_name: Optional[str]
+    output: Optional[Dict[str, Union[float, str, bool, int, None]]]
 
 
 class AnalysisModel(ShortAnalysisModel):
@@ -42,7 +36,9 @@ class AnalysisModel(ShortAnalysisModel):
     dummy: bool = False
     simulation: bool = False
     analysis_name: str
-    analysis_params: dict = Field(default={})
-    analysis_code_path: str
+    analysis_params: dict
+    analysis_codehash: Optional[str]
+    process_uuid: Optional[UUID]
+    process_params: Optional[dict]
     inputs: List[AnalysisDataModel]
     outputs: List[AnalysisOutputModel]
