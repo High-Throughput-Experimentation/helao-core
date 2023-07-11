@@ -8,6 +8,7 @@ class HelaoCredentials(BaseSettings):
     AWS_ACCESS_KEY_ID: SecretStr = parse_obj_as(SecretStr, "")
     AWS_SECRET_ACCESS_KEY: SecretStr = parse_obj_as(SecretStr, "")
     AWS_REGION: SecretStr = parse_obj_as(SecretStr, "")
+    AWS_BUCKET: SecretStr = parse_obj_as(SecretStr, "")
     API_USER: str = "postgres"
     API_PASSWORD: SecretStr = parse_obj_as(SecretStr, "")
     API_HOST: str = "localhost"
