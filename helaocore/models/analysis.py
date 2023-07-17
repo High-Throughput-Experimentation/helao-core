@@ -21,6 +21,7 @@ class AnalysisDataModel(BaseModel, HelaoDict):
     run_use: RunUse = "data"
     raw_data_path: str
     global_sample_label: Optional[str]
+    composition: Optional[dict]
 
 
 class AnalysisOutputModel(BaseModel, HelaoDict):
