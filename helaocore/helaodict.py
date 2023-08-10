@@ -10,6 +10,15 @@ from pathlib import Path
 from copy import deepcopy
 import math
 
+# https://stackoverflow.com/a/71389334
+def nan2None(obj):
+    if isinstance(obj, dict):
+        return {k:nan2None(v) for k,v in obj.items()}
+    elif isinstance(obj, list):
+        return [nan2None(v) for v in obj]
+    elif isinstance(obj, float) and math.isnan(obj):
+        return None
+    return obj
 
 class HelaoDict:
     """implements dict and serialization methods for helao"""
@@ -57,7 +66,8 @@ class HelaoDict:
     def as_dict(self):
         d = deepcopy(vars(self))
         attr_only = self._serialize_dict(dict_in=d)
-        return attr_only
+        clean_nans = nan2None(attr_only)
+        return clean_nans
 
     def clean_dict(self, strip_private: bool = False):
         return self._cleanupdict(self.as_dict(), strip_private)
