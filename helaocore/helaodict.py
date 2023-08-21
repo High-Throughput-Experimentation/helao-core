@@ -10,15 +10,17 @@ from pathlib import Path
 from copy import deepcopy
 import math
 
+
 # https://stackoverflow.com/a/71389334
 def nan2None(obj):
     if isinstance(obj, dict):
-        return {k:nan2None(v) for k,v in obj.items()}
+        return {k: nan2None(v) for k, v in obj.items()}
     elif isinstance(obj, list):
         return [nan2None(v) for v in obj]
     elif isinstance(obj, float) and math.isnan(obj):
         return None
     return obj
+
 
 class HelaoDict:
     """implements dict and serialization methods for helao"""
@@ -26,7 +28,9 @@ class HelaoDict:
     def _serialize_dict(self, dict_in: dict):
         clean = {}
         for k, v in dict_in.items():
-            if not isinstance(v, types.FunctionType) and not (isinstance(v, str) and k.startswith("__")):
+            if not isinstance(v, types.FunctionType) and not (
+                isinstance(v, str) and k.startswith("__")
+            ):
                 # keys can also be UUID, datetime etc
                 clean.update({self._serialize_item(val=k): self._serialize_item(val=v)})
         return clean
@@ -60,7 +64,7 @@ class HelaoDict:
         elif hasattr(val, "as_dict"):
             return val.as_dict()
         else:
-            tmp_str = f"Helao as_dict cannot serialize {val}"
+            tmp_str = f"Helao as_dict cannot serialize {val} of type {type(val)}"
             raise ValueError(tmp_str)
 
     def as_dict(self):
@@ -77,7 +81,9 @@ class HelaoDict:
         for k, v in d.items():
             if str(k).startswith("_") and strip_private:
                 continue
-            if isinstance(v, dict):
+            if isinstance(v, types.GeneratorType):
+                print(f"!!! error on attribute {k}, value is a generator")
+            elif isinstance(v, dict):
                 nested = self._cleanupdict(v)
                 if len(nested.keys()) > 0:
                     clean[k] = nested
