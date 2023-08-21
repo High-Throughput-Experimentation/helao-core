@@ -24,6 +24,8 @@ class ShortActionModel(BaseModel, HelaoDict):
     action_actual_order: Optional[int] = 0
     orch_submit_order: Optional[int] = 0
     action_server: MachineModel = MachineModel()
+    orch_host: Optional[str]
+    orch_port: Optional[int]
 
 
 class ActionModel(ShortActionModel):
@@ -60,5 +62,7 @@ class ActionModel(ShortActionModel):
     error_code: Optional[ErrorCodes] = ErrorCodes.none
     process_uuid: Optional[UUID]
     data_acquisition_request_id: Optional[UUID]
+    orch_host: Optional[str]
+    orch_port: Optional[int]
 
     # process_group_index: Optional[int] = 0 # unnecessary if we rely on process_finish as group terminator

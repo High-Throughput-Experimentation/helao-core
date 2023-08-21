@@ -21,6 +21,8 @@ class ShortExperimentModel(BaseModel, HelaoDict):
     experiment_uuid: Optional[UUID]
     experiment_name: Optional[str]
     experiment_output_dir: Optional[Path]
+    orch_host: Optional[str]
+    orch_port: Optional[str]
 
 
 class ExperimentTemplate(BaseModel, HelaoDict):
@@ -49,3 +51,5 @@ class ExperimentModel(ExperimentTemplate):
     process_list: List[UUID] = Field(default=[])  # populated by DB yml_finisher
     process_order_groups: Dict[int, List[int]] = Field(default={})
     data_acquisition_request_ids: Optional[List[UUID]]
+    orch_host: Optional[str]
+    orch_port: Optional[str]
