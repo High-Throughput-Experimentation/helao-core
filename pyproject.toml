@@ -1,16 +1,22 @@
 [tool.poetry]
-authors = ["Matthias Richter <mrichter@caltech.edu>", "Dan Guevarra <guevarra@caltech.edu>", "Michael Statt <michael.statt@modelyst.io>"]
+authors = [
+    "Matthias Richter <mrichter@caltech.edu>",
+    "Dan Guevarra <guevarra@caltech.edu>",
+    "Michael Statt <michael.statt@modelyst.io>",
+]
 description = "The core codebase for the HELAO High Throughoutput Experimentation code base."
 name = "helaocore"
-version = "0.1.0"
+version = "2023.04.11"
 
 [tool.poetry.dependencies]
 pydantic = "^1.9.1"
 python = ">=3.8,<4.0"
 
+
 [build-system]
+requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-requires = ["poetry-core>=1.1.0b3"]
+
 
 [tool.black]
 line-length = 110
