@@ -3,6 +3,7 @@ __all__ = ["HelaoDict"]
 from datetime import datetime, date
 from uuid import UUID
 import types
+import numpy as np
 from pydantic import BaseModel
 from typing import Any
 from enum import Enum
@@ -42,6 +43,10 @@ class HelaoDict:
                 return val.name
             else:
                 return val.value
+        elif isinstance(val, np.integer):
+            return int(val)
+        elif isinstance(val, np.floating):
+            return float(val)
         elif isinstance(val, (int, str, float, bool, type(None))):
             return val
         elif isinstance(val, (Path)):
