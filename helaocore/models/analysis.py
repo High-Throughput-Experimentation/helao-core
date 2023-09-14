@@ -43,4 +43,5 @@ class AnalysisModel(ShortAnalysisModel):
     process_params: Optional[dict]
     inputs: List[AnalysisDataModel]
     outputs: List[AnalysisOutputModel]
-    
+    data_request_id: Optional[UUID]
+
