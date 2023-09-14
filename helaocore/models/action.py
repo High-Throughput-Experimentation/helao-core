@@ -62,7 +62,7 @@ class ActionModel(ShortActionModel):
     process_contrib: List[ProcessContrib] = Field(default=[])
     error_code: Optional[ErrorCodes] = ErrorCodes.none
     process_uuid: Optional[UUID]
-    data_acquisition_request_id: Optional[UUID]
+    data_request_id: Optional[UUID]
     orch_key: Optional[str]
     orch_host: Optional[str]
     orch_port: Optional[int]

@@ -35,7 +35,7 @@ class ProcessModel(ShortProcessModel):
     process_timestamp: Optional[datetime]
     process_params: Optional[dict] = {}
     process_group_index: Optional[int]
-    data_acquisition_request_id: Optional[UUID]
+    data_request_id: Optional[UUID]
     action_list: List[ShortActionModel] = Field(default=[])
     samples_in: List[SampleUnion] = Field(default=[])
     samples_out: List[SampleUnion] = Field(default=[])
