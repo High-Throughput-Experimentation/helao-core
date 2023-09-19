@@ -51,7 +51,9 @@ class HelaoDict:
             return val
         elif isinstance(val, str):
             if "\\\\" in val:
-                return val.replace("\\\\", "\\")
+                return val.replace("\\\\", "/")
+            elif "\\" in val:
+                return val.replace("\\", "/")
             else:
                 return val
         elif isinstance(val, (Path)):
