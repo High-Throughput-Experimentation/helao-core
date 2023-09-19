@@ -49,13 +49,13 @@ class HelaoDict:
             return float(val)
         elif isinstance(val, (int, float, bool, type(None))):
             return val
-        elif isinstance(val, str):
-            if "\\\\" in val:
-                return val.replace("\\\\", "/")
-            elif "\\" in val:
-                return val.replace("\\", "/")
-            else:
-                return val
+        # elif isinstance(val, str):
+        #     if "\\\\" in val:
+        #         return val.replace("\\\\", "/")
+        #     elif "\\" in val:
+        #         return val.replace("\\", "/")
+        #     else:
+        #         return val
         elif isinstance(val, (Path)):
             return str(val.as_posix())
         elif isinstance(val, datetime):
