@@ -33,3 +33,4 @@ class SequenceModel(SequenceTemplate):
     sequence_codehash: Optional[str]
     sequence_comment: Optional[str]
     experiment_list: List[ShortExperimentModel] = Field(default=[])
+    data_request_id: Optional[UUID]
