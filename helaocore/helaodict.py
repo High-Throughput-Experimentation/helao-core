@@ -69,10 +69,10 @@ class HelaoDict:
             return {self._serialize_item(val=item) for item in val}
         elif isinstance(val, dict):
             return self._serialize_dict(dict_in=val)
-        elif isinstance(val, BaseModel):
-            return self._serialize_dict(dict_in=val.dict())
         elif hasattr(val, "as_dict"):
             return val.as_dict()
+        elif isinstance(val, BaseModel):
+            return self._serialize_dict(dict_in=val.dict())
         else:
             tmp_str = f"Helao as_dict cannot serialize {val} of type {type(val)}"
             raise ValueError(tmp_str)
