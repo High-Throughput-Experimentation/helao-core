@@ -49,7 +49,8 @@ class HelaoDict:
             return float(val)
         elif isinstance(val, (int, float, bool, type(None))):
             return val
-        # elif isinstance(val, str):
+        elif isinstance(val, str):
+            return val
         #     if "\\\\" in val:
         #         return val.replace("\\\\", "/")
         #     elif "\\" in val:
