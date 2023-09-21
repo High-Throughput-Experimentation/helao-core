@@ -24,11 +24,13 @@ class ShortExperimentModel(BaseModel, HelaoDict):
     orch_key: Optional[str]
     orch_host: Optional[str]
     orch_port: Optional[str]
+    data_request_id: Optional[UUID]
 
 
 class ExperimentTemplate(BaseModel, HelaoDict):
     experiment_name: Optional[str]
     experiment_params: Optional[dict] = {}
+    data_request_id: Optional[UUID]
 
 
 class ExperimentModel(ExperimentTemplate):
