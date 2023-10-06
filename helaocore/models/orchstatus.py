@@ -7,9 +7,17 @@ class OrchStatus(str, Enum):
     idle = "idle"
     error = "error"
     busy = "busy"
+    estopped = "estopped"
+
+
+class LoopStatus(str, Enum):
     started = "started"
-    estop = "estop"
+    estopped = "estopped"
     stopped = "stopped"
+    error = "error"
+
+class LoopIntent(str, Enum):
+    estop = "estop"
     skip = "skip"
     stop = "stop"
     none = "none"
