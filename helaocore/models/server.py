@@ -8,7 +8,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
-from helaocore.models.orchstatus import OrchStatus
+from helaocore.models.orchstatus import OrchStatus, LoopStatus, LoopIntent
 from helaocore.models.machine import MachineModel
 from helaocore.models.action import ActionModel
 from helaocore.models.hlostatus import HloStatus
@@ -122,11 +122,11 @@ class GlobalStatusModel(BaseModel, HelaoDict):
     # some control parameters for the orch
 
     # new intented state for the dispatch loop
-    loop_intent: OrchStatus = OrchStatus.none
+    loop_intent: LoopIntent = LoopIntent.none
     # the dispatch loop state
-    loop_state: OrchStatus = OrchStatus.stopped
+    loop_state: LoopStatus = LoopStatus.stopped
     # the state of the orch
-    orch_state: OrchStatus = OrchStatus.none
+    orch_state: LoopIntent = LoopIntent.none
     # counter for dispatched actions, keyed by experiment uuid
     counter_dispatched_actions: Dict[UUID, int] = Field(default={})
 
