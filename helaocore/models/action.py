@@ -68,3 +68,7 @@ class ActionModel(ShortActionModel):
     orch_port: Optional[int]
 
     # process_group_index: Optional[int] = 0 # unnecessary if we rely on process_finish as group terminator
+
+    @property
+    def url(self):
+        return f"http://{self.action_server.hostname}:{self.action_server.port}/{self.action_server.server_name}/{self.action_name}"
