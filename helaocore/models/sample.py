@@ -333,5 +333,5 @@ def object_to_sample(data):
     return parse_obj_as(SampleUnion, data)
 
 
-AssemblySample.update_forward_refs()
-SampleList.update_forward_refs()
+# AssemblySample.update_forward_refs()
+# SampleList.update_forward_refs()
