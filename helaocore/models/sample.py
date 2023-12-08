@@ -76,40 +76,40 @@ class SampleModel(BaseModel, HelaoDict):
     _hashinclude_ = {"global_label", "sample_type"}
 
     hlo_version: Optional[str] = get_hlo_version()
-    global_label: Optional[str]  # is None for a ref sample
-    sample_type: Optional[str]
+    global_label: Optional[str] = None # is None for a ref sample
+    sample_type: Optional[str] = None
 
 
 class _BaseSample(SampleModel):
     """Full Sample with all helao-async relevant attributes."""
 
     # time related fields
-    sample_creation_timecode: Optional[int]  # epoch in ns
-    last_update: Optional[int]  # epoch in ns
+    sample_creation_timecode: Optional[int] = None # epoch in ns
+    last_update: Optional[int] = None # epoch in ns
     # action_timestamp: Optional[str]  # "%Y%m%d.%H%M%S%f"
 
     # labels
-    sample_no: Optional[int]
-    machine_name: Optional[str]
-    sample_hash: Optional[str]
-    server_name: Optional[str]
+    sample_no: Optional[int] = None
+    machine_name: Optional[str] = None
+    sample_hash: Optional[str] = None
+    server_name: Optional[str] = None
 
     # action related
     action_uuid: List[UUID] = Field(default=[])
-    sample_creation_action_uuid: Optional[UUID]
-    sample_creation_experiment_uuid: Optional[UUID]
+    sample_creation_action_uuid: Optional[UUID] = None
+    sample_creation_experiment_uuid: Optional[UUID] = None
 
     # metadata
-    sample_position: Optional[str]
-    inheritance: Optional[SampleInheritance]  # only for internal use
+    sample_position: Optional[str] = None
+    inheritance: Optional[SampleInheritance] = None  # only for internal use
     status: List[SampleStatus] = Field(default=[])  # only for internal use
     chemical: List[str] = Field(default=[])
     partial_molarity: List[str] = Field(default=[])
     supplier: List[str] = Field(default=[])
     lot_number: List[str] = Field(default=[])
     source: List[str] = Field(default=[])
-    prep_date: Optional[datetime.date]
-    comment: Optional[str]
+    prep_date: Optional[datetime.date] = None
+    comment: Optional[str] = None
 
     def create_initial_exp_dict(self):
         if not isinstance(self.status, list):
@@ -165,7 +165,7 @@ class _BaseSample(SampleModel):
 class NoneSample(SampleModel):
     sample_type: Literal[None] = None
     global_label: Literal[None] = None
-    inheritance: Optional[SampleInheritance]  # only for internal use
+    inheritance: Optional[SampleInheritance] = None # only for internal use
     status: List[SampleStatus] = Field(default=[])  # only for internal use
 
     def get_global_label(self):
@@ -332,6 +332,8 @@ SamplePartUnion = Union[
 def object_to_sample(data):
     return parse_obj_as(SampleUnion, data)
 
+AssemblySample.model_rebuild()
+SampleList.model_rebuild()
 
-AssemblySample.update_forward_refs()
-SampleList.update_forward_refs()
+# AssemblySample.update_forward_refs()
+# SampleList.update_forward_refs()

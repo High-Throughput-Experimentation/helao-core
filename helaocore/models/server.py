@@ -83,7 +83,7 @@ class ActionServerModel(BaseModel, HelaoDict):
     endpoints: Dict[str, EndpointModel] = Field(default={})
     # signals estop of the action server
     estop: bool = False
-    last_action_uuid: Optional[UUID]
+    last_action_uuid: Optional[UUID] = None
 
     def get_fastapi_json(self, action_name: Optional[str] = None):
         json_dict = {}

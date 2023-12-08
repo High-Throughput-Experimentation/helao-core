@@ -7,10 +7,10 @@ from helaocore.helaodict import HelaoDict
 
 
 class MachineModel(BaseModel, HelaoDict):
-    server_name: Optional[str]
-    machine_name: Optional[str]
-    hostname: Optional[str]
-    port: Optional[int]
+    server_name: Optional[str] = None
+    machine_name: Optional[str] = None
+    hostname: Optional[str] = None
+    port: Optional[int] = None
 
     def as_key(self):
         """generates a unique machine/servername
