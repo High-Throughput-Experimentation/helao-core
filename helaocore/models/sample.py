@@ -165,7 +165,7 @@ class _BaseSample(SampleModel):
 class NoneSample(SampleModel):
     sample_type: Literal[None] = None
     global_label: Literal[None] = None
-    inheritance: Optional[SampleInheritance]  # only for internal use
+    inheritance: Optional[SampleInheritance] = None # only for internal use
     status: List[SampleStatus] = Field(default=[])  # only for internal use
 
     def get_global_label(self):
