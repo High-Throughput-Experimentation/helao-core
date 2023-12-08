@@ -47,7 +47,7 @@ class ActionModel(ShortActionModel):
     action_sub_name: Optional[str] = None
     action_abbr: Optional[str] = None
     action_params: dict = Field(default={})
-    action_etc: Optional[float]  # expected time to completion
+    action_etc: Optional[float] = None # expected time to completion
     action_codehash: Optional[str] = None
     parent_action_uuid: Optional[UUID] = None
     child_action_uuid: Optional[UUID] = None
@@ -63,10 +63,6 @@ class ActionModel(ShortActionModel):
     error_code: Optional[ErrorCodes] = ErrorCodes.none
     process_uuid: Optional[UUID] = None
     data_request_id: Optional[UUID] = None
-    orch_key: Optional[str] = None
-    orch_host: Optional[str] = None
-    orch_port: Optional[int] = None
-
     # process_group_index: Optional[int] = 0 # unnecessary if we rely on process_finish as group terminator
 
     @property
