@@ -74,9 +74,9 @@ class FileConn(BaseModel, HelaoDict):
 
 
 class FileInfo(BaseModel, HelaoDict):
-    file_type: Optional[str]
-    file_name: Optional[str]
+    file_type: Optional[str] = None
+    file_name: Optional[str] = None
     data_keys: List[str] = Field(default=[])
     sample: List[str] = Field(default=[])
-    action_uuid: Optional[UUID]
-    run_use: Optional[RunUse]
+    action_uuid: Optional[UUID] = None
+    run_use: Optional[RunUse] = None

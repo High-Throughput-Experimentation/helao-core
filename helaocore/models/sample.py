@@ -77,7 +77,7 @@ class SampleModel(BaseModel, HelaoDict):
 
     hlo_version: Optional[str] = get_hlo_version()
     global_label: Optional[str] = None # is None for a ref sample
-    sample_type: Optional[str]
+    sample_type: Optional[str] = None
 
 
 class _BaseSample(SampleModel):
