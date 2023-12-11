@@ -37,7 +37,7 @@ class HelaoCredentials(BaseSettings):
 
     def display(self, show_defaults: bool = False, show_passwords: bool = False, simple: bool = False):
         params = []
-        for key, val in self.dict().items():
+        for key, val in self.model_dump().items():
             if simple and key not in self._simple_params:
                 continue
             if val is not None:

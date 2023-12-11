@@ -13,23 +13,23 @@ from helaocore.models.s3locator import S3Locator
 
 class ShortAnalysisModel(BaseModel, HelaoDict):
     hlo_version: Optional[str] = get_hlo_version()
-    analysis_uuid: Optional[UUID]
+    analysis_uuid: Optional[UUID] = None
 
 
 class AnalysisDataModel(BaseModel, HelaoDict):
     action_uuid: UUID
     run_use: RunUse = "data"
     raw_data_path: str
-    global_sample_label: Optional[str]
-    composition: Optional[dict]
+    global_sample_label: Optional[str] = None
+    composition: Optional[dict] = None
 
 
 class AnalysisOutputModel(BaseModel, HelaoDict):
     analysis_output_path: S3Locator
     content_type: str
-    output_keys: Optional[List[str]]
-    output_name: Optional[str]
-    output: Optional[Dict[str, Union[float, str, bool, int, None]]]
+    output_keys: Optional[List[str]] = None
+    output_name: Optional[str] = None
+    output: Optional[Dict[str, Union[float, str, bool, int, None]]] = None
 
 
 class AnalysisModel(ShortAnalysisModel):
@@ -38,10 +38,10 @@ class AnalysisModel(ShortAnalysisModel):
     simulation: bool = False
     analysis_name: str
     analysis_params: dict
-    analysis_codehash: Optional[str]
-    process_uuid: Optional[UUID]
-    process_params: Optional[dict]
+    analysis_codehash: Optional[str] = None
+    process_uuid: Optional[UUID] = None
+    process_params: Optional[dict] = None
     inputs: List[AnalysisDataModel]
     outputs: List[AnalysisOutputModel]
-    data_request_id: Optional[UUID]
+    data_request_id: Optional[UUID] = None
 

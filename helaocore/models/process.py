@@ -19,23 +19,23 @@ from helaocore.models.run_use import RunUse
 
 class ShortProcessModel(BaseModel, HelaoDict):
     hlo_version: Optional[str] = get_hlo_version()
-    process_uuid: Optional[UUID]
+    process_uuid: Optional[UUID] = None
 
 
 class ProcessModel(ShortProcessModel):
-    sequence_uuid: Optional[UUID]
-    experiment_uuid: Optional[UUID]
+    sequence_uuid: Optional[UUID] = None
+    experiment_uuid: Optional[UUID] = None
     orchestrator: MachineModel = MachineModel()
     access: Optional[str] = "hte"
     dummy: bool = False
     simulation: bool = False
-    technique_name: Optional[str]
-    run_type: Optional[str]
+    technique_name: Optional[str] = None
+    run_type: Optional[str] = None
     run_use: Optional[RunUse] = "data"
-    process_timestamp: Optional[datetime]
+    process_timestamp: Optional[datetime] = None
     process_params: Optional[dict] = {}
-    process_group_index: Optional[int]
-    data_request_id: Optional[UUID]
+    process_group_index: Optional[int] = None
+    data_request_id: Optional[UUID] = None
     action_list: List[ShortActionModel] = Field(default=[])
     samples_in: List[SampleUnion] = Field(default=[])
     samples_out: List[SampleUnion] = Field(default=[])

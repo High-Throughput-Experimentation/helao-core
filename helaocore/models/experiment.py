@@ -18,19 +18,19 @@ from helaocore.helaodict import HelaoDict
 
 
 class ShortExperimentModel(BaseModel, HelaoDict):
-    experiment_uuid: Optional[UUID]
-    experiment_name: Optional[str]
-    experiment_output_dir: Optional[Path]
-    orch_key: Optional[str]
-    orch_host: Optional[str]
-    orch_port: Optional[str]
-    data_request_id: Optional[UUID]
+    experiment_uuid: Optional[UUID] = None
+    experiment_name: Optional[str] = None
+    experiment_output_dir: Optional[Path] = None
+    orch_key: Optional[str] = None
+    orch_host: Optional[str] = None
+    orch_port: Optional[int] = None
+    data_request_id: Optional[UUID] = None
 
 
 class ExperimentTemplate(BaseModel, HelaoDict):
-    experiment_name: Optional[str]
+    experiment_name: Optional[str] = None
     experiment_params: Optional[dict] = {}
-    data_request_id: Optional[UUID]
+    data_request_id: Optional[UUID] = None
 
 
 class ExperimentModel(ExperimentTemplate):
@@ -40,20 +40,20 @@ class ExperimentModel(ExperimentTemplate):
     dummy: bool = False
     simulation: bool = False
     # name of "instrument": eche, anec, adss etc. defined in world config
-    run_type: Optional[str]
-    sequence_uuid: Optional[UUID]
-    experiment_uuid: Optional[UUID]
-    experiment_timestamp: Optional[datetime]
+    run_type: Optional[str] = None
+    sequence_uuid: Optional[UUID] = None
+    experiment_uuid: Optional[UUID] = None
+    experiment_timestamp: Optional[datetime] = None
     experiment_status: List[HloStatus] = Field(default=[])
-    experiment_output_dir: Optional[Path]
-    experiment_codehash: Optional[str]
+    experiment_output_dir: Optional[Path] = None
+    experiment_codehash: Optional[str] = None
     action_list: List[ShortActionModel] = Field(default=[])
     samples_in: List[SampleUnion] = Field(default=[])
     samples_out: List[SampleUnion] = Field(default=[])
     files: List[FileInfo] = Field(default=[])
     process_list: List[UUID] = Field(default=[])  # populated by DB yml_finisher
     process_order_groups: Dict[int, List[int]] = Field(default={})
-    data_request_id: Optional[UUID]
-    orch_key: Optional[str]
-    orch_host: Optional[str]
-    orch_port: Optional[str]
+    data_request_id: Optional[UUID] = None
+    orch_key: Optional[str] = None
+    orch_host: Optional[str] = None
+    orch_port: Optional[int] = None
