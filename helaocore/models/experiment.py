@@ -23,7 +23,7 @@ class ShortExperimentModel(BaseModel, HelaoDict):
     experiment_output_dir: Optional[Path] = None
     orch_key: Optional[str] = None
     orch_host: Optional[str] = None
-    orch_port: Optional[str] = None
+    orch_port: Optional[int] = None
     data_request_id: Optional[UUID] = None
 
 
