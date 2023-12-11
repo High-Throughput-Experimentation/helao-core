@@ -334,6 +334,3 @@ def object_to_sample(data):
 
 AssemblySample.model_rebuild()
 SampleList.model_rebuild()
-
-# AssemblySample.update_forward_refs()
-# SampleList.update_forward_refs()
