@@ -26,7 +26,7 @@ class HelaoCredentials(BaseSettings):
     def api_dsn(self):
         pgdsn = PostgresDsn.build(
             scheme="postgresql",
-            user=self.API_USER,
+            username=self.API_USER,
             password=urllib.parse.quote(self.API_PASSWORD.get_secret_value()) if self.API_PASSWORD else "",
             host="127.0.0.1",
             port=f"{self.API_PORT}",
