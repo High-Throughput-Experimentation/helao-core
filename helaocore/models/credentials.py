@@ -1,16 +1,17 @@
-from pydantic import BaseSettings, SecretStr, parse_obj_as, PostgresDsn, validator
-from typing import Optional, Dict, Union, Any
+from pydantic import SecretStr, PostgresDsn
+import pydantic
+from pydantic_settings import BaseSettings
 from textwrap import dedent
 import urllib
 
 
 class HelaoCredentials(BaseSettings):
-    AWS_ACCESS_KEY_ID: SecretStr = parse_obj_as(SecretStr, "")
-    AWS_SECRET_ACCESS_KEY: SecretStr = parse_obj_as(SecretStr, "")
-    AWS_REGION: SecretStr = parse_obj_as(SecretStr, "")
-    AWS_BUCKET: SecretStr = parse_obj_as(SecretStr, "")
+    AWS_ACCESS_KEY_ID: SecretStr = pydantic.TypeAdapter.validate_python(SecretStr, "")
+    AWS_SECRET_ACCESS_KEY: SecretStr = pydantic.TypeAdapter.validate_python(SecretStr, "")
+    AWS_REGION: SecretStr = pydantic.TypeAdapter.validate_python(SecretStr, "")
+    AWS_BUCKET: SecretStr = pydantic.TypeAdapter.validate_python(SecretStr, "")
     API_USER: str = "postgres"
-    API_PASSWORD: SecretStr = parse_obj_as(SecretStr, "")
+    API_PASSWORD: SecretStr = pydantic.TypeAdapter.validate_python(SecretStr, "")
     API_HOST: str = "localhost"
     API_PORT: int = 5432
     API_DB: str = ""
