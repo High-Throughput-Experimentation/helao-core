@@ -30,7 +30,7 @@ class HelaoCredentials(BaseSettings):
             password=urllib.parse.quote(self.API_PASSWORD.get_secret_value()) if self.API_PASSWORD else "",
             host="127.0.0.1",
             port=self.API_PORT,
-            path=f"/{self.API_DB}",
+            path=self.API_DB,
         )
         pgdsn_schema = f"{pgdsn}?options=--search_path%3d{self.API_SCHEMA}"
         return pgdsn_schema
