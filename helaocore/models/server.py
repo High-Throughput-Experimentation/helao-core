@@ -126,7 +126,7 @@ class GlobalStatusModel(BaseModel, HelaoDict):
     # the dispatch loop state
     loop_state: LoopStatus = LoopStatus.stopped
     # the state of the orch
-    orch_state: LoopIntent = LoopIntent.none
+    orch_state: OrchStatus = OrchStatus.idle
     # counter for dispatched actions, keyed by experiment uuid
     counter_dispatched_actions: Dict[UUID, int] = Field(default={})
 
