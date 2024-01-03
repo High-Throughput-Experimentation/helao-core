@@ -83,7 +83,7 @@ class ActionServerModel(BaseModel, HelaoDict):
     endpoints: Dict[str, EndpointModel] = Field(default={})
     # signals estop of the action server
     estop: bool = False
-    last_action_uuid: Optional[UUID]
+    last_action_uuid: Optional[UUID] = None
 
     def get_fastapi_json(self, action_name: Optional[str] = None):
         json_dict = {}
@@ -126,7 +126,7 @@ class GlobalStatusModel(BaseModel, HelaoDict):
     # the dispatch loop state
     loop_state: LoopStatus = LoopStatus.stopped
     # the state of the orch
-    orch_state: LoopIntent = LoopIntent.none
+    orch_state: OrchStatus = OrchStatus.idle
     # counter for dispatched actions, keyed by experiment uuid
     counter_dispatched_actions: Dict[UUID, int] = Field(default={})
 

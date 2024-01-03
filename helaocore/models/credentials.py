@@ -1,16 +1,16 @@
-from pydantic import BaseSettings, SecretStr, parse_obj_as, PostgresDsn, validator
-from typing import Optional, Dict, Union, Any
+from pydantic import SecretStr, PostgresDsn
+from pydantic_settings import BaseSettings
 from textwrap import dedent
 import urllib
 
 
 class HelaoCredentials(BaseSettings):
-    AWS_ACCESS_KEY_ID: SecretStr = parse_obj_as(SecretStr, "")
-    AWS_SECRET_ACCESS_KEY: SecretStr = parse_obj_as(SecretStr, "")
-    AWS_REGION: SecretStr = parse_obj_as(SecretStr, "")
-    AWS_BUCKET: SecretStr = parse_obj_as(SecretStr, "")
+    AWS_ACCESS_KEY_ID: SecretStr = SecretStr("")
+    AWS_SECRET_ACCESS_KEY: SecretStr = SecretStr("")
+    AWS_REGION: SecretStr = SecretStr("")
+    AWS_BUCKET: SecretStr = SecretStr("")
     API_USER: str = "postgres"
-    API_PASSWORD: SecretStr = parse_obj_as(SecretStr, "")
+    API_PASSWORD: SecretStr = SecretStr("")
     API_HOST: str = "localhost"
     API_PORT: int = 5432
     API_DB: str = ""
@@ -26,18 +26,18 @@ class HelaoCredentials(BaseSettings):
     def api_dsn(self):
         pgdsn = PostgresDsn.build(
             scheme="postgresql",
-            user=self.API_USER,
+            username=self.API_USER,
             password=urllib.parse.quote(self.API_PASSWORD.get_secret_value()) if self.API_PASSWORD else "",
             host="127.0.0.1",
-            port=f"{self.API_PORT}",
-            path=f"/{self.API_DB}",
+            port=self.API_PORT,
+            path=self.API_DB,
         )
         pgdsn_schema = f"{pgdsn}?options=--search_path%3d{self.API_SCHEMA}"
         return pgdsn_schema
 
     def display(self, show_defaults: bool = False, show_passwords: bool = False, simple: bool = False):
         params = []
-        for key, val in self.dict().items():
+        for key, val in self.model_dump().items():
             if simple and key not in self._simple_params:
                 continue
             if val is not None:
