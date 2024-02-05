@@ -8,3 +8,5 @@ class RunUse(str, Enum):
     ref_light = "ref_light"
     ref_dark = "ref_dark"
     baseline = "baseline"
+    standard = "standard"
+    blank = "blank"

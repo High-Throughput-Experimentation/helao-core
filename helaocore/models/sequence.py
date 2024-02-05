@@ -18,7 +18,7 @@ class SequenceTemplate(BaseModel, HelaoDict):
     sequence_name: Optional[str] = None
     sequence_params: Optional[dict] = {}
     sequence_label: Optional[str] = "noLabel"
-    experiment_plan_list: List[ExperimentTemplate] = Field(default=[])
+    experiment_plan_list: List[ExperimentTemplate] = Field(default=[])  # populated by operator using sequence library funcs
 
 
 class SequenceModel(SequenceTemplate):
@@ -32,5 +32,5 @@ class SequenceModel(SequenceTemplate):
     sequence_output_dir: Optional[Path] = None
     sequence_codehash: Optional[str] = None
     sequence_comment: Optional[str] = None
-    experiment_list: List[ShortExperimentModel] = Field(default=[])
+    experiment_list: List[ShortExperimentModel] = Field(default=[])  # list of completed experiments from experimentmodel_list (premodels.py)
     data_request_id: Optional[UUID] = None

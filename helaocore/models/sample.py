@@ -76,7 +76,7 @@ class SampleModel(BaseModel, HelaoDict):
     _hashinclude_ = {"global_label", "sample_type"}
 
     hlo_version: Optional[str] = get_hlo_version()
-    global_label: Optional[str] = None # is None for a ref sample
+    global_label: Optional[str] = None  # is None for a ref sample
     sample_type: Optional[str] = None
 
 
@@ -84,8 +84,8 @@ class _BaseSample(SampleModel):
     """Full Sample with all helao-async relevant attributes."""
 
     # time related fields
-    sample_creation_timecode: Optional[int] = None # epoch in ns
-    last_update: Optional[int] = None # epoch in ns
+    sample_creation_timecode: Optional[int] = None  # epoch in ns
+    last_update: Optional[int] = None  # epoch in ns
     # action_timestamp: Optional[str]  # "%Y%m%d.%H%M%S%f"
 
     # labels
@@ -119,7 +119,9 @@ class _BaseSample(SampleModel):
             "global_label": self.get_global_label(),
             "sample_type": self.sample_type,
             "sample_no": self.sample_no,
-            "machine_name": self.machine_name if self.machine_name is not None else gethostname().lower(),
+            "machine_name": self.machine_name.lower()
+            if self.machine_name is not None
+            else gethostname().lower(),
             "sample_creation_timecode": self.sample_creation_timecode,
             "last_update": self.last_update,
             "sample_position": self.sample_position,
@@ -165,7 +167,7 @@ class _BaseSample(SampleModel):
 class NoneSample(SampleModel):
     sample_type: Literal[None] = None
     global_label: Literal[None] = None
-    inheritance: Optional[SampleInheritance] = None # only for internal use
+    inheritance: Optional[SampleInheritance] = None  # only for internal use
     status: List[SampleStatus] = Field(default=[])  # only for internal use
 
     def get_global_label(self):
@@ -200,7 +202,9 @@ class LiquidSample(_BaseSample):
     def get_global_label(self):
         if self.global_label is None:
             label = None
-            machine_name = self.machine_name if self.machine_name is not None else gethostname().lower()
+            machine_name = (
+                self.machine_name.lower() if self.machine_name is not None else gethostname().lower()
+            )
             label = f"{machine_name}__liquid__{self.sample_no}"
             return label
         else:
@@ -222,7 +226,7 @@ class SolidSample(_BaseSample):
     def get_global_label(self):
         if self.global_label is None:
             label = None
-            machine_name = self.machine_name if self.machine_name is not None else "legacy"
+            machine_name = self.machine_name.lower() if self.machine_name is not None else "legacy"
             label = f"{machine_name}__solid__{self.plate_id}_{self.sample_no}"
             return label
         else:
@@ -256,7 +260,9 @@ class GasSample(_BaseSample):
     def get_global_label(self):
         if self.global_label is None:
             label = None
-            machine_name = self.machine_name if self.machine_name is not None else gethostname().lower()
+            machine_name = (
+                self.machine_name.lower() if self.machine_name is not None else gethostname().lower()
+            )
             label = f"{machine_name}__gas__{self.sample_no}"
             return label
         else:
@@ -272,7 +278,9 @@ class AssemblySample(_BaseSample):
     def get_global_label(self):
         if self.global_label is None:
             label = None
-            machine_name = self.machine_name if self.machine_name is not None else gethostname().lower()
+            machine_name = (
+                self.machine_name.lower() if self.machine_name is not None else gethostname().lower()
+            )
             label = f"{machine_name}__assembly__{self.sample_position}__{self.sample_creation_timecode}"
             return label
         else:
@@ -331,6 +339,7 @@ SamplePartUnion = Union[
 
 def object_to_sample(data):
     return parse_obj_as(SampleUnion, data)
+
 
 AssemblySample.model_rebuild()
 SampleList.model_rebuild()
