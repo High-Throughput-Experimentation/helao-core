@@ -5,9 +5,9 @@ HELAO-core encompasses the API data structures used by Caltech HTE group's instr
 
 ## Requirements
 
-- [miniconda](https://docs.conda.io/en/latest/miniconda.html) (Tested with Python 3.8)
-- Python 3 (tested with Python 3.8)
-- [pydantic](https://github.com/pydantic/pydantic) 1.10
+- [miniconda](https://docs.conda.io/en/latest/miniconda.html)
+- Python 3 (tested with Python 3.11)
+- [pydantic](https://github.com/pydantic/pydantic) 2.5.2
 
 
 ## Installation
@@ -17,4 +17,4 @@ As HELAO-core is a dependency of HELAO-async, the executig the environment setup
 To manually install HELAO-core, open a miniconda prompt or PowerShell with an active conda profile and run the following commands.
 
     git clone https://github.com/High-Throughput-Experimentation/helao-core.git
-    conda install -c conda-forge pydantic=1.10
+    conda install -c conda-forge pydantic=2.5.2 pydantic-core=2.14.5 pydantic-settings=2.1.0
