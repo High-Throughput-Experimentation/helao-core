@@ -47,6 +47,8 @@ class HelaoDict:
             return int(val)
         elif isinstance(val, np.floating):
             return float(val)
+        elif isinstance(val, np.bool_):
+            return bool(val)
         elif isinstance(val, (int, float, bool, type(None))):
             return val
         elif isinstance(val, str):
