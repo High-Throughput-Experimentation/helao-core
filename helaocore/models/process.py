@@ -40,3 +40,4 @@ class ProcessModel(ShortProcessModel):
     samples_in: List[SampleUnion] = Field(default=[])
     samples_out: List[SampleUnion] = Field(default=[])
     files: List[FileInfo] = Field(default=[])
+    # TODO: created assembly global label, created solid...

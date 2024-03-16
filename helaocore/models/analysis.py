@@ -44,4 +44,4 @@ class AnalysisModel(ShortAnalysisModel):
     inputs: List[AnalysisDataModel]
     outputs: List[AnalysisOutputModel]
     data_request_id: Optional[UUID] = None
-
+    # TODO: include run_type, process_timestamp, technique_name
