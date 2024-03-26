@@ -47,6 +47,7 @@ class ActionModel(ShortActionModel):
     action_sub_name: Optional[str] = None
     action_abbr: Optional[str] = None
     action_params: dict = Field(default={})
+    action_output: dict = Field(default={})
     action_etc: Optional[float] = None # expected time to completion
     action_codehash: Optional[str] = None
     parent_action_uuid: Optional[UUID] = None
