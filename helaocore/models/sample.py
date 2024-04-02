@@ -1,22 +1,10 @@
-from __future__ import annotations
-
 """ sample.py
 Liquid, Gas, Assembly, and Solid sample type models.
 
 """
-__all__ = [
-    "NoneSample",
-    "SampleModel",
-    "LiquidSample",
-    "GasSample",
-    "SolidSample",
-    "AssemblySample",
-    "SampleList",
-    "SampleUnion",
-    "object_to_sample",
-    "SampleInheritance",
-    "SampleStatus",
-]
+
+from __future__ import annotations
+
 
 from socket import gethostname
 from uuid import UUID
@@ -33,8 +21,20 @@ from helaocore.version import get_hlo_version
 from helaocore.helaodict import HelaoDict
 
 
-SampleUnion = ForwardRef('SampleUnion')
-SamplePartUnion = ForwardRef('SamplePartUnion')
+__all__ = [
+    "NoneSample",
+    "SampleModel",
+    "LiquidSample",
+    "GasSample",
+    "SolidSample",
+    "AssemblySample",
+    "SampleUnion",
+    "object_to_sample",
+    "SampleInheritance",
+    "SampleStatus",
+]
+
+SampleUnion = ForwardRef("SampleUnion")
 
 
 class SampleType(str, Enum):
@@ -119,9 +119,11 @@ class _BaseSample(SampleModel):
             "global_label": self.get_global_label(),
             "sample_type": self.sample_type,
             "sample_no": self.sample_no,
-            "machine_name": self.machine_name.lower()
-            if self.machine_name is not None
-            else gethostname().lower(),
+            "machine_name": (
+                self.machine_name.lower()
+                if self.machine_name is not None
+                else gethostname().lower()
+            ),
             "sample_creation_timecode": self.sample_creation_timecode,
             "last_update": self.last_update,
             "sample_position": self.sample_position,
@@ -203,7 +205,9 @@ class LiquidSample(_BaseSample):
         if self.global_label is None:
             label = None
             machine_name = (
-                self.machine_name.lower() if self.machine_name is not None else gethostname().lower()
+                self.machine_name.lower()
+                if self.machine_name is not None
+                else gethostname().lower()
             )
             label = f"{machine_name}__liquid__{self.sample_no}"
             return label
@@ -226,7 +230,9 @@ class SolidSample(_BaseSample):
     def get_global_label(self):
         if self.global_label is None:
             label = None
-            machine_name = self.machine_name.lower() if self.machine_name is not None else "legacy"
+            machine_name = (
+                self.machine_name.lower() if self.machine_name is not None else "legacy"
+            )
             label = f"{machine_name}__solid__{self.plate_id}_{self.sample_no}"
             return label
         else:
@@ -261,7 +267,9 @@ class GasSample(_BaseSample):
         if self.global_label is None:
             label = None
             machine_name = (
-                self.machine_name.lower() if self.machine_name is not None else gethostname().lower()
+                self.machine_name.lower()
+                if self.machine_name is not None
+                else gethostname().lower()
             )
             label = f"{machine_name}__gas__{self.sample_no}"
             return label
@@ -271,15 +279,24 @@ class GasSample(_BaseSample):
 
 class AssemblySample(_BaseSample):
     sample_type: Literal[SampleType.assembly] = SampleType.assembly
-    # parts: List[SampleUnion] = Field(default=[])
-    parts: List[SamplePartUnion] = Field(default=[])
+    parts: List[
+        Union[
+            AssemblySample,
+            LiquidSample,
+            GasSample,
+            SolidSample,
+            NoneSample,
+        ]
+    ] = Field(default=[])
     sample_position: Optional[str] = "cell1_we"  # usual default assembly position
 
     def get_global_label(self):
         if self.global_label is None:
             label = None
             machine_name = (
-                self.machine_name.lower() if self.machine_name is not None else gethostname().lower()
+                self.machine_name.lower()
+                if self.machine_name is not None
+                else gethostname().lower()
             )
             label = f"{machine_name}__assembly__{self.sample_position}__{self.sample_creation_timecode}"
             return label
@@ -310,25 +327,7 @@ class AssemblySample(_BaseSample):
         return part_dict_list
 
 
-# TODO: this needs to be removed in the near future
-# and all calls to SampleList replaced by SampleUnion
-class SampleList(BaseModel, HelaoDict):
-    """a combi basemodel which can contain all possible samples
-    Its also a list and we should enforce samples as being a list"""
-
-    samples: Optional[List[SampleUnion]] = Field(default=[])
-
-
 SampleUnion = Union[
-    AssemblySample,
-    LiquidSample,
-    GasSample,
-    SolidSample,
-    NoneSample,
-]
-
-
-SamplePartUnion = Union[
     AssemblySample,
     LiquidSample,
     GasSample,
@@ -342,4 +341,3 @@ def object_to_sample(data):
 
 
 AssemblySample.model_rebuild()
-SampleList.model_rebuild()
