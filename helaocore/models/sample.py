@@ -279,7 +279,15 @@ class GasSample(_BaseSample):
 
 class AssemblySample(_BaseSample):
     sample_type: Literal[SampleType.assembly] = SampleType.assembly
-    parts: List[SampleUnion] = Field(default=[])
+    parts: List[
+        Union[
+            AssemblySample,
+            LiquidSample,
+            GasSample,
+            SolidSample,
+            NoneSample,
+        ]
+    ] = Field(default=[])
     sample_position: Optional[str] = "cell1_we"  # usual default assembly position
 
     def get_global_label(self):
