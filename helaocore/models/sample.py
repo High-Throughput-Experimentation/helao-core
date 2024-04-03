@@ -1,10 +1,22 @@
+from __future__ import annotations
+
 """ sample.py
 Liquid, Gas, Assembly, and Solid sample type models.
 
 """
-
-from __future__ import annotations
-
+__all__ = [
+    "NoneSample",
+    "SampleModel",
+    "LiquidSample",
+    "GasSample",
+    "SolidSample",
+    "AssemblySample",
+    "SampleList",
+    "SampleUnion",
+    "object_to_sample",
+    "SampleInheritance",
+    "SampleStatus",
+]
 
 from socket import gethostname
 from uuid import UUID
@@ -21,20 +33,8 @@ from helaocore.version import get_hlo_version
 from helaocore.helaodict import HelaoDict
 
 
-__all__ = [
-    "NoneSample",
-    "SampleModel",
-    "LiquidSample",
-    "GasSample",
-    "SolidSample",
-    "AssemblySample",
-    "SampleUnion",
-    "object_to_sample",
-    "SampleInheritance",
-    "SampleStatus",
-]
-
 SampleUnion = ForwardRef("SampleUnion")
+SamplePartUnion = ForwardRef("SamplePartUnion")
 
 
 class SampleType(str, Enum):
@@ -279,15 +279,8 @@ class GasSample(_BaseSample):
 
 class AssemblySample(_BaseSample):
     sample_type: Literal[SampleType.assembly] = SampleType.assembly
-    parts: List[
-        Union[
-            AssemblySample,
-            LiquidSample,
-            GasSample,
-            SolidSample,
-            NoneSample,
-        ]
-    ] = Field(default=[])
+    # parts: List[SampleUnion] = Field(default=[])
+    parts: List[SamplePartUnion] = Field(default=[])
     sample_position: Optional[str] = "cell1_we"  # usual default assembly position
 
     def get_global_label(self):
@@ -327,7 +320,25 @@ class AssemblySample(_BaseSample):
         return part_dict_list
 
 
+# TODO: this needs to be removed in the near future
+# and all calls to SampleList replaced by SampleUnion
+class SampleList(BaseModel, HelaoDict):
+    """a combi basemodel which can contain all possible samples
+    Its also a list and we should enforce samples as being a list"""
+
+    samples: Optional[List[SampleUnion]] = Field(default=[])
+
+
 SampleUnion = Union[
+    AssemblySample,
+    LiquidSample,
+    GasSample,
+    SolidSample,
+    NoneSample,
+]
+
+
+SamplePartUnion = Union[
     AssemblySample,
     LiquidSample,
     GasSample,
@@ -341,3 +352,4 @@ def object_to_sample(data):
 
 
 AssemblySample.model_rebuild()
+SampleList.model_rebuild()
