@@ -48,7 +48,7 @@ class EndpointModel(BaseModel, HelaoDict):
         if HloStatus.finished not in self.nonactive_dict:
             self.nonactive_dict[HloStatus.finished] = {}
         for uuid, status in self.active_dict.items():
-            print(uuid, status.action_status)
+            # print(uuid, status.action_status)
             # check if action is finished
             if HloStatus.finished in status.action_status:
                 del_keys.append(uuid)
