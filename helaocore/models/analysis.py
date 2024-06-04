@@ -4,6 +4,7 @@ from enum import Enum
 from typing import List, Optional, Union, Dict
 from uuid import UUID
 from pydantic import BaseModel, Field
+from datetime import datetime
 
 from helaocore.models.run_use import RunUse
 from helaocore.version import get_hlo_version
@@ -14,6 +15,11 @@ from helaocore.models.s3locator import S3Locator
 class ShortAnalysisModel(BaseModel, HelaoDict):
     hlo_version: Optional[str] = get_hlo_version()
     analysis_uuid: Optional[UUID] = None
+    analysis_timestamp: Optional[datetime] = None
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.analysis_timestamp is None:
+            self.analysis_timestamp = datetime.now()
 
 
 class AnalysisDataModel(BaseModel, HelaoDict):
