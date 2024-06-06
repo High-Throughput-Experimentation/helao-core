@@ -33,6 +33,7 @@ class AnalysisDataModel(BaseModel, HelaoDict):
 class AnalysisOutputModel(BaseModel, HelaoDict):
     analysis_output_path: S3Locator
     content_type: str
+    content_encoding: Optional[str] = None
     output_keys: Optional[List[str]] = None
     output_name: Optional[str] = None
     output: Optional[Dict[str, Union[float, str, bool, int, None]]] = None
