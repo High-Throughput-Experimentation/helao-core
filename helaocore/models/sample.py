@@ -238,16 +238,16 @@ class SolidSample(_BaseSample):
         else:
             return self.global_label
 
-    @root_validator(pre=False, skip_on_failure=True)
-    def validate_global_label(cls, values):
-        machine_name = values.get("machine_name")
-        plate_id = values.get("plate_id")
-        sample_no = values.get("sample_no")
-        if machine_name == "legacy":
-            values["global_label"] = f"{machine_name}__solid__{plate_id}_{sample_no}"
-            return values
-        else:
-            raise ValueError("Only legacy solid sample supported for now.")
+    # @root_validator(pre=False, skip_on_failure=True)
+    # def validate_global_label(cls, values):
+    #     machine_name = values.get("machine_name")
+    #     plate_id = values.get("plate_id")
+    #     sample_no = values.get("sample_no")
+    #     if machine_name == "legacy":
+    #         values["global_label"] = f"{machine_name}__solid__{plate_id}_{sample_no}"
+    #         return values
+    #     else:
+    #         raise ValueError("Only legacy solid sample supported for now.")
 
 
 class GasSample(_BaseSample):
