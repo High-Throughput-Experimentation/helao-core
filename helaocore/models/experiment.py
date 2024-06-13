@@ -34,7 +34,7 @@ class ExperimentTemplate(BaseModel, HelaoDict):
 
 
 class ExperimentModel(ExperimentTemplate):
-    hlo_version: Optional[str] = get_hlo_version()
+    hlo_version: Optional[str] = Field(default_factory=get_hlo_version)
     orchestrator: MachineModel = MachineModel()
     access: Optional[str] = 'hte'
     dummy: bool = False

@@ -18,7 +18,7 @@ from helaocore.models.run_use import RunUse
 
 
 class ShortProcessModel(BaseModel, HelaoDict):
-    hlo_version: Optional[str] = get_hlo_version()
+    hlo_version: Optional[str] = Field(default_factory=get_hlo_version)
     process_uuid: Optional[UUID] = None
 
 

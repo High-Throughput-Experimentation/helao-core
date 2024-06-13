@@ -18,7 +18,7 @@ from helaocore.error import ErrorCodes
 
 
 class ShortActionModel(BaseModel, HelaoDict):
-    hlo_version: Optional[str] = get_hlo_version()
+    hlo_version: Optional[str] = Field(default_factory=get_hlo_version)
     action_uuid: Optional[UUID] = None
     action_output_dir: Optional[Path] = None
     action_actual_order: Optional[int] = 0
