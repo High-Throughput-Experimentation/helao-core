@@ -13,7 +13,7 @@ from helaocore.models.s3locator import S3Locator
 
 
 class ShortAnalysisModel(BaseModel, HelaoDict):
-    hlo_version: Optional[str] = get_hlo_version()
+    hlo_version: Optional[str] = Field(default_factory=get_hlo_version)
     analysis_uuid: Optional[UUID] = None
     analysis_timestamp: Optional[datetime] = None
     def __init__(self, *args, **kwargs):
