@@ -348,7 +348,13 @@ SamplePartUnion = Union[
 
 
 def object_to_sample(data):
-    return parse_obj_as(SampleUnion, data)
+    try:
+        sample = parse_obj_as(SampleUnion, data)
+    except Exception as e:
+        print(f"Error: {e}")
+        print(f"Data: {data}")
+        raise e
+    return sample
 
 
 AssemblySample.model_rebuild()
