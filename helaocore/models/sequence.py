@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from helaocore.models.hlostatus import HloStatus
 from helaocore.models.experiment import ShortExperimentModel, ExperimentTemplate
+from helaocore.models.machine import MachineModel
 
 from helaocore.version import get_hlo_version
 from helaocore.helaodict import HelaoDict
@@ -34,3 +35,4 @@ class SequenceModel(SequenceTemplate):
     sequence_comment: Optional[str] = None
     experiment_list: List[ShortExperimentModel] = Field(default=[])  # list of completed experiments from experimentmodel_list (premodels.py)
     data_request_id: Optional[UUID] = None
+    orchestrator: MachineModel = MachineModel()
