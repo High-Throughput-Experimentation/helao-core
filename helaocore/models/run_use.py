@@ -10,3 +10,4 @@ class RunUse(str, Enum):
     baseline = "baseline"
     standard = "standard"
     blank = "blank"
+    preca_baseline = "preca_baseline"
