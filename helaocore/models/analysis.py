@@ -28,6 +28,9 @@ class AnalysisDataModel(BaseModel, HelaoDict):
     raw_data_path: str
     global_sample_label: Optional[str] = None
     composition: Optional[dict] = None
+    file_name: Optional[str] = None
+    file_type: Optional[str] = None
+    data_keys: List[str] = Field(default=[])
 
 
 class AnalysisOutputModel(BaseModel, HelaoDict):
