@@ -1,5 +1,6 @@
 __all__ = ["AnalysisModel", "ShortAnalysisModel", "AnalysisDataModel", "AnalysisOutputModel"]
 
+from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List, Optional, Union, Dict
 from uuid import UUID
@@ -56,3 +57,11 @@ class AnalysisModel(ShortAnalysisModel):
     outputs: List[AnalysisOutputModel]
     data_request_id: Optional[UUID] = None
     # TODO: include run_type, process_timestamp, technique_name
+
+
+class AnalysisInput(ABC):
+    process_params: dict
+    
+    @abstractmethod
+    def get_datamodels(self, *args, **kwargs) -> List[AnalysisDataModel]:
+        return NotImplemented
